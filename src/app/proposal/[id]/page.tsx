@@ -427,9 +427,13 @@ export default function ProposalDetailPage() {
                       )}
                       <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 'bold' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>Total Sourcing Time:</span>
+                        <span style={{ color: 'var(--text-primary)' }}>Estimated Arrival Date:</span>
                         <span style={{ color: etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
-                          {etaResult.totalDays} Days
+                          {new Date(etaResult.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })} ({etaResult.totalDays} Days)
                         </span>
                       </div>
                       <div style={{ 
