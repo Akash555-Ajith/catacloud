@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const [catDiscount, setCatDiscount] = useState<number>(0);
   const [catDelivery, setCatDelivery] = useState<number>(0);
   const [catOverrides, setCatOverrides] = useState<{
-    [id: string]: { price: number; stock: number; included: boolean };
+    [id: string]: { price: number; stock: number; discount: number; included: boolean };
   }>({});
 
   // Modal / Form states for product management
@@ -103,6 +103,7 @@ export default function DashboardPage() {
         initialOverrides[p.id] = {
           price: p.pricePerKg,
           stock: p.stock,
+          discount: 0,
           included: true
         };
       });
@@ -312,6 +313,13 @@ export default function DashboardPage() {
     }));
   };
 
+  const handleOverrideDiscountChange = (productId: string, discount: number) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], discount }
+    }));
+  };
+
   const handleOverrideIncludedChange = (productId: string, included: boolean) => {
     setCatOverrides((prev) => ({
       ...prev,
@@ -328,6 +336,7 @@ export default function DashboardPage() {
       overridesToSave[pid] = {
         customPrice: catOverrides[pid].price,
         customStock: catOverrides[pid].stock,
+        customDiscount: catOverrides[pid].discount || 0,
         included: catOverrides[pid].included
       };
     });
@@ -359,6 +368,7 @@ export default function DashboardPage() {
       resetOverrides[p.id] = {
         price: p.pricePerKg,
         stock: p.stock,
+        discount: 0,
         included: true
       };
     });
@@ -901,12 +911,13 @@ export default function DashboardPage() {
                           <th>Specimen Name</th>
                           <th>Standard Price</th>
                           <th>Custom Proposal Price ($/kg)</th>
+                          <th>Proposal Discount (%)</th>
                           <th>Allocated Stock (kg)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {products.map((p) => {
-                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, included: true };
+                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, included: true };
                           return (
                             <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
                               <td style={{ textAlign: 'center' }}>
@@ -930,6 +941,19 @@ export default function DashboardPage() {
                                   onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
                                   className="luxury-input"
                                   style={{ padding: '6px 12px', fontSize: '0.85rem', width: '120px' }}
+                                  disabled={!override.included}
+                                  required={override.included}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={override.discount || 0}
+                                  onChange={(e) => handleOverrideDiscountChange(p.id, Number(e.target.value))}
+                                  className="luxury-input"
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '90px' }}
                                   disabled={!override.included}
                                   required={override.included}
                                 />

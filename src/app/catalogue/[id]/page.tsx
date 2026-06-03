@@ -86,6 +86,18 @@ export default function CatalogueDetailPage() {
     return override && override.included;
   });
 
+  // Calculate pricing for the selected specimen modal details
+  const selectedOverride = selectedFish ? catalog.overrides[selectedFish.id] : null;
+  const selectedCustomPrice = selectedFish
+    ? (selectedOverride ? selectedOverride.customPrice : selectedFish.pricePerKg)
+    : 0;
+  const selectedItemDiscount = selectedFish
+    ? ((selectedOverride && selectedOverride.customDiscount !== undefined && selectedOverride.customDiscount > 0)
+      ? selectedOverride.customDiscount
+      : (catalog.globalDiscount || 0))
+    : 0;
+  const selectedDisplayPrice = selectedCustomPrice * (1 - selectedItemDiscount / 100);
+
   return (
     <div className={styles.pageContainer}>
       <header className={styles.brandHeader}>
@@ -160,7 +172,10 @@ export default function CatalogueDetailPage() {
           proposalItems.map((fishItem) => {
             const override = catalog.overrides[fishItem.id];
             const customPrice = override ? override.customPrice : fishItem.pricePerKg;
-            const displayPrice = customPrice * (1 - (catalog.globalDiscount || 0) / 100);
+            const itemDiscount = (override && override.customDiscount !== undefined && override.customDiscount > 0)
+              ? override.customDiscount
+              : (catalog.globalDiscount || 0);
+            const displayPrice = customPrice * (1 - itemDiscount / 100);
             const displayStock = override ? override.customStock : fishItem.stock;
 
             return (
@@ -171,6 +186,26 @@ export default function CatalogueDetailPage() {
               >
                 <div className={styles.imageWrapper}>
                   <img src={fishItem.image} alt={fishItem.name} className={styles.cardImage} />
+                  {itemDiscount > 0 && (
+                    <span 
+                      style={{ 
+                        position: 'absolute', 
+                        top: '12px', 
+                        right: '12px', 
+                        background: 'var(--accent-gold)', 
+                        color: '#030812', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        padding: '4px 10px', 
+                        borderRadius: '20px', 
+                        boxShadow: '0 2px 10px rgba(226, 183, 68, 0.4)',
+                        letterSpacing: '0.5px',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      {itemDiscount}% Off
+                    </span>
+                  )}
                 </div>
                 <div className={styles.cardBody}>
                   <div>
@@ -181,7 +216,7 @@ export default function CatalogueDetailPage() {
                   <div className={styles.cardMetaRow}>
                     <span className={styles.cardPrice}>
                       ${displayPrice.toFixed(2)}/kg
-                      {catalog.globalDiscount > 0 && (
+                      {itemDiscount > 0 && (
                         <span style={{ textDecoration: 'line-through', fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
                           ${customPrice.toFixed(2)}
                         </span>
@@ -248,10 +283,15 @@ export default function CatalogueDetailPage() {
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Sourcing Price</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                  ${((catalog.overrides[selectedFish.id]?.customPrice || selectedFish.pricePerKg) * (1 - (catalog.globalDiscount || 0) / 100)).toFixed(2)}/kg
-                  {catalog.globalDiscount > 0 && (
+                  ${selectedDisplayPrice.toFixed(2)}/kg
+                  {selectedItemDiscount > 0 && (
                     <span style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'normal' }}>
-                      ${(catalog.overrides[selectedFish.id]?.customPrice || selectedFish.pricePerKg).toFixed(2)}
+                      ${selectedCustomPrice.toFixed(2)}
+                    </span>
+                  )}
+                  {selectedItemDiscount > 0 && (
+                    <span style={{ color: 'var(--accent-gold)', fontSize: '0.85rem', marginLeft: '8px', fontWeight: 'bold' }}>
+                      ({selectedItemDiscount}% Off)
                     </span>
                   )}
                 </span>

@@ -36,6 +36,7 @@ export interface CustomCatalog {
     [productId: string]: {
       customPrice: number;
       customStock: number;
+      customDiscount: number; // in %
       included: boolean;
     }
   };
