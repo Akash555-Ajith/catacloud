@@ -66,12 +66,12 @@ export async function getProducts(): Promise<FishItem[]> {
       // Automatic Seeding: Seed dynamic products on first run if database is empty
       if (!data || data.length === 0) {
         const { error: seedError } = await supabase.from('products').insert(fishData);
-        if (seedError) console.error('Failed to seed products in Supabase:', seedError);
+        if (seedError) console.warn('Failed to seed products in Supabase:', seedError);
         return fishData;
       }
       return data as FishItem[];
     } catch (err) {
-      console.error('Error fetching products from Supabase, falling back to LocalStorage:', err);
+      console.warn('Error fetching products from Supabase, falling back to LocalStorage:', err);
     }
   }
 
@@ -95,7 +95,7 @@ export async function saveProducts(products: FishItem[]): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error saving products to Supabase:', err);
+      console.warn('Error saving products to Supabase:', err);
     }
   }
 
@@ -110,7 +110,7 @@ export async function addProduct(product: FishItem): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error adding product to Supabase:', err);
+      console.warn('Error adding product to Supabase:', err);
     }
   }
 
@@ -129,7 +129,7 @@ export async function updateProduct(updatedProduct: FishItem): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error updating product in Supabase:', err);
+      console.warn('Error updating product in Supabase:', err);
     }
   }
 
@@ -148,7 +148,7 @@ export async function deleteProduct(id: string): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error deleting product in Supabase:', err);
+      console.warn('Error deleting product in Supabase:', err);
     }
   }
 
@@ -164,7 +164,7 @@ export async function getOrders(): Promise<Order[]> {
       if (error) throw error;
       return (data || []) as Order[];
     } catch (err) {
-      console.error('Error fetching orders from Supabase, falling back to LocalStorage:', err);
+      console.warn('Error fetching orders from Supabase, falling back to LocalStorage:', err);
     }
   }
 
@@ -185,7 +185,7 @@ export async function saveOrders(orders: Order[]): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error saving orders to Supabase:', err);
+      console.warn('Error saving orders to Supabase:', err);
     }
   }
 
@@ -200,7 +200,7 @@ export async function addOrder(order: Order): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error adding order to Supabase:', err);
+      console.warn('Error adding order to Supabase:', err);
     }
   }
 
@@ -219,7 +219,7 @@ export async function updateOrderStatus(orderId: string, status: 'Pending' | 'Di
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error updating order status in Supabase:', err);
+      console.warn('Error updating order status in Supabase:', err);
     }
   }
 
@@ -238,7 +238,7 @@ export async function getProposals(): Promise<Proposal[]> {
       if (error) throw error;
       return (data || []) as Proposal[];
     } catch (err) {
-      console.error('Error fetching proposals from Supabase, falling back to LocalStorage:', err);
+      console.warn('Error fetching proposals from Supabase, falling back to LocalStorage:', err);
     }
   }
 
@@ -259,7 +259,7 @@ export async function saveProposals(proposals: Proposal[]): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error saving proposals to Supabase:', err);
+      console.warn('Error saving proposals to Supabase:', err);
     }
   }
 
@@ -274,7 +274,7 @@ export async function addProposal(proposal: Proposal): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error adding proposal to Supabase:', err);
+      console.warn('Error adding proposal to Supabase:', err);
     }
   }
 
@@ -294,7 +294,7 @@ export async function getProposalById(id: string): Promise<Proposal | undefined>
       if (error) throw error;
       return data ? (data as Proposal) : undefined;
     } catch (err) {
-      console.error('Error fetching proposal by ID from Supabase:', err);
+      console.warn('Error fetching proposal by ID from Supabase:', err);
     }
   }
 
@@ -309,7 +309,7 @@ export async function deleteProposal(id: string): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error deleting proposal in Supabase:', err);
+      console.warn('Error deleting proposal in Supabase:', err);
     }
   }
 
@@ -325,7 +325,7 @@ export async function getCustomCatalogs(): Promise<CustomCatalog[]> {
       if (error) throw error;
       return (data || []) as CustomCatalog[];
     } catch (err) {
-      console.error('Error fetching custom catalogs from Supabase, falling back to LocalStorage:', err);
+      console.warn('Error fetching custom catalogs from Supabase, falling back to LocalStorage:', err);
     }
   }
 
@@ -346,7 +346,7 @@ export async function saveCustomCatalogs(catalogs: CustomCatalog[]): Promise<voi
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error saving custom catalogs to Supabase:', err);
+      console.warn('Error saving custom catalogs to Supabase:', err);
     }
   }
 
@@ -361,7 +361,7 @@ export async function addCustomCatalog(catalog: CustomCatalog): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error adding custom catalog to Supabase:', err);
+      console.warn('Error adding custom catalog to Supabase:', err);
     }
   }
 
@@ -381,7 +381,7 @@ export async function getCustomCatalogById(id: string): Promise<CustomCatalog | 
       if (error) throw error;
       return data ? (data as CustomCatalog) : undefined;
     } catch (err) {
-      console.error('Error fetching custom catalog by ID from Supabase:', err);
+      console.warn('Error fetching custom catalog by ID from Supabase:', err);
     }
   }
 
@@ -396,7 +396,7 @@ export async function deleteCustomCatalog(id: string): Promise<void> {
       if (error) throw error;
       return;
     } catch (err) {
-      console.error('Error deleting custom catalog in Supabase:', err);
+      console.warn('Error deleting custom catalog in Supabase:', err);
     }
   }
 
