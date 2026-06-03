@@ -377,80 +377,34 @@ export default function ProposalDetailPage() {
                     required
                     disabled={loading}
                   />
-                </div>
-
-                {etaResult && (
-                  <div className={styles.notesCard} style={{
-                    background: 'rgba(0, 242, 254, 0.02)',
-                    borderColor: etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)',
-                    marginBottom: '20px',
-                    padding: '16px'
-                  }}>
-                    <div className={styles.notesTitle} style={{ 
-                      color: etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)',
+                  {etaResult && address && (
+                    <div style={{
+                      marginTop: '8px',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      flexDirection: 'column',
+                      gap: '4px',
+                      background: 'rgba(255, 255, 255, 0.01)',
+                      border: `1px solid ${etaResult.stockDelayDays > 0 ? 'rgba(226, 183, 68, 0.3)' : 'rgba(0, 242, 254, 0.2)'}`,
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      fontSize: '0.825rem'
                     }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <rect x="1" y="3" width="15" height="13" />
-                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                        <circle cx="5.5" cy="18.5" r="2.5" />
-                        <circle cx="18.5" cy="18.5" r="2.5" />
-                      </svg>
-                      Sourcing & Logistics ETA Breakdown
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.875rem', marginTop: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Origin Sourced:</span>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{fish?.origin}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
+                        <span style={{ fontSize: '0.9rem' }}>🚚</span>
+                        Est. Delivery: {new Date(etaResult.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })} ({etaResult.totalDays} Days)
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Destination Port:</span>
-                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{address || 'Pending Port Input...'}</span>
-                      </div>
-                      <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Freight Route Transit:</span>
-                        <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{etaResult.transitDays} Days</span>
-                      </div>
-                      {etaResult.stockDelayDays > 0 ? (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-gold)' }}>
-                          <span>Vessel Catch / Sourcing Delay:</span>
-                          <span style={{ fontWeight: 600 }}>+{etaResult.stockDelayDays} Days</span>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-success)' }}>
-                          <span>Sourcing Stock Status:</span>
-                          <span style={{ fontWeight: 600 }}>Immediate (In Stock)</span>
+                      {etaResult.stockDelayDays > 0 && (
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                          * Includes 14-day vessel sourcing catch delay due to inventory stock shortage.
                         </div>
                       )}
-                      <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 'bold' }}>
-                        <span style={{ color: 'var(--text-primary)' }}>Estimated Arrival Date:</span>
-                        <span style={{ color: etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
-                          {new Date(etaResult.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })} ({etaResult.totalDays} Days)
-                        </span>
-                      </div>
-                      <div style={{ 
-                        fontSize: '0.8rem', 
-                        color: 'var(--text-muted)', 
-                        fontStyle: 'italic', 
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        padding: '8px',
-                        borderRadius: '4px',
-                        lineHeight: '1.4',
-                        borderLeft: `2px solid ${etaResult.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)'}`
-                      }}>
-                        {etaResult.explanation}
-                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="delivery-date">Sourcing Arrival Date</label>

@@ -318,88 +318,6 @@ export default function CatalogueDetailPage() {
             )}
 
             {/* Sourcing Logistics & Delivery ETA */}
-            {simulatedETA && (
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-                borderRadius: '10px',
-                padding: '20px',
-                marginBottom: '24px',
-                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05)'
-              }}>
-                <h4 style={{ 
-                  fontSize: '0.95rem', 
-                  fontWeight: 700, 
-                  color: 'var(--accent-cyan)', 
-                  marginBottom: '14px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="1" y="3" width="15" height="13" />
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                    <circle cx="5.5" cy="18.5" r="2.5" />
-                    <circle cx="18.5" cy="18.5" r="2.5" />
-                  </svg>
-                  Sourcing Logistics & Delivery ETA
-                </h4>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.875rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Origin Region:</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.origin}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Target Delivery Market:</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{catalog.marketName}</span>
-                  </div>
-                  <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Logistics Shipping Time:</span>
-                    <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{simulatedETA.transitDays} Days</span>
-                  </div>
-                  {simulatedETA.stockDelayDays > 0 ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-gold)' }}>
-                      <span>Sourcing Catch Status:</span>
-                      <span style={{ fontWeight: 600 }}>Out of Stock (+14 Days Delay)</span>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-success)' }}>
-                      <span>Sourcing Catch Status:</span>
-                      <span style={{ fontWeight: 600 }}>In Stock (Immediate Dispatch)</span>
-                    </div>
-                  )}
-                  <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.05)', margin: '4px 0' }} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 'bold' }}>
-                    <span style={{ color: 'var(--text-primary)' }}>Estimated Arrival Date:</span>
-                    <span style={{ color: simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
-                      {new Date(simulatedETA.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })} ({simulatedETA.totalDays} Days)
-                    </span>
-                  </div>
-                  <div style={{ 
-                    fontSize: '0.8rem', 
-                    color: 'var(--text-muted)', 
-                    fontStyle: 'italic', 
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    padding: '8px',
-                    borderRadius: '4px',
-                    lineHeight: '1.4',
-                    marginTop: '4px',
-                    borderLeft: `2px solid ${simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)'}`
-                  }}>
-                    {simulatedETA.explanation}
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '20px' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Sourcing Price</span>
@@ -421,6 +339,28 @@ export default function CatalogueDetailPage() {
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Origin Sourced</span>
                 <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.origin}</span>
               </div>
+
+              {simulatedETA && (
+                <>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Estimated Delivery</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
+                      {new Date(simulatedETA.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })} ({simulatedETA.totalDays} Days)
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Sourcing Status</span>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-success)' }}>
+                      {simulatedETA.stockDelayDays > 0 ? 'Backorder Catch Delay' : 'In Stock (Direct Sourcing)'}
+                    </span>
+                  </div>
+                </>
+              )}
+
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Texture</span>
                 <span style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.texture}</span>
