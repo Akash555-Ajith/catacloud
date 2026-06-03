@@ -14,7 +14,11 @@ import {
   Proposal,
   getProposals,
   addProposal,
-  deleteProposal
+  deleteProposal,
+  CustomCatalog,
+  getCustomCatalogs,
+  addCustomCatalog,
+  deleteCustomCatalog
 } from '@/utils/store';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
@@ -29,9 +33,10 @@ export default function DashboardPage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [customCatalogs, setCustomCatalogs] = useState<CustomCatalog[]>([]);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'proposals'>('orders');
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'proposals' | 'catalogs'>('orders');
 
   // Proposal form fields
   const [propMarket, setPropMarket] = useState('');
@@ -40,6 +45,13 @@ export default function DashboardPage() {
   const [propDiscount, setPropDiscount] = useState(0);
   const [propShipping, setPropShipping] = useState(0);
   const [propNotes, setPropNotes] = useState('');
+
+  // Custom Catalogue Form Fields
+  const [catMarket, setCatMarket] = useState('');
+  const [catNotes, setCatNotes] = useState('');
+  const [catOverrides, setCatOverrides] = useState<{
+    [id: string]: { price: number; stock: number; included: boolean };
+  }>({});
 
   // Modal / Form states for product management
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -73,6 +85,7 @@ export default function DashboardPage() {
         setProducts(getProducts());
         setOrders(getOrders());
         setProposals(getProposals());
+        setCustomCatalogs(getCustomCatalogs());
       } catch {
         router.push('/login');
       }
@@ -266,6 +279,102 @@ export default function DashboardPage() {
     });
   };
 
+  // Initialize custom catalog overrides when products are loaded
+  useEffect(() => {
+    if (products.length > 0) {
+      const initialOverrides: typeof catOverrides = {};
+      products.forEach((p) => {
+        initialOverrides[p.id] = {
+          price: p.pricePerKg,
+          stock: p.stock,
+          included: true
+        };
+      });
+      setCatOverrides(initialOverrides);
+    }
+  }, [products]);
+
+  const handleOverridePriceChange = (productId: string, price: number) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], price }
+    }));
+  };
+
+  const handleOverrideStockChange = (productId: string, stock: number) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], stock }
+    }));
+  };
+
+  const handleOverrideIncludedChange = (productId: string, included: boolean) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], included }
+    }));
+  };
+
+  const handleCatProposalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catMarket) return;
+
+    const overridesToSave: CustomCatalog['overrides'] = {};
+    Object.keys(catOverrides).forEach((pid) => {
+      overridesToSave[pid] = {
+        customPrice: catOverrides[pid].price,
+        customStock: catOverrides[pid].stock,
+        included: catOverrides[pid].included
+      };
+    });
+
+    const newCatalog: CustomCatalog = {
+      id: `cat-proposal-${Math.floor(100000 + Math.random() * 900000)}`,
+      marketName: catMarket,
+      notes: catNotes,
+      createdDate: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }),
+      overrides: overridesToSave
+    };
+
+    addCustomCatalog(newCatalog);
+    setCustomCatalogs(getCustomCatalogs());
+
+    // Reset form fields
+    setCatMarket('');
+    setCatNotes('');
+    const resetOverrides: typeof catOverrides = {};
+    products.forEach((p) => {
+      resetOverrides[p.id] = {
+        price: p.pricePerKg,
+        stock: p.stock,
+        included: true
+      };
+    });
+    setCatOverrides(resetOverrides);
+    alert('Custom catalogue link generated successfully!');
+  };
+
+  const handleDeleteCustomCatalog = (id: string) => {
+    if (confirm('Are you sure you want to delete this custom catalogue proposal link?')) {
+      deleteCustomCatalog(id);
+      setCustomCatalogs(getCustomCatalogs());
+    }
+  };
+
+  const handleCopyCatalogLink = (id: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const link = `${origin}/catalogue/${id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      alert(`Catalogue proposal link copied to clipboard:\n${link}`);
+    }).catch(() => {
+      alert(`Could not copy link. Manually copy: ${link}`);
+    });
+  };
+
   // Calculate statistics
   const chefOrders = orders.filter((o) => o.userEmail.toLowerCase() === user.email.toLowerCase());
   
@@ -351,7 +460,14 @@ export default function DashboardPage() {
                 className={`${styles.tabBtn} ${adminTab === 'proposals' ? styles.tabBtnActive : ''}`}
                 id="admin-tab-proposals"
               >
-                Market Proposals ({proposals.length})
+                Single Specimen Proposals ({proposals.length})
+              </button>
+              <button 
+                onClick={() => setAdminTab('catalogs')}
+                className={`${styles.tabBtn} ${adminTab === 'catalogs' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-catalogs"
+              >
+                Full Catalogue Proposals ({customCatalogs.length})
               </button>
             </div>
 
@@ -697,6 +813,169 @@ export default function DashboardPage() {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                       <polyline points="3 6 5 6 21 6" />
                                       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Custom Catalogues Section */}
+            {adminTab === 'catalogs' && (
+              <section className={`${styles.sectionCard} glassmorphism`}>
+                <h2 className={styles.sectionTitle}>Custom Full Catalogue Generator</h2>
+
+                {/* Catalogue generator form */}
+                <form onSubmit={handleCatProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
+                  <div className={styles.formGrid}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Target Market / Client Name</label>
+                      <input
+                        type="text"
+                        value={catMarket}
+                        onChange={(e) => setCatMarket(e.target.value)}
+                        className="luxury-input"
+                        placeholder="e.g. London Gourmet Foods"
+                        required
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Proposal Notes / Custom Terms</label>
+                      <input
+                        type="text"
+                        value={catNotes}
+                        onChange={(e) => setCatNotes(e.target.value)}
+                        className="luxury-input"
+                        placeholder="e.g. Free shipping, VAT excluded"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Overrides Table */}
+                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: '24px 0 12px' }}>
+                    Configure Specimen Overrides
+                  </h3>
+                  <div className={styles.productsTableWrapper} style={{ marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
+                    <table className={styles.productsTable}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '80px', textAlign: 'center' }}>Include</th>
+                          <th>Specimen Name</th>
+                          <th>Standard Price</th>
+                          <th>Custom Proposal Price ($/kg)</th>
+                          <th>Allocated Stock (kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {products.map((p) => {
+                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, included: true };
+                          return (
+                            <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
+                              <td style={{ textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={override.included}
+                                  onChange={(e) => handleOverrideIncludedChange(p.id, e.target.checked)}
+                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                              </td>
+                              <td>
+                                <strong style={{ color: 'var(--text-primary)' }}>{p.name}</strong>
+                                <span className={styles.productScientificName}>{p.scientificName}</span>
+                              </td>
+                              <td>${p.pricePerKg.toFixed(2)}/kg</td>
+                              <td>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={override.price}
+                                  onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
+                                  className="luxury-input"
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '120px' }}
+                                  disabled={!override.included}
+                                  required={override.included}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  value={override.stock}
+                                  onChange={(e) => handleOverrideStockChange(p.id, Number(e.target.value))}
+                                  className="luxury-input"
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '100px' }}
+                                  disabled={!override.included}
+                                  required={override.included}
+                                />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button type="submit" className="btn-primary" id="generate-cat-proposal-btn">
+                    Generate Custom Catalogue Proposal Link
+                  </button>
+                </form>
+
+                {/* List of custom catalogs */}
+                <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '20px' }}>
+                  Active Catalogue Links
+                </h3>
+                {customCatalogs.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <p>No custom catalogue links generated yet. Use the form above to generate links.</p>
+                  </div>
+                ) : (
+                  <div className={styles.productsTableWrapper}>
+                    <table className={styles.productsTable}>
+                      <thead>
+                        <tr>
+                          <th>Target Market</th>
+                          <th>Included Varieties</th>
+                          <th>Notes</th>
+                          <th>Created</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customCatalogs.map((cat) => {
+                          const includedCount = Object.values(cat.overrides).filter((o) => o.included).length;
+                          return (
+                            <tr key={cat.id}>
+                              <td>
+                                <strong style={{ color: 'var(--text-primary)' }}>{cat.marketName}</strong>
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {cat.id}</span>
+                              </td>
+                              <td>{includedCount} of {products.length} specimens</td>
+                              <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{cat.notes || '-'}</td>
+                              <td>{cat.createdDate}</td>
+                              <td>
+                                <div className={styles.actionButtons} style={{ justifyContent: 'center' }}>
+                                  <button
+                                    onClick={() => handleCopyCatalogLink(cat.id)}
+                                    className="btn-primary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
+                                    title="Copy Catalogue Link"
+                                  >
+                                    Copy Link
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteCustomCatalog(cat.id)}
+                                    className={`${styles.btnIcon} ${styles.btnIconDelete}`}
+                                    title="Delete Catalogue Proposal"
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2" />
                                     </svg>
                                   </button>
                                 </div>

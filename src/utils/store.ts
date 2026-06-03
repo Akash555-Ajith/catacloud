@@ -23,6 +23,21 @@ export interface Order {
 const PRODUCTS_KEY = 'bluefine_products';
 const ORDERS_KEY = 'bluefine_orders';
 const PROPOSALS_KEY = 'bluefine_proposals';
+const CUSTOM_CATALOGS_KEY = 'bluefine_custom_catalogs';
+
+export interface CustomCatalog {
+  id: string; // e.g. cat-quote-123456
+  marketName: string;
+  notes: string;
+  createdDate: string;
+  overrides: {
+    [productId: string]: {
+      customPrice: number;
+      customStock: number;
+      included: boolean;
+    }
+  };
+}
 
 export interface Proposal {
   id: string;
@@ -140,4 +155,37 @@ export function deleteProposal(id: string) {
   const proposals = getProposals();
   const filtered = proposals.filter((p) => p.id !== id);
   saveProposals(filtered);
+}
+
+export function getCustomCatalogs(): CustomCatalog[] {
+  if (!isBrowser()) return [];
+  const stored = localStorage.getItem(CUSTOM_CATALOGS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomCatalogs(catalogs: CustomCatalog[]) {
+  if (!isBrowser()) return;
+  localStorage.setItem(CUSTOM_CATALOGS_KEY, JSON.stringify(catalogs));
+}
+
+export function addCustomCatalog(catalog: CustomCatalog) {
+  const catalogs = getCustomCatalogs();
+  catalogs.unshift(catalog); // Put newest proposals first
+  saveCustomCatalogs(catalogs);
+}
+
+export function getCustomCatalogById(id: string): CustomCatalog | undefined {
+  const catalogs = getCustomCatalogs();
+  return catalogs.find((c) => c.id === id);
+}
+
+export function deleteCustomCatalog(id: string) {
+  const catalogs = getCustomCatalogs();
+  const filtered = catalogs.filter((c) => c.id !== id);
+  saveCustomCatalogs(filtered);
 }
