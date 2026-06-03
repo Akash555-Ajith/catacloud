@@ -93,6 +93,21 @@ export default function DashboardPage() {
     setMounted(true);
   }, [router]);
 
+  // Initialize custom catalog overrides when products are loaded
+  useEffect(() => {
+    if (products.length > 0) {
+      const initialOverrides: typeof catOverrides = {};
+      products.forEach((p) => {
+        initialOverrides[p.id] = {
+          price: p.pricePerKg,
+          stock: p.stock,
+          included: true
+        };
+      });
+      setCatOverrides(initialOverrides);
+    }
+  }, [products]);
+
   if (!mounted || !isAuthenticated || !user) {
     return (
       <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)' }}>
@@ -279,20 +294,7 @@ export default function DashboardPage() {
     });
   };
 
-  // Initialize custom catalog overrides when products are loaded
-  useEffect(() => {
-    if (products.length > 0) {
-      const initialOverrides: typeof catOverrides = {};
-      products.forEach((p) => {
-        initialOverrides[p.id] = {
-          price: p.pricePerKg,
-          stock: p.stock,
-          included: true
-        };
-      });
-      setCatOverrides(initialOverrides);
-    }
-  }, [products]);
+
 
   const handleOverridePriceChange = (productId: string, price: number) => {
     setCatOverrides((prev) => ({
