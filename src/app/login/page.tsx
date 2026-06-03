@@ -44,14 +44,18 @@ export default function LoginPage() {
     setTimeout(() => {
       setLoading(false);
       
+      const isSystemAdmin = email.toLowerCase() === 'admin@gmail.com' && password === '12345678';
+      
       const userName = email.split('@')[0];
-      const capitalizedName = userName.charAt(0).toUpperCase() + userName.slice(1);
+      const capitalizedName = isSystemAdmin ? 'Admin Manager' : userName.charAt(0).toUpperCase() + userName.slice(1);
+      const userRole = isSystemAdmin ? 'admin' : 'user';
       
       localStorage.setItem(
         'bluefine_user',
         JSON.stringify({
           email: email.toLowerCase(),
-          name: capitalizedName
+          name: capitalizedName,
+          role: userRole
         })
       );
       
@@ -146,8 +150,13 @@ export default function LoginPage() {
         </form>
 
         <div className={styles.demoBox}>
-          <div className={styles.demoTitle}>Chef Portal Access</div>
-          <span>Any business email and a password of 6+ characters will be accepted for catalog preview.</span>
+          <div className={styles.demoTitle}>Portal Access & Authorization</div>
+          <span style={{ display: 'block', marginBottom: '8px' }}>
+            <strong>Chef Access:</strong> Enter any business email and a password of 6+ characters.
+          </span>
+          <span>
+            <strong>Admin Access:</strong> Login using email <code>admin@gmail.com</code> and secure key <code>12345678</code>.
+          </span>
         </div>
       </div>
     </div>

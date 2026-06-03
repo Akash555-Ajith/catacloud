@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FishItem } from '@/data/fishData';
+import { addOrder, Order } from '@/utils/store';
 import styles from './CheckoutModal.module.css';
 
 interface CartItemData {
@@ -89,7 +90,47 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart 
     if (step === 1 && validateStep1()) {
       setStep(2);
     } else if (step === 2 && validateStep2()) {
-      setOrderRef(`BF-${Math.floor(100000 + Math.random() * 900000)}`);
+      const newOrderRef = `BF-${Math.floor(100000 + Math.random() * 900000)}`;
+      setOrderRef(newOrderRef);
+      
+      let userEmail = 'chef@example.com';
+      let userName = 'Chef Guest';
+      if (typeof window !== 'undefined') {
+        const userStr = localStorage.getItem('bluefine_user');
+        if (userStr) {
+          try {
+            const parsed = JSON.parse(userStr);
+            if (parsed.email) userEmail = parsed.email;
+            if (parsed.name) userName = parsed.name;
+          } catch {}
+        }
+      }
+
+      const newOrder: Order = {
+        id: newOrderRef,
+        userEmail,
+        userName,
+        date: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        deliveryDate: form.deliveryDate,
+        address: form.address,
+        items: cartItems.map((item) => ({
+          fishId: item.fish.id,
+          name: item.fish.name,
+          quantity: item.quantity,
+          price: item.fish.pricePerKg,
+          image: item.fish.image
+        })),
+        totalPrice,
+        status: 'Pending'
+      };
+
+      addOrder(newOrder);
       setStep(3);
     }
   };

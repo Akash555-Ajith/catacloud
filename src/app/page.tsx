@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fishData, FishItem } from '@/data/fishData';
+import { FishItem } from '@/data/fishData';
+import { getProducts } from '@/utils/store';
 import Navbar from '@/components/Navbar';
 import FishCard from '@/components/FishCard';
 import FishModal from '@/components/FishModal';
@@ -19,6 +20,7 @@ export default function HomePage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [products, setProducts] = useState<FishItem[]>([]);
 
   // Cart & UI states
   const [cart, setCart] = useState<CartItemData[]>([]);
@@ -51,6 +53,8 @@ export default function HomePage() {
             // Keep empty if parse fails
           }
         }
+        // Load dynamic products
+        setProducts(getProducts());
       }
     }, 0);
   }, [router]);
@@ -132,7 +136,7 @@ export default function HomePage() {
   };
 
   // Filtering and Sorting logic
-  const filteredFish = fishData
+  const filteredFish = products
     .filter((fish) => {
       const matchesSearch =
         fish.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -235,7 +239,7 @@ export default function HomePage() {
             </div>
 
             <div className={styles.resultsCount} id="search-results-count">
-              Showing {filteredFish.length} of {fishData.length} varieties
+              Showing {filteredFish.length} of {products.length} varieties
             </div>
           </div>
         </section>

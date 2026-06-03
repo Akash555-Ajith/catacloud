@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import styles from './Navbar.module.css';
 
 interface NavbarProps {
@@ -11,6 +13,8 @@ interface NavbarProps {
 
 export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProps) {
   const [userName, setUserName] = useState<string>('Guest');
+  const [userRole, setUserRole] = useState<string>('user');
+  const pathname = usePathname();
 
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
@@ -22,6 +26,9 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
             setUserName(parsed.name);
           } else if (parsed && parsed.email) {
             setUserName(parsed.email.split('@')[0]);
+          }
+          if (parsed && parsed.role) {
+            setUserRole(parsed.role);
           }
         }, 0);
       } catch {
@@ -74,7 +81,14 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
       <nav>
         <ul className={styles.navLinks}>
           <li>
-            <span className={`${styles.navLink} ${styles.navLinkActive}`}>Catalogue</span>
+            <Link href="/" className={`${styles.navLink} ${pathname === '/' ? styles.navLinkActive : ''}`}>
+              Catalogue
+            </Link>
+          </li>
+          <li>
+            <Link href="/dashboard" className={`${styles.navLink} ${pathname === '/dashboard' ? styles.navLinkActive : ''}`}>
+              Dashboard
+            </Link>
           </li>
           <li>
             <span className={styles.navLink}>Sustainability</span>
@@ -118,7 +132,12 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
 
         <div className={styles.userMenu}>
           <div className={styles.avatar}>{getInitials(userName)}</div>
-          <span className={styles.userName}>{userName}</span>
+          <div className={styles.userInfo}>
+            <span className={styles.userName}>{userName}</span>
+            <span className={`${styles.roleBadge} ${userRole === 'admin' ? styles.adminBadge : styles.chefBadge}`}>
+              {userRole === 'admin' ? 'Admin' : 'Chef'}
+            </span>
+          </div>
           <button className={styles.logoutBtn} onClick={onLogout} id="logout-button">
             Logout
           </button>
