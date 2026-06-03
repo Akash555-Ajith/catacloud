@@ -96,8 +96,14 @@ export default function ProposalDetailPage() {
   }
 
   // Cost calculations
-  const discountedPricePerKg = proposal.customPrice * (1 - proposal.discount / 100);
-  const sourcingSubtotal = discountedPricePerKg * quantity;
+  const unit = fish?.unit || 'kg';
+  const hasVolumeDiscount = !!(proposal.volumeThreshold && proposal.volumeThreshold > 0 && proposal.volumeDiscount && proposal.volumeDiscount > 0);
+  const isVolumeApplied = hasVolumeDiscount && quantity >= proposal.volumeThreshold;
+  
+  const activeDiscount = proposal.discount + (isVolumeApplied ? proposal.volumeDiscount : 0);
+  const finalUnitPrice = proposal.customPrice * (1 - activeDiscount / 100);
+  
+  const sourcingSubtotal = finalUnitPrice * quantity;
   const sourcingTotal = sourcingSubtotal + proposal.shippingCharge;
 
   const handleSourcingRequest = async (e: React.FormEvent) => {
@@ -123,7 +129,7 @@ export default function ProposalDetailPage() {
           fishId: fish.id,
           name: `${fish.name} (Custom Proposal)`,
           quantity,
-          price: discountedPricePerKg,
+          price: finalUnitPrice,
           image: fish.image
         }
       ],
@@ -229,12 +235,24 @@ export default function ProposalDetailPage() {
               <div className={styles.priceBreakdown}>
                 <div className={styles.priceRow}>
                   <span>Custom Proposal Price:</span>
-                  <span className={styles.priceHighlight}>${proposal.customPrice.toFixed(2)} / kg</span>
+                  <span className={styles.priceHighlight}>${proposal.customPrice.toFixed(2)} / {unit}</span>
                 </div>
                 {proposal.discount > 0 && (
                   <div className={`${styles.priceRow} styles.discountRow`} style={{ color: 'var(--accent-gold)' }}>
                     <span>Special Market Discount:</span>
-                    <span>-{proposal.discount}% (${(proposal.customPrice * (proposal.discount / 100)).toFixed(2)} / kg)</span>
+                    <span>-{proposal.discount}% (${(proposal.customPrice * (proposal.discount / 100)).toFixed(2)} / {unit})</span>
+                  </div>
+                )}
+                {hasVolumeDiscount && (
+                  <div className={styles.priceRow} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    <span>Bulk Sourcing Discount Tier:</span>
+                    <span>Buy {proposal.volumeThreshold} {unit}+ to get {proposal.volumeDiscount}% off unit price</span>
+                  </div>
+                )}
+                {isVolumeApplied && (
+                  <div className={styles.priceRow} style={{ color: 'var(--accent-success)', fontWeight: 600 }}>
+                    <span>Volume Discount Applied:</span>
+                    <span>-{proposal.volumeDiscount}% (-${(proposal.customPrice * (proposal.volumeDiscount / 100)).toFixed(2)} / {unit})</span>
                   </div>
                 )}
                 {proposal.shippingCharge > 0 && (
@@ -244,8 +262,8 @@ export default function ProposalDetailPage() {
                   </div>
                 )}
                 <div className={styles.totalRow}>
-                  <span>Net Price per Kg:</span>
-                  <span className={styles.totalPrice}>${discountedPricePerKg.toFixed(2)} / kg</span>
+                  <span>Net Price per {unit.charAt(0).toUpperCase() + unit.slice(1)}:</span>
+                  <span className={styles.totalPrice}>${finalUnitPrice.toFixed(2)} / {unit}</span>
                 </div>
               </div>
 
@@ -288,7 +306,7 @@ export default function ProposalDetailPage() {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="sourcing-qty">Required Weight (kg)</label>
+                  <label className={styles.label} htmlFor="sourcing-qty">Required Quantity ({unit})</label>
                   <input
                     type="number"
                     id="sourcing-qty"
@@ -299,6 +317,27 @@ export default function ProposalDetailPage() {
                     required
                     disabled={loading}
                   />
+                  {isVolumeApplied && (
+                    <div style={{
+                      marginTop: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      border: '1px solid rgba(16, 185, 129, 0.25)',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      color: 'var(--accent-success)',
+                      fontSize: '0.8rem',
+                      fontWeight: 600
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                      Bulk Sourcing Tier Unlocked! Additional {proposal.volumeDiscount}% Discount Applied.
+                    </div>
+                  )}
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="delivery-date">Sourcing Arrival Date</label>
@@ -328,7 +367,7 @@ export default function ProposalDetailPage() {
 
                 <div className={styles.priceBreakdown} style={{ marginTop: '24px', background: 'rgba(0, 242, 254, 0.02)' }}>
                   <div className={styles.priceRow}>
-                    <span>Sourcing Total ({quantity} kg):</span>
+                    <span>Sourcing Total ({quantity} {unit}):</span>
                     <span>${sourcingSubtotal.toFixed(2)}</span>
                   </div>
                   <div className={styles.priceRow}>
@@ -381,8 +420,8 @@ export default function ProposalDetailPage() {
                   <span className={styles.receiptRowValue}>{fish.name}</span>
                 </div>
                 <div className={styles.receiptRow}>
-                  <span>Sourced Weight:</span>
-                  <span className={styles.receiptRowValue}>{quantity} kg</span>
+                  <span>Sourced Quantity:</span>
+                  <span className={styles.receiptRowValue}>{quantity} {unit}</span>
                 </div>
                 <div className={styles.receiptRow}>
                   <span>Arrival ETA:</span>

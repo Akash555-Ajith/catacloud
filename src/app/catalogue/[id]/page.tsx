@@ -100,6 +100,12 @@ export default function CatalogueDetailPage() {
       : (catalog.globalDiscount || 0))
     : 0;
   const selectedDisplayPrice = selectedCustomPrice * (1 - selectedItemDiscount / 100);
+  const selectedCustomVolumeThreshold = (selectedFish && selectedOverride)
+    ? (selectedOverride.customVolumeThreshold || 0)
+    : 0;
+  const selectedCustomVolumeDiscount = (selectedFish && selectedOverride)
+    ? (selectedOverride.customVolumeDiscount || 0)
+    : 0;
 
   return (
     <div className={styles.pageContainer}>
@@ -218,14 +224,14 @@ export default function CatalogueDetailPage() {
                   
                   <div className={styles.cardMetaRow}>
                     <span className={styles.cardPrice}>
-                      ${displayPrice.toFixed(2)}/kg
+                      ${displayPrice.toFixed(2)}/{fishItem.unit || 'kg'}
                       {itemDiscount > 0 && (
                         <span style={{ textDecoration: 'line-through', fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
                           ${customPrice.toFixed(2)}
                         </span>
                       )}
                     </span>
-                    <span className={styles.cardStock}>Stock: {displayStock} kg</span>
+                    <span className={styles.cardStock}>Stock: {displayStock} {fishItem.unit || 'kg'}</span>
                   </div>
                 </div>
               </div>
@@ -282,11 +288,33 @@ export default function CatalogueDetailPage() {
               {selectedFish.description}
             </p>
 
+            {selectedCustomVolumeThreshold > 0 && selectedCustomVolumeDiscount > 0 && (
+              <div style={{ 
+                background: 'rgba(0, 242, 254, 0.03)', 
+                border: '1px solid rgba(0, 242, 254, 0.15)', 
+                borderRadius: '8px', 
+                padding: '12px 16px', 
+                marginBottom: '24px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px' 
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" strokeWidth="2">
+                  <line x1="12" y1="1" x2="12" y2="23" />
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+                <div style={{ fontSize: '0.875rem', lineHeight: '1.4', color: 'var(--text-primary)' }}>
+                  <span style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>Bulk Sourcing Offer:</span>{' '}
+                  Procure <strong style={{ color: 'var(--accent-cyan)' }}>{selectedCustomVolumeThreshold} {selectedFish.unit || 'kg'}</strong> or more to unlock an additional <strong style={{ color: 'var(--accent-success)' }}>{selectedCustomVolumeDiscount}% volume discount</strong> on this product!
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '20px' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Sourcing Price</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                  ${selectedDisplayPrice.toFixed(2)}/kg
+                  ${selectedDisplayPrice.toFixed(2)}/{selectedFish.unit || 'kg'}
                   {selectedItemDiscount > 0 && (
                     <span style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'normal' }}>
                       ${selectedCustomPrice.toFixed(2)}

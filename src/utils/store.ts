@@ -38,6 +38,8 @@ export interface CustomCatalog {
       customPrice: number;
       customStock: number;
       customDiscount: number; // in %
+      customVolumeThreshold: number; // minimum quantity to trigger volume discount
+      customVolumeDiscount: number; // volume discount percentage (in %)
       included: boolean;
     }
   };
@@ -52,6 +54,8 @@ export interface Proposal {
   shippingCharge: number;
   notes: string;
   createdDate: string;
+  volumeThreshold: number; // volume discount threshold quantity
+  volumeDiscount: number; // volume discount percentage (in %)
 }
 
 // Check if we are running in the browser

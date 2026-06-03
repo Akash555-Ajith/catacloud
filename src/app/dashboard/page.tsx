@@ -38,13 +38,15 @@ export default function DashboardPage() {
   // Navigation / UI tabs for Admin
   const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'proposals' | 'catalogs'>('orders');
 
-  // Proposal form fields
+  //  // Sourcing Proposal form states
   const [propMarket, setPropMarket] = useState('');
   const [propFishId, setPropFishId] = useState('');
   const [propPrice, setPropPrice] = useState(0);
   const [propDiscount, setPropDiscount] = useState(0);
   const [propShipping, setPropShipping] = useState(0);
   const [propNotes, setPropNotes] = useState('');
+  const [propVolumeThreshold, setPropVolumeThreshold] = useState(0);
+  const [propVolumeDiscount, setPropVolumeDiscount] = useState(0);
 
   // Custom Catalogue Form Fields
   const [catMarket, setCatMarket] = useState('');
@@ -52,8 +54,9 @@ export default function DashboardPage() {
   const [catDiscount, setCatDiscount] = useState<number>(0);
   const [catDelivery, setCatDelivery] = useState<number>(0);
   const [catOverrides, setCatOverrides] = useState<{
-    [id: string]: { price: number; stock: number; discount: number; included: boolean };
+    [id: string]: { price: number; stock: number; discount: number; threshold: number; volumeDiscount: number; included: boolean };
   }>({});
+  const [formUnit, setFormUnit] = useState('kg');
 
   // Modal / Form states for product management
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -113,6 +116,8 @@ export default function DashboardPage() {
           price: p.pricePerKg,
           stock: p.stock,
           discount: 0,
+          threshold: 0,
+          volumeDiscount: 0,
           included: true
         };
       });
@@ -177,6 +182,7 @@ export default function DashboardPage() {
       setFormSustainability(product.sustainability);
       setFormPrep(product.prepTime);
       setFormDifficulty(product.difficulty);
+      setFormUnit(product.unit || 'kg');
     } else {
       setEditingProduct(null);
       setFormName('');
@@ -202,6 +208,7 @@ export default function DashboardPage() {
       setFormSustainability('Wild Caught');
       setFormPrep('');
       setFormDifficulty('Easy');
+      setFormUnit('kg');
     }
     setIsProductModalOpen(true);
   };
@@ -229,7 +236,8 @@ export default function DashboardPage() {
       texture: formTexture || 'Firm, tender',
       sustainability: formSustainability,
       prepTime: formPrep || '15 mins',
-      difficulty: formDifficulty
+      difficulty: formDifficulty,
+      unit: formUnit
     };
 
     if (editingProduct) {
@@ -276,7 +284,9 @@ export default function DashboardPage() {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
-      })
+      }),
+      volumeThreshold: Number(propVolumeThreshold),
+      volumeDiscount: Number(propVolumeDiscount)
     };
 
     await addProposal(newProposal);
@@ -290,6 +300,8 @@ export default function DashboardPage() {
     setPropDiscount(0);
     setPropShipping(0);
     setPropNotes('');
+    setPropVolumeThreshold(0);
+    setPropVolumeDiscount(0);
     alert('Custom proposal generated successfully!');
   };
 
@@ -334,6 +346,20 @@ export default function DashboardPage() {
     }));
   };
 
+  const handleOverrideThresholdChange = (productId: string, threshold: number) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], threshold }
+    }));
+  };
+
+  const handleOverrideVolumeDiscountChange = (productId: string, volumeDiscount: number) => {
+    setCatOverrides((prev) => ({
+      ...prev,
+      [productId]: { ...prev[productId], volumeDiscount }
+    }));
+  };
+
   const handleOverrideIncludedChange = (productId: string, included: boolean) => {
     setCatOverrides((prev) => ({
       ...prev,
@@ -351,6 +377,8 @@ export default function DashboardPage() {
         customPrice: catOverrides[pid].price,
         customStock: catOverrides[pid].stock,
         customDiscount: catOverrides[pid].discount || 0,
+        customVolumeThreshold: catOverrides[pid].threshold || 0,
+        customVolumeDiscount: catOverrides[pid].volumeDiscount || 0,
         included: catOverrides[pid].included
       };
     });
@@ -384,6 +412,8 @@ export default function DashboardPage() {
         price: p.pricePerKg,
         stock: p.stock,
         discount: 0,
+        threshold: 0,
+        volumeDiscount: 0,
         included: true
       };
     });
@@ -429,6 +459,9 @@ export default function DashboardPage() {
   const adminTotalStock = products.reduce((acc, p) => acc + p.stock, 0);
   const adminActiveOrders = orders.filter((o) => o.status !== 'Delivered').length;
   const adminTotalRevenue = orders.reduce((acc, o) => acc + o.totalPrice, 0);
+
+  const selectedProductForProposal = products.find((p) => p.id === propFishId);
+  const selectedProposalUnit = selectedProductForProposal ? (selectedProductForProposal.unit || 'kg') : 'kg';
 
   return (
     <div className={styles.pageContainer}>
@@ -744,7 +777,7 @@ export default function DashboardPage() {
                       />
                     </div>
                     <div className={styles.formGroup}>
-                      <label className={styles.label}>Custom Price ($ / kg)</label>
+                      <label className={styles.label}>Custom Price ($ / {selectedProposalUnit})</label>
                       <input
                         type="number"
                         step="0.01"
@@ -763,6 +796,29 @@ export default function DashboardPage() {
                         value={propDiscount}
                         onChange={(e) => setPropDiscount(Number(e.target.value))}
                         className="luxury-input"
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Volume Discount Threshold ({selectedProposalUnit})</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={propVolumeThreshold}
+                        onChange={(e) => setPropVolumeThreshold(Number(e.target.value))}
+                        className="luxury-input"
+                        placeholder="e.g. 10 (triggers discount)"
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Volume Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={propVolumeDiscount}
+                        onChange={(e) => setPropVolumeDiscount(Number(e.target.value))}
+                        className="luxury-input"
+                        placeholder="e.g. 10"
                       />
                     </div>
                     <div className={styles.formGroup}>
@@ -915,7 +971,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Overrides Table */}
+                   {/* Overrides Table */}
                   <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: '24px 0 12px' }}>
                     Configure Specimen Overrides
                   </h3>
@@ -926,14 +982,16 @@ export default function DashboardPage() {
                           <th style={{ width: '80px', textAlign: 'center' }}>Include</th>
                           <th>Specimen Name</th>
                           <th>Standard Price</th>
-                          <th>Custom Proposal Price ($/kg)</th>
+                          <th>Custom Proposal Price ($)</th>
                           <th>Proposal Discount (%)</th>
-                          <th>Allocated Stock (kg)</th>
+                          <th>Volume Threshold</th>
+                          <th>Volume Discount (%)</th>
+                          <th>Allocated Stock</th>
                         </tr>
                       </thead>
                       <tbody>
                         {products.map((p) => {
-                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, included: true };
+                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, threshold: 0, volumeDiscount: 0, included: true };
                           return (
                             <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
                               <td style={{ textAlign: 'center' }}>
@@ -948,18 +1006,21 @@ export default function DashboardPage() {
                                 <strong style={{ color: 'var(--text-primary)' }}>{p.name}</strong>
                                 <span className={styles.productScientificName}>{p.scientificName}</span>
                               </td>
-                              <td>${p.pricePerKg.toFixed(2)}/kg</td>
+                              <td>${p.pricePerKg.toFixed(2)}/{p.unit || 'kg'}</td>
                               <td>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={override.price}
-                                  onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
-                                  className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '120px' }}
-                                  disabled={!override.included}
-                                  required={override.included}
-                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={override.price}
+                                    onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
+                                    className="luxury-input"
+                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '100px' }}
+                                    disabled={!override.included}
+                                    required={override.included}
+                                  />
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/{p.unit || 'kg'}</span>
+                                </div>
                               </td>
                               <td>
                                 <input
@@ -969,7 +1030,7 @@ export default function DashboardPage() {
                                   value={override.discount || 0}
                                   onChange={(e) => handleOverrideDiscountChange(p.id, Number(e.target.value))}
                                   className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '90px' }}
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
                                   disabled={!override.included}
                                   required={override.included}
                                 />
@@ -977,13 +1038,40 @@ export default function DashboardPage() {
                               <td>
                                 <input
                                   type="number"
-                                  value={override.stock}
-                                  onChange={(e) => handleOverrideStockChange(p.id, Number(e.target.value))}
+                                  min="0"
+                                  value={override.threshold || 0}
+                                  onChange={(e) => handleOverrideThresholdChange(p.id, Number(e.target.value))}
                                   className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '100px' }}
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
                                   disabled={!override.included}
-                                  required={override.included}
+                                  placeholder={p.unit || 'kg'}
                                 />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={override.volumeDiscount || 0}
+                                  onChange={(e) => handleOverrideVolumeDiscountChange(p.id, Number(e.target.value))}
+                                  className="luxury-input"
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
+                                  disabled={!override.included}
+                                />
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <input
+                                    type="number"
+                                    value={override.stock}
+                                    onChange={(e) => handleOverrideStockChange(p.id, Number(e.target.value))}
+                                    className="luxury-input"
+                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
+                                    disabled={!override.included}
+                                    required={override.included}
+                                  />
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.unit || 'kg'}</span>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1295,6 +1383,47 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="prod-category">Category</label>
+                  <select
+                    id="prod-category"
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value as any)}
+                    className="luxury-input"
+                    style={{ appearance: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="Saltwater">Saltwater</option>
+                    <option value="Freshwater">Freshwater</option>
+                    <option value="Shellfish">Shellfish</option>
+                    <option value="Premium Import">Premium Import</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="prod-unit">Unit of Measurement</label>
+                  <select
+                    id="prod-unit"
+                    value={formUnit}
+                    onChange={(e) => setFormUnit(e.target.value)}
+                    className="luxury-input"
+                    style={{ appearance: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="kg">kg (Kilograms)</option>
+                    <option value="L">L (Liters)</option>
+                    <option value="pcs">pcs (Pieces)</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="prod-price">Price Per Unit ($ / {formUnit})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="prod-price"
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(Number(e.target.value))}
+                    className="luxury-input"
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-origin">Origin Port / Country</label>
                   <input
                     type="text"
@@ -1307,7 +1436,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-stock">Initial Stock (Kg)</label>
+                  <label className={styles.label} htmlFor="prod-stock">Initial Stock ({formUnit})</label>
                   <input
                     type="number"
                     id="prod-stock"

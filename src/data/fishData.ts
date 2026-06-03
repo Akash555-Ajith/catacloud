@@ -13,6 +13,7 @@ export interface FishItem {
   sustainability: 'Sustainably Farmed' | 'Wild Caught' | 'MSC Certified';
   prepTime: string;
   difficulty: 'Easy' | 'Medium' | 'Expert';
+  unit?: string; // unit of measurement: kg, L, pcs, etc.
 }
 
 export const fishData: FishItem[] = [
