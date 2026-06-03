@@ -1,0 +1,327 @@
+.pageContainer {
+  min-height: 100vh;
+  background-image: var(--gradient-ocean);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.brandHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.logoText {
+  font-family: var(--font-playfair), serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: var(--gradient-premium);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+
+.contentWrapper {
+  max-width: 960px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  align-items: start;
+  animation: slideUp 0.8s ease-out;
+}
+
+@media (max-width: 768px) {
+  .contentWrapper {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+/* Left Column: Specimen Showcase */
+.showcaseCard {
+  padding: 32px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.marketBadge {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(226, 183, 68, 0.15);
+  color: var(--accent-gold);
+  border: 1px solid rgba(226, 183, 68, 0.3);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 1px;
+}
+
+.fishImage {
+  width: 100%;
+  height: 260px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.fishName {
+  font-family: var(--font-playfair), serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.scientificName {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.badgeRow {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.description {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 20px;
+}
+
+.profileItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.profileLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.profileValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tagContainer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Right Column: Pricing & Sourcing */
+.sourcingCard {
+  padding: 32px;
+  border-radius: 16px;
+}
+
+.sectionTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 12px;
+}
+
+.priceBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+  background: rgba(5, 12, 26, 0.4);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.priceHighlight {
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+
+.discountRow {
+  color: var(--accent-gold);
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.totalPrice {
+  color: var(--accent-cyan);
+  font-family: var(--font-outfit), sans-serif;
+}
+
+.notesCard {
+  background: rgba(226, 183, 68, 0.03);
+  border: 1px solid rgba(226, 183, 68, 0.12);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 28px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.notesTitle {
+  font-weight: 700;
+  color: var(--accent-gold);
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Sourcing Request Form */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.submitBtn {
+  width: 100%;
+  height: 48px;
+  font-size: 1rem;
+  margin-top: 8px;
+}
+
+/* Success Receipt */
+.successContainer {
+  text-align: center;
+  padding: 20px 0;
+  animation: fadeIn 0.8s ease-out;
+}
+
+.successIcon {
+  color: var(--accent-success);
+  margin-bottom: 16px;
+  animation: float 4s ease-in-out infinite;
+}
+
+.successTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.successText {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+}
+
+.receiptCard {
+  background: rgba(5, 12, 26, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.receiptRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.receiptRowValue {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.receiptTotal {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 12px;
+  margin-top: 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Error View */
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  text-align: center;
+}
+
+.errorTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 2rem;
+  margin-bottom: 12px;
+}

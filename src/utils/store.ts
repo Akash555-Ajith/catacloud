@@ -22,6 +22,18 @@ export interface Order {
 
 const PRODUCTS_KEY = 'bluefine_products';
 const ORDERS_KEY = 'bluefine_orders';
+const PROPOSALS_KEY = 'bluefine_proposals';
+
+export interface Proposal {
+  id: string;
+  marketName: string;
+  fishId: string;
+  customPrice: number;
+  discount: number; // in %
+  shippingCharge: number;
+  notes: string;
+  createdDate: string;
+}
 
 // Check if we are running in the browser
 const isBrowser = () => typeof window !== 'undefined';
@@ -95,4 +107,37 @@ export function updateOrderStatus(orderId: string, status: 'Pending' | 'Dispatch
     orders[index].status = status;
     saveOrders(orders);
   }
+}
+
+export function getProposals(): Proposal[] {
+  if (!isBrowser()) return [];
+  const stored = localStorage.getItem(PROPOSALS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export function saveProposals(proposals: Proposal[]) {
+  if (!isBrowser()) return;
+  localStorage.setItem(PROPOSALS_KEY, JSON.stringify(proposals));
+}
+
+export function addProposal(proposal: Proposal) {
+  const proposals = getProposals();
+  proposals.unshift(proposal); // Put newest proposals first
+  saveProposals(proposals);
+}
+
+export function getProposalById(id: string): Proposal | undefined {
+  const proposals = getProposals();
+  return proposals.find((p) => p.id === id);
+}
+
+export function deleteProposal(id: string) {
+  const proposals = getProposals();
+  const filtered = proposals.filter((p) => p.id !== id);
+  saveProposals(filtered);
 }

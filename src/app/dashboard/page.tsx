@@ -10,7 +10,11 @@ import {
   deleteProduct, 
   getOrders, 
   updateOrderStatus, 
-  Order 
+  Order,
+  Proposal,
+  getProposals,
+  addProposal,
+  deleteProposal
 } from '@/utils/store';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
@@ -24,9 +28,18 @@ export default function DashboardPage() {
   // Data states
   const [products, setProducts] = useState<FishItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products'>('orders');
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'proposals'>('orders');
+
+  // Proposal form fields
+  const [propMarket, setPropMarket] = useState('');
+  const [propFishId, setPropFishId] = useState('');
+  const [propPrice, setPropPrice] = useState(0);
+  const [propDiscount, setPropDiscount] = useState(0);
+  const [propShipping, setPropShipping] = useState(0);
+  const [propNotes, setPropNotes] = useState('');
 
   // Modal / Form states for product management
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
@@ -59,6 +72,7 @@ export default function DashboardPage() {
         setIsAuthenticated(true);
         setProducts(getProducts());
         setOrders(getOrders());
+        setProposals(getProposals());
       } catch {
         router.push('/login');
       }
@@ -195,6 +209,63 @@ export default function DashboardPage() {
     }
   };
 
+  const handleFishSelect = (id: string) => {
+    setPropFishId(id);
+    const selected = products.find((p) => p.id === id);
+    if (selected) {
+      setPropPrice(selected.pricePerKg);
+    }
+  };
+
+  const handleProposalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!propFishId || !propMarket) return;
+
+    const newProposal: Proposal = {
+      id: `quote-${Math.floor(100000 + Math.random() * 900000)}`,
+      marketName: propMarket,
+      fishId: propFishId,
+      customPrice: Number(propPrice),
+      discount: Number(propDiscount),
+      shippingCharge: Number(propShipping),
+      notes: propNotes,
+      createdDate: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    };
+
+    addProposal(newProposal);
+    setProposals(getProposals());
+
+    // Reset form
+    setPropMarket('');
+    setPropFishId('');
+    setPropPrice(0);
+    setPropDiscount(0);
+    setPropShipping(0);
+    setPropNotes('');
+    alert('Custom proposal generated successfully!');
+  };
+
+  const handleDeleteProposal = (id: string) => {
+    if (confirm('Are you sure you want to delete this custom proposal link?')) {
+      deleteProposal(id);
+      setProposals(getProposals());
+    }
+  };
+
+  const handleCopyLink = (id: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const link = `${origin}/proposal/${id}`;
+    navigator.clipboard.writeText(link).then(() => {
+      alert(`Proposal link copied to clipboard:\n${link}`);
+    }).catch(() => {
+      alert(`Could not copy link. Manually copy: ${link}`);
+    });
+  };
+
   // Calculate statistics
   const chefOrders = orders.filter((o) => o.userEmail.toLowerCase() === user.email.toLowerCase());
   
@@ -274,6 +345,13 @@ export default function DashboardPage() {
                 id="admin-tab-products"
               >
                 Catalogue Inventory ({products.length})
+              </button>
+              <button 
+                onClick={() => setAdminTab('proposals')}
+                className={`${styles.tabBtn} ${adminTab === 'proposals' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-proposals"
+              >
+                Market Proposals ({proposals.length})
               </button>
             </div>
 
@@ -476,6 +554,160 @@ export default function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
+              </section>
+            )}
+
+            {/* Proposals Section */}
+            {adminTab === 'proposals' && (
+              <section className={`${styles.sectionCard} glassmorphism`}>
+                <h2 className={styles.sectionTitle}>Custom Market Proposal Generator</h2>
+                
+                {/* Proposal generator form */}
+                <form onSubmit={handleProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
+                  <div className={styles.formGrid}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Select Specimen</label>
+                      <select
+                        value={propFishId}
+                        onChange={(e) => handleFishSelect(e.target.value)}
+                        className="luxury-input"
+                        style={{ appearance: 'none', cursor: 'pointer' }}
+                        required
+                      >
+                        <option value="">-- Choose Specimen --</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} (Base: ${p.pricePerKg.toFixed(2)}/kg)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Target Market / Client Name</label>
+                      <input
+                        type="text"
+                        value={propMarket}
+                        onChange={(e) => setPropMarket(e.target.value)}
+                        className="luxury-input"
+                        placeholder="e.g. Tsukiji Premium Buyer"
+                        required
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Custom Price ($ / kg)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={propPrice}
+                        onChange={(e) => setPropPrice(Number(e.target.value))}
+                        className="luxury-input"
+                        required
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={propDiscount}
+                        onChange={(e) => setPropDiscount(Number(e.target.value))}
+                        className="luxury-input"
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Port Logistics / Shipping Fee ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={propShipping}
+                        onChange={(e) => setPropShipping(Number(e.target.value))}
+                        className="luxury-input"
+                      />
+                    </div>
+                    <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                      <label className={styles.label}>Proposal Notes / Custom Terms</label>
+                      <textarea
+                        value={propNotes}
+                        onChange={(e) => setPropNotes(e.target.value)}
+                        className="luxury-input"
+                        style={{ minHeight: '60px', resize: 'vertical' }}
+                        placeholder="Add special discounts, shipping schedules, or custom terms..."
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ marginTop: '16px' }} id="generate-proposal-btn">
+                    Generate Custom Proposal Link
+                  </button>
+                </form>
+
+                {/* List of generated links */}
+                <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '20px' }}>
+                  Active Proposal Links
+                </h3>
+                {proposals.length === 0 ? (
+                  <div className={styles.emptyState}>
+                    <p>No custom proposals generated yet. Fill the form above to generate links.</p>
+                  </div>
+                ) : (
+                  <div className={styles.productsTableWrapper}>
+                    <table className={styles.productsTable}>
+                      <thead>
+                        <tr>
+                          <th>Target Market</th>
+                          <th>Specimen</th>
+                          <th>Custom Price</th>
+                          <th>Discount</th>
+                          <th>Logistics Fee</th>
+                          <th>Created</th>
+                          <th style={{ textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {proposals.map((prop) => {
+                          const fish = products.find((p) => p.id === prop.fishId);
+                          return (
+                            <tr key={prop.id}>
+                              <td>
+                                <strong style={{ color: 'var(--text-primary)' }}>{prop.marketName}</strong>
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {prop.id}</span>
+                              </td>
+                              <td>{fish ? fish.name : 'Unknown Specimen'}</td>
+                              <td style={{ fontWeight: 600 }}>${prop.customPrice.toFixed(2)}/kg</td>
+                              <td style={{ color: prop.discount > 0 ? 'var(--accent-gold)' : 'var(--text-secondary)' }}>
+                                {prop.discount > 0 ? `${prop.discount}% Off` : 'None'}
+                              </td>
+                              <td>${prop.shippingCharge.toFixed(2)}</td>
+                              <td>{prop.createdDate}</td>
+                              <td>
+                                <div className={styles.actionButtons} style={{ justifyContent: 'center' }}>
+                                  <button
+                                    onClick={() => handleCopyLink(prop.id)}
+                                    className="btn-primary"
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
+                                    title="Copy Shareable Link"
+                                  >
+                                    Copy Link
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteProposal(prop.id)}
+                                    className={`${styles.btnIcon} ${styles.btnIconDelete}`}
+                                    title="Delete Proposal"
+                                  >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             )}
           </div>
