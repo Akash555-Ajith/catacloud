@@ -408,3 +408,95 @@ export async function deleteCustomCatalog(id: string): Promise<void> {
   const filtered = catalogs.filter((c) => c.id !== id);
   await saveCustomCatalogs(filtered);
 }
+
+export interface ETAPrediction {
+  totalDays: number;
+  transitDays: number;
+  stockDelayDays: number;
+  explanation: string;
+  targetDateString: string; // YYYY-MM-DD
+}
+
+export function calculateSourcingETA(
+  origin: string,
+  destination: string,
+  requestedQty: number,
+  availableStock: number
+): ETAPrediction {
+  const cleanOrigin = (origin || '').toLowerCase();
+  const cleanDest = (destination || '').toLowerCase();
+
+  let transitDays = 8; // default transit
+  let explanation = '';
+
+  // Determine transit days based on origin vs destination region matching
+  if (cleanDest.length > 0) {
+    if (cleanDest.includes('japan') || cleanDest.includes('tokyo') || cleanDest.includes('tsukiji') || cleanDest.includes('hokkaido')) {
+      if (cleanOrigin.includes('japan') || cleanOrigin.includes('hokkaido')) {
+        transitDays = 4; // Local shipping (Japan to Japan)
+        explanation = 'Local Sea-Transit (3-5 days)';
+      } else if (cleanOrigin.includes('usa') || cleanOrigin.includes('alaska') || cleanOrigin.includes('maine') || cleanOrigin.includes('mexico')) {
+        transitDays = 12; // Air cargo from North America to Japan
+        explanation = 'Cross-Pacific Air Cargo (10-14 days)';
+      } else {
+        transitDays = 15; // From other locations
+        explanation = 'Intercontinental Sea-Freight (14-16 days)';
+      }
+    } else if (
+      cleanDest.includes('usa') ||
+      cleanDest.includes('united states') ||
+      cleanDest.includes('america') ||
+      cleanDest.includes('new york') ||
+      cleanDest.includes('ny') ||
+      cleanDest.includes('alaska') ||
+      cleanDest.includes('maine') ||
+      cleanDest.includes('texas') ||
+      cleanDest.includes('california')
+    ) {
+      if (cleanOrigin.includes('usa') || cleanOrigin.includes('alaska') || cleanOrigin.includes('maine') || cleanOrigin.includes('mexico')) {
+        transitDays = 5; // Local North America shipping
+        explanation = 'Domestic Freight (4-6 days)';
+      } else if (cleanOrigin.includes('japan') || cleanOrigin.includes('hokkaido')) {
+        transitDays = 13; // Cross-pacific to US
+        explanation = 'Cross-Pacific Air Cargo (12-14 days)';
+      } else {
+        transitDays = 14;
+        explanation = 'Cross-Atlantic Sea-Freight (12-15 days)';
+      }
+    } else {
+      transitDays = 9;
+      explanation = 'Standard International Cargo (8-10 days)';
+    }
+  } else {
+    transitDays = 8;
+    explanation = 'Pending address input...';
+  }
+
+  // Stock availability delay
+  const stockDelayDays = requestedQty > availableStock ? 14 : 0;
+  const totalDays = transitDays + stockDelayDays;
+
+  if (stockDelayDays > 0) {
+    explanation += ` + Backorder Sourcing Delay (+14 days due to stock shortfall: requested ${requestedQty} but only ${availableStock} in stock)`;
+  } else {
+    explanation += ' + Sourced from Available Stock (No delay)';
+  }
+
+  // Calculate target date (today + totalDays)
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + totalDays);
+  
+  // Format as YYYY-MM-DD
+  const year = targetDate.getFullYear();
+  const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const day = String(targetDate.getDate()).padStart(2, '0');
+  const targetDateString = `${year}-${month}-${day}`;
+
+  return {
+    totalDays,
+    transitDays,
+    stockDelayDays,
+    explanation,
+    targetDateString
+  };
+}
