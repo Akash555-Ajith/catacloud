@@ -5,7 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { 
   getCustomCatalogById, 
   getProducts, 
-  CustomCatalog 
+  CustomCatalog,
+  calculateSourcingETA,
+  ETAPrediction
 } from '@/utils/store';
 import { FishItem } from '@/data/fishData';
 import styles from './catalogue.module.css';
@@ -19,6 +21,10 @@ export default function CatalogueDetailPage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [selectedFish, setSelectedFish] = useState<FishItem | null>(null);
 
+  // Sourcing Simulator States
+  const [simLocation, setSimLocation] = useState<string>('');
+  const [simQuantity, setSimQuantity] = useState<number>(10);
+
   // Load custom catalog overrides and products
   useEffect(() => {
     setMounted(true);
@@ -28,6 +34,7 @@ export default function CatalogueDetailPage() {
       getCustomCatalogById(proposalId).then((catData) => {
         if (catData) {
           setCatalog(catData);
+          setSimLocation(catData.marketName || 'Tokyo, Japan');
           getProducts().then((prods) => {
             setProducts(prods);
           });
@@ -106,6 +113,10 @@ export default function CatalogueDetailPage() {
   const selectedCustomVolumeDiscount = (selectedFish && selectedOverride)
     ? (selectedOverride.customVolumeDiscount || 0)
     : 0;
+  const selectedStock = selectedFish ? (selectedOverride ? selectedOverride.customStock : selectedFish.stock) : 0;
+  const simulatedETA = selectedFish
+    ? calculateSourcingETA(selectedFish.origin || '', simLocation, simQuantity, selectedStock)
+    : null;
 
   return (
     <div className={styles.pageContainer}>
@@ -309,6 +320,107 @@ export default function CatalogueDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Delivery & Sourcing Speed Simulator */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+              borderRadius: '10px',
+              padding: '20px',
+              marginBottom: '24px',
+              boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05)'
+            }}>
+              <h4 style={{ 
+                fontSize: '0.95rem', 
+                fontWeight: 700, 
+                color: 'var(--accent-cyan)', 
+                marginBottom: '14px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Delivery & Sourcing ETA Preview
+              </h4>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    Select Destination Port
+                  </label>
+                  <select
+                    value={simLocation}
+                    onChange={(e) => setSimLocation(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: '#070f21',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: 'var(--text-primary)',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="Tokyo, Japan">Tokyo, Japan</option>
+                    <option value="New York, USA">New York, USA</option>
+                    <option value="London, United Kingdom">London, UK</option>
+                    <option value="Sydney, Australia">Sydney, Australia</option>
+                    <option value="Other International Port">Other International Port</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                    Simulate Quantity ({selectedFish.unit || 'kg'})
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={simQuantity}
+                    onChange={(e) => setSimQuantity(Math.max(1, Number(e.target.value)))}
+                    style={{
+                      width: '100%',
+                      background: '#070f21',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      color: 'var(--text-primary)',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.9rem',
+                      outline: 'none'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {simulatedETA && (
+                <div style={{
+                  background: 'rgba(0, 242, 254, 0.02)',
+                  border: `1px solid ${simulatedETA.stockDelayDays > 0 ? 'rgba(226, 183, 68, 0.2)' : 'rgba(0, 242, 254, 0.15)'}`,
+                  borderRadius: '8px',
+                  padding: '12px 16px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Estimated Delivery Date:</span>
+                    <strong style={{ color: simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
+                      {new Date(simulatedETA.targetDateString + 'T00:00:00').toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })} ({simulatedETA.totalDays} Days)
+                    </strong>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4', fontStyle: 'italic' }}>
+                    {simulatedETA.explanation}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '20px' }}>
               <div>
