@@ -135,6 +135,21 @@ export default function CatalogueDetailPage() {
         </section>
       )}
 
+      {/* Global Sourcing Terms Banner */}
+      <section className={styles.notesBanner} style={{ borderColor: 'var(--accent-gold)', background: 'rgba(226, 183, 68, 0.02)', marginTop: catalog.notes ? '-20px' : '0px' }}>
+        <div className={styles.notesTitle} style={{ color: 'var(--accent-gold)' }}>Sourcing Offer Summary</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '600px', margin: '0 auto', fontSize: '0.95rem' }}>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Global Sourcing Discount:</span>{' '}
+            <strong style={{ color: 'var(--accent-cyan)' }}>{catalog.globalDiscount > 0 ? `${catalog.globalDiscount}% Off Catalog` : 'Standard Rates'}</strong>
+          </div>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Logistics & Delivery Fee:</span>{' '}
+            <strong style={{ color: 'var(--text-primary)' }}>{catalog.globalDelivery > 0 ? `$${catalog.globalDelivery.toFixed(2)}` : 'Free Logistics'}</strong>
+          </div>
+        </div>
+      </section>
+
       {/* Products Grid */}
       <section className={styles.grid} id="custom-catalogue-grid">
         {proposalItems.length === 0 ? (
@@ -144,7 +159,8 @@ export default function CatalogueDetailPage() {
         ) : (
           proposalItems.map((fishItem) => {
             const override = catalog.overrides[fishItem.id];
-            const displayPrice = override ? override.customPrice : fishItem.pricePerKg;
+            const customPrice = override ? override.customPrice : fishItem.pricePerKg;
+            const displayPrice = customPrice * (1 - (catalog.globalDiscount || 0) / 100);
             const displayStock = override ? override.customStock : fishItem.stock;
 
             return (
@@ -163,7 +179,14 @@ export default function CatalogueDetailPage() {
                   </div>
                   
                   <div className={styles.cardMetaRow}>
-                    <span className={styles.cardPrice}>${displayPrice.toFixed(2)}/kg</span>
+                    <span className={styles.cardPrice}>
+                      ${displayPrice.toFixed(2)}/kg
+                      {catalog.globalDiscount > 0 && (
+                        <span style={{ textDecoration: 'line-through', fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                          ${customPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </span>
                     <span className={styles.cardStock}>Stock: {displayStock} kg</span>
                   </div>
                 </div>
@@ -225,7 +248,12 @@ export default function CatalogueDetailPage() {
               <div>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Sourcing Price</span>
                 <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
-                  ${(catalog.overrides[selectedFish.id]?.customPrice || selectedFish.pricePerKg).toFixed(2)}/kg
+                  ${((catalog.overrides[selectedFish.id]?.customPrice || selectedFish.pricePerKg) * (1 - (catalog.globalDiscount || 0) / 100)).toFixed(2)}/kg
+                  {catalog.globalDiscount > 0 && (
+                    <span style={{ textDecoration: 'line-through', fontSize: '0.9rem', color: 'var(--text-muted)', marginLeft: '8px', fontWeight: 'normal' }}>
+                      ${(catalog.overrides[selectedFish.id]?.customPrice || selectedFish.pricePerKg).toFixed(2)}
+                    </span>
+                  )}
                 </span>
               </div>
               <div>

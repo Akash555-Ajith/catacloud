@@ -30,6 +30,8 @@ export interface CustomCatalog {
   marketName: string;
   notes: string;
   createdDate: string;
+  globalDiscount: number; // in %
+  globalDelivery: number; // flat fee
   overrides: {
     [productId: string]: {
       customPrice: number;

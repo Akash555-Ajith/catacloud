@@ -49,6 +49,8 @@ export default function DashboardPage() {
   // Custom Catalogue Form Fields
   const [catMarket, setCatMarket] = useState('');
   const [catNotes, setCatNotes] = useState('');
+  const [catDiscount, setCatDiscount] = useState<number>(0);
+  const [catDelivery, setCatDelivery] = useState<number>(0);
   const [catOverrides, setCatOverrides] = useState<{
     [id: string]: { price: number; stock: number; included: boolean };
   }>({});
@@ -334,6 +336,8 @@ export default function DashboardPage() {
       id: `cat-proposal-${Math.floor(100000 + Math.random() * 900000)}`,
       marketName: catMarket,
       notes: catNotes,
+      globalDiscount: Number(catDiscount),
+      globalDelivery: Number(catDelivery),
       createdDate: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -348,6 +352,8 @@ export default function DashboardPage() {
     // Reset form fields
     setCatMarket('');
     setCatNotes('');
+    setCatDiscount(0);
+    setCatDelivery(0);
     const resetOverrides: typeof catOverrides = {};
     products.forEach((p) => {
       resetOverrides[p.id] = {
@@ -858,6 +864,29 @@ export default function DashboardPage() {
                         placeholder="e.g. Free shipping, VAT excluded"
                       />
                     </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Global Sourcing Discount (%)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={catDiscount}
+                        onChange={(e) => setCatDiscount(Number(e.target.value))}
+                        className="luxury-input"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Global Logistics / Delivery Charge ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={catDelivery}
+                        onChange={(e) => setCatDelivery(Number(e.target.value))}
+                        className="luxury-input"
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
 
                   {/* Overrides Table */}
@@ -943,6 +972,8 @@ export default function DashboardPage() {
                         <tr>
                           <th>Target Market</th>
                           <th>Included Varieties</th>
+                          <th>Global Discount</th>
+                          <th>Delivery Charge</th>
                           <th>Notes</th>
                           <th>Created</th>
                           <th style={{ textAlign: 'center' }}>Actions</th>
@@ -958,6 +989,12 @@ export default function DashboardPage() {
                                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {cat.id}</span>
                               </td>
                               <td>{includedCount} of {products.length} specimens</td>
+                              <td style={{ color: cat.globalDiscount > 0 ? 'var(--accent-gold)' : 'var(--text-secondary)', fontWeight: 600 }}>
+                                {cat.globalDiscount > 0 ? `${cat.globalDiscount}%` : 'None'}
+                              </td>
+                              <td style={{ fontWeight: 600 }}>
+                                {cat.globalDelivery > 0 ? `$${cat.globalDelivery.toFixed(2)}` : 'Free'}
+                              </td>
                               <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{cat.notes || '-'}</td>
                               <td>{cat.createdDate}</td>
                               <td>
