@@ -54,7 +54,9 @@ export default function HomePage() {
           }
         }
         // Load dynamic products
-        setProducts(getProducts());
+        getProducts().then((p) => {
+          setProducts(p);
+        });
       }
     }, 0);
   }, [router]);

@@ -25,11 +25,14 @@ export default function CatalogueDetailPage() {
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
     if (proposalId) {
-      const catData = getCustomCatalogById(proposalId);
-      if (catData) {
-        setCatalog(catData);
-        setProducts(getProducts());
-      }
+      getCustomCatalogById(proposalId).then((catData) => {
+        if (catData) {
+          setCatalog(catData);
+          getProducts().then((prods) => {
+            setProducts(prods);
+          });
+        }
+      });
     }
   }, [pathname]);
 

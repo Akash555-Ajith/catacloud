@@ -84,10 +84,19 @@ export default function DashboardPage() {
         const parsed = JSON.parse(storedUser);
         setUser(parsed);
         setIsAuthenticated(true);
-        setProducts(getProducts());
-        setOrders(getOrders());
-        setProposals(getProposals());
-        setCustomCatalogs(getCustomCatalogs());
+        
+        // Load data asynchronously
+        Promise.all([
+          getProducts(),
+          getOrders(),
+          getProposals(),
+          getCustomCatalogs()
+        ]).then(([prods, ords, props, cats]) => {
+          setProducts(prods);
+          setOrders(ords);
+          setProposals(props);
+          setCustomCatalogs(cats);
+        });
       } catch {
         router.push('/login');
       }
@@ -145,9 +154,10 @@ export default function DashboardPage() {
   };
 
   // Order status modification handler
-  const handleUpdateStatus = (orderId: string, status: 'Pending' | 'Dispatched' | 'Delivered') => {
-    updateOrderStatus(orderId, status);
-    setOrders(getOrders());
+  const handleUpdateStatus = async (orderId: string, status: 'Pending' | 'Dispatched' | 'Delivered') => {
+    await updateOrderStatus(orderId, status);
+    const ords = await getOrders();
+    setOrders(ords);
   };
 
   // Open product modal for editing or adding
@@ -197,7 +207,7 @@ export default function DashboardPage() {
   };
 
   // Submit product add or edit
-  const handleProductSubmit = (e: React.FormEvent) => {
+  const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const tasteProfileArray = formTaste
@@ -223,20 +233,22 @@ export default function DashboardPage() {
     };
 
     if (editingProduct) {
-      updateProduct(productData);
+      await updateProduct(productData);
     } else {
-      addProduct(productData);
+      await addProduct(productData);
     }
 
-    setProducts(getProducts());
+    const prods = await getProducts();
+    setProducts(prods);
     setIsProductModalOpen(false);
   };
 
   // Delete product
-  const handleDeleteProduct = (id: string) => {
+  const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this product from the inventory catalogue?')) {
-      deleteProduct(id);
-      setProducts(getProducts());
+      await deleteProduct(id);
+      const prods = await getProducts();
+      setProducts(prods);
     }
   };
 
@@ -248,7 +260,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleProposalSubmit = (e: React.FormEvent) => {
+  const handleProposalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!propFishId || !propMarket) return;
 
@@ -267,8 +279,9 @@ export default function DashboardPage() {
       })
     };
 
-    addProposal(newProposal);
-    setProposals(getProposals());
+    await addProposal(newProposal);
+    const props = await getProposals();
+    setProposals(props);
 
     // Reset form
     setPropMarket('');
@@ -280,10 +293,11 @@ export default function DashboardPage() {
     alert('Custom proposal generated successfully!');
   };
 
-  const handleDeleteProposal = (id: string) => {
+  const handleDeleteProposal = async (id: string) => {
     if (confirm('Are you sure you want to delete this custom proposal link?')) {
-      deleteProposal(id);
-      setProposals(getProposals());
+      await deleteProposal(id);
+      const props = await getProposals();
+      setProposals(props);
     }
   };
 
@@ -327,7 +341,7 @@ export default function DashboardPage() {
     }));
   };
 
-  const handleCatProposalSubmit = (e: React.FormEvent) => {
+  const handleCatProposalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catMarket) return;
 
@@ -355,8 +369,9 @@ export default function DashboardPage() {
       overrides: overridesToSave
     };
 
-    addCustomCatalog(newCatalog);
-    setCustomCatalogs(getCustomCatalogs());
+    await addCustomCatalog(newCatalog);
+    const cats = await getCustomCatalogs();
+    setCustomCatalogs(cats);
 
     // Reset form fields
     setCatMarket('');
@@ -376,10 +391,11 @@ export default function DashboardPage() {
     alert('Custom catalogue link generated successfully!');
   };
 
-  const handleDeleteCustomCatalog = (id: string) => {
+  const handleDeleteCustomCatalog = async (id: string) => {
     if (confirm('Are you sure you want to delete this custom catalogue proposal link?')) {
-      deleteCustomCatalog(id);
-      setCustomCatalogs(getCustomCatalogs());
+      await deleteCustomCatalog(id);
+      const cats = await getCustomCatalogs();
+      setCustomCatalogs(cats);
     }
   };
 

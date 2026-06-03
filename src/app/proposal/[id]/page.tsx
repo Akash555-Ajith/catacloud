@@ -34,15 +34,17 @@ export default function ProposalDetailPage() {
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
     if (proposalId) {
-      const propData = getProposalById(proposalId);
-      if (propData) {
-        setProposal(propData);
-        const products = getProducts();
-        const fishData = products.find((p) => p.id === propData.fishId);
-        if (fishData) {
-          setFish(fishData);
+      getProposalById(proposalId).then((propData) => {
+        if (propData) {
+          setProposal(propData);
+          getProducts().then((products) => {
+            const fishData = products.find((p) => p.id === propData.fishId);
+            if (fishData) {
+              setFish(fishData);
+            }
+          });
         }
-      }
+      });
     }
   }, [pathname]);
 
@@ -98,42 +100,46 @@ export default function ProposalDetailPage() {
   const sourcingSubtotal = discountedPricePerKg * quantity;
   const sourcingTotal = sourcingSubtotal + proposal.shippingCharge;
 
-  const handleSourcingRequest = (e: React.FormEvent) => {
+  const handleSourcingRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const orderRef = `BF-${Math.floor(100000 + Math.random() * 900000)}`;
-      const newOrder: Order = {
-        id: orderRef,
-        userEmail: clientEmail.toLowerCase(),
-        userName: clientName,
-        date: new Date().toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        deliveryDate,
-        address,
-        items: [
-          {
-            fishId: fish.id,
-            name: `${fish.name} (Custom Proposal)`,
-            quantity,
-            price: discountedPricePerKg,
-            image: fish.image
-          }
-        ],
-        totalPrice: sourcingTotal,
-        status: 'Pending'
-      };
+    const orderRef = `BF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newOrder: Order = {
+      id: orderRef,
+      userEmail: clientEmail.toLowerCase(),
+      userName: clientName,
+      date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      deliveryDate,
+      address,
+      items: [
+        {
+          fishId: fish.id,
+          name: `${fish.name} (Custom Proposal)`,
+          quantity,
+          price: discountedPricePerKg,
+          image: fish.image
+        }
+      ],
+      totalPrice: sourcingTotal,
+      status: 'Pending'
+    };
 
-      addOrder(newOrder);
+    try {
+      await addOrder(newOrder);
       setSuccessOrder(newOrder);
+    } catch (err) {
+      console.error('Failed to submit order to database:', err);
+      alert('Logistics reservation failed. Please try again.');
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   return (
