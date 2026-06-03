@@ -108,9 +108,10 @@ export default function CatalogueDetailPage() {
   const selectedCustomVolumeDiscount = (selectedFish && selectedOverride)
     ? (selectedOverride.customVolumeDiscount || 0)
     : 0;
-  const selectedStock = selectedFish ? (selectedOverride ? selectedOverride.customStock : selectedFish.stock) : 0;
+  const allocatedStock = selectedOverride ? selectedOverride.customStock : 0;
+  const inventoryStock = selectedFish ? selectedFish.stock : 0;
   const simulatedETA = (selectedFish && catalog)
-    ? calculateSourcingETA(selectedFish.origin || '', catalog.marketName || '', 1, selectedStock)
+    ? calculateSourcingETA(selectedFish.origin || '', catalog.marketName || '', allocatedStock, inventoryStock)
     : null;
 
   return (

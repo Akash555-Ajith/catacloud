@@ -473,11 +473,11 @@ export function calculateSourcingETA(
   }
 
   // Stock availability delay
-  const stockDelayDays = requestedQty > availableStock ? 14 : 0;
+  const stockDelayDays = (requestedQty > availableStock || requestedQty <= 0 || availableStock <= 0) ? 14 : 0;
   const totalDays = transitDays + stockDelayDays;
 
   if (stockDelayDays > 0) {
-    explanation += ` + Backorder Sourcing Delay (+14 days due to stock shortfall: requested ${requestedQty} but only ${availableStock} in stock)`;
+    explanation += ` + Sourcing Delay (+14 days due to stock shortfall: requested/allocated ${requestedQty} but only ${availableStock} in stock)`;
   } else {
     explanation += ' + Sourced from Available Stock (No delay)';
   }
