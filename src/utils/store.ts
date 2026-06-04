@@ -241,13 +241,16 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
         if (error) throw error;
         
         if (!data || data.length === 0) {
-          const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
-          const sanitized = await sanitizePayload('products', seedWithStore);
-          const { error: seedError } = await supabase.from('products').insert(sanitized);
-          if (seedError) {
-            console.warn('Failed to seed products in Supabase:', seedError.message);
+          if (storeId === 'bluefine') {
+            const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
+            const sanitized = await sanitizePayload('products', seedWithStore);
+            const { error: seedError } = await supabase.from('products').insert(sanitized);
+            if (seedError) {
+              console.warn('Failed to seed products in Supabase:', seedError.message);
+            }
+            return seed;
           }
-          return seed;
+          return [];
         }
         return data as FishItem[];
       }
@@ -256,16 +259,17 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
     }
   }
 
-  if (!isBrowser()) return seed;
+  if (!isBrowser()) return storeId === 'bluefine' ? seed : [];
   const stored = localStorage.getItem(`bluefine_products_${storeId}`);
   if (!stored) {
-    localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(seed));
-    return seed;
+    const initialProducts = storeId === 'bluefine' ? seed : [];
+    localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(initialProducts));
+    return initialProducts;
   }
   try {
     return JSON.parse(stored);
   } catch {
-    return seed;
+    return storeId === 'bluefine' ? seed : [];
   }
 }
 

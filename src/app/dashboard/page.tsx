@@ -294,7 +294,6 @@ export default function DashboardPage() {
 
     try {
       await saveStoreConfig(finalStoreId, newConfig);
-      await reseedProducts(resolvedType, finalStoreId);
       toast.success(`Store "${onboardName}" created successfully!`);
 
       // Reload owned stores
