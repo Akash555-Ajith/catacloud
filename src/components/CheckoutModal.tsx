@@ -19,6 +19,7 @@ interface CheckoutModalProps {
   cartItems: CartItemData[];
   onClearCart: () => void;
   unit?: string;
+  storeId?: string;
 }
 
 interface FormState {
@@ -30,7 +31,7 @@ interface FormState {
   cardCvv: string;
 }
 
-export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart, unit }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart, unit, storeId }: CheckoutModalProps) {
   const [step, setStep] = useState<number>(1);
   const [orderRef, setOrderRef] = useState<string>('');
   const [form, setForm] = useState<FormState>({
@@ -132,7 +133,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart,
         status: 'Pending'
       };
 
-      addOrder(newOrder);
+      addOrder(newOrder, storeId || 'bluefine');
       setStep(3);
     }
   };

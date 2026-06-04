@@ -1,6 +1,8 @@
 import { FishItem } from './fishData';
 
 export interface StoreConfig {
+  id?: string;
+  ownerEmail?: string;
   storeName: string;
   storeTagline: string;
   storeType: 'seafood' | 'egg' | 'generic';

@@ -1,5 +1,5 @@
 import { fishData, FishItem } from '@/data/fishData';
-import { StoreConfig, SEAFOOD_PRESET, eggSeedData, genericSeedData } from '@/data/storeConfig';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData } from '@/data/storeConfig';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface OrderItem {
@@ -20,12 +20,8 @@ export interface Order {
   items: OrderItem[];
   totalPrice: number;
   status: 'Pending' | 'Dispatched' | 'Delivered';
+  store_id?: string;
 }
-
-const PRODUCTS_KEY = 'bluefine_products';
-const ORDERS_KEY = 'bluefine_orders';
-const PROPOSALS_KEY = 'bluefine_proposals';
-const CUSTOM_CATALOGS_KEY = 'bluefine_custom_catalogs';
 
 export interface CustomCatalog {
   id: string; // e.g. cat-quote-123456
@@ -44,6 +40,7 @@ export interface CustomCatalog {
       included: boolean;
     }
   };
+  store_id?: string;
 }
 
 export interface Proposal {
@@ -57,10 +54,22 @@ export interface Proposal {
   createdDate: string;
   volumeThreshold: number; // volume discount threshold quantity
   volumeDiscount: number; // volume discount percentage (in %)
+  store_id?: string;
 }
 
 // Check if we are running in the browser
 const isBrowser = () => typeof window !== 'undefined';
+
+function getPresetDefault(storeId: string): StoreConfig {
+  const cleanId = storeId.toLowerCase();
+  if (cleanId.includes('egg')) {
+    return { ...EGG_PRESET, id: storeId };
+  }
+  if (cleanId.includes('bakery') || cleanId.includes('bread') || cleanId.includes('shop') || cleanId.includes('niche')) {
+    return { ...GENERIC_PRESET, id: storeId };
+  }
+  return { ...SEAFOOD_PRESET, id: storeId };
+}
 
 export function getSeedData(type: string): FishItem[] {
   if (type === 'egg') return eggSeedData;
@@ -68,22 +77,106 @@ export function getSeedData(type: string): FishItem[] {
   return fishData;
 }
 
-export async function getProducts(): Promise<FishItem[]> {
-  const config = await getStoreConfig();
+export async function getStoreConfig(storeId: string = 'bluefine'): Promise<StoreConfig> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('store_config').select('*').eq('id', storeId).maybeSingle();
+      if (!error && data) {
+        return data as StoreConfig;
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return getPresetDefault(storeId);
+  const stored = localStorage.getItem(`bluefine_store_config_${storeId}`);
+  if (!stored) {
+    const preset = getPresetDefault(storeId);
+    localStorage.setItem(`bluefine_store_config_${storeId}`, JSON.stringify(preset));
+    return preset;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return getPresetDefault(storeId);
+  }
+}
+
+export async function saveStoreConfig(storeId: string, config: StoreConfig): Promise<void> {
+  const configWithId = { id: storeId, ...config };
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('store_config').upsert(configWithId);
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return;
+  localStorage.setItem(`bluefine_store_config_${storeId}`, JSON.stringify(configWithId));
+  window.dispatchEvent(new CustomEvent('store-config-updated', { detail: { storeId } }));
+}
+
+export async function getStoresOwnedByUser(email: string): Promise<StoreConfig[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase
+        .from('store_config')
+        .select('*')
+        .eq('owner_email', email.toLowerCase());
+      if (!error && data) {
+        return data as StoreConfig[];
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return [];
+  const stores: StoreConfig[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('bluefine_store_config_')) {
+      try {
+        const val = localStorage.getItem(key);
+        if (val) {
+          const config = JSON.parse(val) as StoreConfig;
+          if (config.ownerEmail?.toLowerCase() === email.toLowerCase()) {
+            stores.push(config);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+  
+  // Add default 'bluefine' if email is admin@gmail.com and it doesn't exist
+  if (email.toLowerCase() === 'admin@gmail.com' && !stores.some(s => s.id === 'bluefine')) {
+    const defaultStore = { ...SEAFOOD_PRESET, id: 'bluefine', ownerEmail: 'admin@gmail.com' };
+    stores.unshift(defaultStore);
+  }
+  
+  return stores;
+}
+
+export async function getProducts(storeId: string = 'bluefine'): Promise<FishItem[]> {
+  const config = await getStoreConfig(storeId);
   const seed = getSeedData(config.storeType);
 
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('products').select('*');
+      const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId);
       if (error) throw error;
       
-      // Automatic Seeding: Seed dynamic products on first run if database is empty
+      // Automatic Seeding: Seed products on first run if database is empty for this store
       if (!data || data.length === 0) {
-        const { error: seedError } = await supabase.from('products').insert(seed);
+        const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
+        const { error: seedError } = await supabase.from('products').insert(seedWithStore);
         if (seedError) {
           if (seedError.code === 'PGRST204') {
-            console.warn('Supabase products table is missing the "unit" column. Retrying seed without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
-            const { error: retryError } = await supabase.from('products').insert(seed.map(({ unit, ...rest }) => rest));
+            console.warn('Supabase products table is missing "unit" or "store_id" column. Retrying seed without "unit".');
+            const { error: retryError } = await supabase
+              .from('products')
+              .insert(seedWithStore.map(({ unit, ...rest }) => rest));
             if (retryError) console.error('Failed to retry seed:', retryError);
           } else {
             console.warn('Failed to seed products in Supabase:', seedError);
@@ -98,9 +191,9 @@ export async function getProducts(): Promise<FishItem[]> {
   }
 
   if (!isBrowser()) return seed;
-  const stored = localStorage.getItem(PRODUCTS_KEY);
+  const stored = localStorage.getItem(`bluefine_products_${storeId}`);
   if (!stored) {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(seed));
+    localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(seed));
     return seed;
   }
   try {
@@ -110,14 +203,17 @@ export async function getProducts(): Promise<FishItem[]> {
   }
 }
 
-export async function saveProducts(products: FishItem[]): Promise<void> {
+export async function saveProducts(products: FishItem[], storeId: string = 'bluefine'): Promise<void> {
+  const productsWithStore = products.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('products').upsert(products);
+      const { error } = await supabase.from('products').upsert(productsWithStore);
       if (error) {
         if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing the "unit" column. Retrying upsert without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
-          const { error: retryError } = await supabase.from('products').upsert(products.map(({ unit, ...rest }) => rest));
+          console.warn('Supabase products table is missing column. Retrying upsert without "unit".');
+          const { error: retryError } = await supabase
+            .from('products')
+            .upsert(productsWithStore.map(({ unit, ...rest }) => rest));
           if (retryError) throw retryError;
         } else {
           throw error;
@@ -130,17 +226,18 @@ export async function saveProducts(products: FishItem[]): Promise<void> {
   }
 
   if (!isBrowser()) return;
-  localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products));
+  localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(products));
 }
 
-export async function addProduct(product: FishItem): Promise<void> {
+export async function addProduct(product: FishItem, storeId: string = 'bluefine'): Promise<void> {
+  const productWithStore = { ...product, store_id: storeId };
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('products').insert(product);
+      const { error } = await supabase.from('products').insert(productWithStore);
       if (error) {
         if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing the "unit" column. Retrying insert without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
-          const { unit, ...rest } = product;
+          console.warn('Supabase products table is missing column. Retrying insert without "unit".');
+          const { unit, ...rest } = productWithStore;
           const { error: retryError } = await supabase.from('products').insert(rest);
           if (retryError) throw retryError;
         } else {
@@ -153,26 +250,29 @@ export async function addProduct(product: FishItem): Promise<void> {
     }
   }
 
-  const products = await getProducts();
+  const products = await getProducts(storeId);
   products.push(product);
-  await saveProducts(products);
+  await saveProducts(products, storeId);
 }
 
-export async function updateProduct(updatedProduct: FishItem): Promise<void> {
+export async function updateProduct(updatedProduct: FishItem, storeId: string = 'bluefine'): Promise<void> {
+  const productWithStore = { ...updatedProduct, store_id: storeId };
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase
         .from('products')
-        .update(updatedProduct)
-        .eq('id', updatedProduct.id);
+        .update(productWithStore)
+        .eq('id', updatedProduct.id)
+        .eq('store_id', storeId);
       if (error) {
         if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing the "unit" column. Retrying update without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
-          const { unit, ...rest } = updatedProduct;
+          console.warn('Supabase products table is missing column. Retrying update without "unit".');
+          const { unit, ...rest } = productWithStore;
           const { error: retryError } = await supabase
             .from('products')
             .update(rest)
-            .eq('id', updatedProduct.id);
+            .eq('id', updatedProduct.id)
+            .eq('store_id', storeId);
           if (retryError) throw retryError;
         } else {
           throw error;
@@ -184,18 +284,18 @@ export async function updateProduct(updatedProduct: FishItem): Promise<void> {
     }
   }
 
-  const products = await getProducts();
+  const products = await getProducts(storeId);
   const index = products.findIndex((p) => p.id === updatedProduct.id);
   if (index > -1) {
     products[index] = updatedProduct;
-    await saveProducts(products);
+    await saveProducts(products, storeId);
   }
 }
 
-export async function deleteProduct(id: string): Promise<void> {
+export async function deleteProduct(id: string, storeId: string = 'bluefine'): Promise<void> {
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('products').delete().eq('id', id);
+      const { error } = await supabase.from('products').delete().eq('id', id).eq('store_id', storeId);
       if (error) throw error;
       return;
     } catch (err) {
@@ -203,15 +303,15 @@ export async function deleteProduct(id: string): Promise<void> {
     }
   }
 
-  const products = await getProducts();
+  const products = await getProducts(storeId);
   const filtered = products.filter((p) => p.id !== id);
-  await saveProducts(filtered);
+  await saveProducts(filtered, storeId);
 }
 
-export async function getOrders(): Promise<Order[]> {
+export async function getOrders(storeId: string = 'bluefine'): Promise<Order[]> {
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('orders').select('*');
+      const { data, error } = await supabase.from('orders').select('*').eq('store_id', storeId);
       if (error) throw error;
       return (data || []) as Order[];
     } catch (err) {
@@ -220,7 +320,7 @@ export async function getOrders(): Promise<Order[]> {
   }
 
   if (!isBrowser()) return [];
-  const stored = localStorage.getItem(ORDERS_KEY);
+  const stored = localStorage.getItem(`bluefine_orders_${storeId}`);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -229,10 +329,11 @@ export async function getOrders(): Promise<Order[]> {
   }
 }
 
-export async function saveOrders(orders: Order[]): Promise<void> {
+export async function saveOrders(orders: Order[], storeId: string = 'bluefine'): Promise<void> {
+  const ordersWithStore = orders.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('orders').upsert(orders);
+      const { error } = await supabase.from('orders').upsert(ordersWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -241,13 +342,14 @@ export async function saveOrders(orders: Order[]): Promise<void> {
   }
 
   if (!isBrowser()) return;
-  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+  localStorage.setItem(`bluefine_orders_${storeId}`, JSON.stringify(orders));
 }
 
-export async function addOrder(order: Order): Promise<void> {
+export async function addOrder(order: Order, storeId: string = 'bluefine'): Promise<void> {
+  const orderWithStore = { ...order, store_id: storeId };
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('orders').insert(order);
+      const { error } = await supabase.from('orders').insert(orderWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -255,18 +357,57 @@ export async function addOrder(order: Order): Promise<void> {
     }
   }
 
-  const orders = await getOrders();
+  const orders = await getOrders(storeId);
   orders.unshift(order);
-  await saveOrders(orders);
+  await saveOrders(orders, storeId);
 }
 
-export async function updateOrderStatus(orderId: string, status: 'Pending' | 'Dispatched' | 'Delivered'): Promise<void> {
+export async function getOrdersForBuyer(email: string): Promise<Order[]> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('orders').select('*').eq('userEmail', email.toLowerCase());
+      if (!error && data) {
+        return data as Order[];
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return [];
+  const allOrders: Order[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('bluefine_orders_')) {
+      try {
+        const val = localStorage.getItem(key);
+        if (val) {
+          const parsed = JSON.parse(val) as Order[];
+          parsed.forEach(o => {
+            if (o.userEmail.toLowerCase() === email.toLowerCase()) {
+              allOrders.push(o);
+            }
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+  return allOrders;
+}
+
+export async function updateOrderStatus(
+  orderId: string, 
+  status: 'Pending' | 'Dispatched' | 'Delivered', 
+  storeId: string = 'bluefine'
+): Promise<void> {
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase
         .from('orders')
         .update({ status })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('store_id', storeId);
       if (error) throw error;
       return;
     } catch (err) {
@@ -274,18 +415,18 @@ export async function updateOrderStatus(orderId: string, status: 'Pending' | 'Di
     }
   }
 
-  const orders = await getOrders();
+  const orders = await getOrders(storeId);
   const index = orders.findIndex((o) => o.id === orderId);
   if (index > -1) {
     orders[index].status = status;
-    await saveOrders(orders);
+    await saveOrders(orders, storeId);
   }
 }
 
-export async function getProposals(): Promise<Proposal[]> {
+export async function getProposals(storeId: string = 'bluefine'): Promise<Proposal[]> {
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('proposals').select('*');
+      const { data, error } = await supabase.from('proposals').select('*').eq('store_id', storeId);
       if (error) throw error;
       return (data || []) as Proposal[];
     } catch (err) {
@@ -294,7 +435,7 @@ export async function getProposals(): Promise<Proposal[]> {
   }
 
   if (!isBrowser()) return [];
-  const stored = localStorage.getItem(PROPOSALS_KEY);
+  const stored = localStorage.getItem(`bluefine_proposals_${storeId}`);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -303,10 +444,11 @@ export async function getProposals(): Promise<Proposal[]> {
   }
 }
 
-export async function saveProposals(proposals: Proposal[]): Promise<void> {
+export async function saveProposals(proposals: Proposal[], storeId: string = 'bluefine'): Promise<void> {
+  const proposalsWithStore = proposals.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('proposals').upsert(proposals);
+      const { error } = await supabase.from('proposals').upsert(proposalsWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -315,13 +457,14 @@ export async function saveProposals(proposals: Proposal[]): Promise<void> {
   }
 
   if (!isBrowser()) return;
-  localStorage.setItem(PROPOSALS_KEY, JSON.stringify(proposals));
+  localStorage.setItem(`bluefine_proposals_${storeId}`, JSON.stringify(proposals));
 }
 
-export async function addProposal(proposal: Proposal): Promise<void> {
+export async function addProposal(proposal: Proposal, storeId: string = 'bluefine'): Promise<void> {
+  const proposalWithStore = { ...proposal, store_id: storeId };
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('proposals').insert(proposal);
+      const { error } = await supabase.from('proposals').insert(proposalWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -329,18 +472,19 @@ export async function addProposal(proposal: Proposal): Promise<void> {
     }
   }
 
-  const proposals = await getProposals();
-  proposals.unshift(proposal);
-  await saveProposals(proposals);
+  const proposals = await getProposals(storeId);
+  proposals.unshift(proposalWithStore);
+  await saveProposals(proposals, storeId);
 }
 
-export async function getProposalById(id: string): Promise<Proposal | undefined> {
+export async function getProposalById(id: string, storeId: string = 'bluefine'): Promise<Proposal | undefined> {
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
         .from('proposals')
         .select('*')
         .eq('id', id)
+        .eq('store_id', storeId)
         .maybeSingle();
       if (error) throw error;
       return data ? (data as Proposal) : undefined;
@@ -349,14 +493,14 @@ export async function getProposalById(id: string): Promise<Proposal | undefined>
     }
   }
 
-  const proposals = await getProposals();
+  const proposals = await getProposals(storeId);
   return proposals.find((p) => p.id === id);
 }
 
-export async function deleteProposal(id: string): Promise<void> {
+export async function deleteProposal(id: string, storeId: string = 'bluefine'): Promise<void> {
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('proposals').delete().eq('id', id);
+      const { error } = await supabase.from('proposals').delete().eq('id', id).eq('store_id', storeId);
       if (error) throw error;
       return;
     } catch (err) {
@@ -364,15 +508,15 @@ export async function deleteProposal(id: string): Promise<void> {
     }
   }
 
-  const proposals = await getProposals();
+  const proposals = await getProposals(storeId);
   const filtered = proposals.filter((p) => p.id !== id);
-  await saveProposals(filtered);
+  await saveProposals(filtered, storeId);
 }
 
-export async function getCustomCatalogs(): Promise<CustomCatalog[]> {
+export async function getCustomCatalogs(storeId: string = 'bluefine'): Promise<CustomCatalog[]> {
   if (isSupabaseConfigured) {
     try {
-      const { data, error } = await supabase.from('custom_catalogs').select('*');
+      const { data, error } = await supabase.from('custom_catalogs').select('*').eq('store_id', storeId);
       if (error) throw error;
       return (data || []) as CustomCatalog[];
     } catch (err) {
@@ -381,7 +525,7 @@ export async function getCustomCatalogs(): Promise<CustomCatalog[]> {
   }
 
   if (!isBrowser()) return [];
-  const stored = localStorage.getItem(CUSTOM_CATALOGS_KEY);
+  const stored = localStorage.getItem(`bluefine_custom_catalogs_${storeId}`);
   if (!stored) return [];
   try {
     return JSON.parse(stored);
@@ -390,10 +534,11 @@ export async function getCustomCatalogs(): Promise<CustomCatalog[]> {
   }
 }
 
-export async function saveCustomCatalogs(catalogs: CustomCatalog[]): Promise<void> {
+export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: string = 'bluefine'): Promise<void> {
+  const catalogsWithStore = catalogs.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('custom_catalogs').upsert(catalogs);
+      const { error } = await supabase.from('custom_catalogs').upsert(catalogsWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -402,13 +547,14 @@ export async function saveCustomCatalogs(catalogs: CustomCatalog[]): Promise<voi
   }
 
   if (!isBrowser()) return;
-  localStorage.setItem(CUSTOM_CATALOGS_KEY, JSON.stringify(catalogs));
+  localStorage.setItem(`bluefine_custom_catalogs_${storeId}`, JSON.stringify(catalogs));
 }
 
-export async function addCustomCatalog(catalog: CustomCatalog): Promise<void> {
+export async function addCustomCatalog(catalog: CustomCatalog, storeId: string = 'bluefine'): Promise<void> {
+  const catalogWithStore = { ...catalog, store_id: storeId };
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('custom_catalogs').insert(catalog);
+      const { error } = await supabase.from('custom_catalogs').insert(catalogWithStore);
       if (error) throw error;
       return;
     } catch (err) {
@@ -416,18 +562,19 @@ export async function addCustomCatalog(catalog: CustomCatalog): Promise<void> {
     }
   }
 
-  const catalogs = await getCustomCatalogs();
-  catalogs.unshift(catalog);
-  await saveCustomCatalogs(catalogs);
+  const catalogs = await getCustomCatalogs(storeId);
+  catalogs.unshift(catalogWithStore);
+  await saveCustomCatalogs(catalogs, storeId);
 }
 
-export async function getCustomCatalogById(id: string): Promise<CustomCatalog | undefined> {
+export async function getCustomCatalogById(id: string, storeId: string = 'bluefine'): Promise<CustomCatalog | undefined> {
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase
         .from('custom_catalogs')
         .select('*')
         .eq('id', id)
+        .eq('store_id', storeId)
         .maybeSingle();
       if (error) throw error;
       return data ? (data as CustomCatalog) : undefined;
@@ -436,14 +583,14 @@ export async function getCustomCatalogById(id: string): Promise<CustomCatalog | 
     }
   }
 
-  const catalogs = await getCustomCatalogs();
+  const catalogs = await getCustomCatalogs(storeId);
   return catalogs.find((c) => c.id === id);
 }
 
-export async function deleteCustomCatalog(id: string): Promise<void> {
+export async function deleteCustomCatalog(id: string, storeId: string = 'bluefine'): Promise<void> {
   if (isSupabaseConfigured) {
     try {
-      const { error } = await supabase.from('custom_catalogs').delete().eq('id', id);
+      const { error } = await supabase.from('custom_catalogs').delete().eq('id', id).eq('store_id', storeId);
       if (error) throw error;
       return;
     } catch (err) {
@@ -451,9 +598,9 @@ export async function deleteCustomCatalog(id: string): Promise<void> {
     }
   }
 
-  const catalogs = await getCustomCatalogs();
+  const catalogs = await getCustomCatalogs(storeId);
   const filtered = catalogs.filter((c) => c.id !== id);
-  await saveCustomCatalogs(filtered);
+  await saveCustomCatalogs(filtered, storeId);
 }
 
 export interface ETAPrediction {
@@ -476,17 +623,16 @@ export function calculateSourcingETA(
   let transitDays = 8; // default transit
   let explanation = '';
 
-  // Determine transit days based on origin vs destination region matching
   if (cleanDest.length > 0) {
     if (cleanDest.includes('japan') || cleanDest.includes('tokyo') || cleanDest.includes('tsukiji') || cleanDest.includes('hokkaido')) {
       if (cleanOrigin.includes('japan') || cleanOrigin.includes('hokkaido')) {
-        transitDays = 4; // Local shipping (Japan to Japan)
+        transitDays = 4;
         explanation = 'Local Sea-Transit (3-5 days)';
       } else if (cleanOrigin.includes('usa') || cleanOrigin.includes('alaska') || cleanOrigin.includes('maine') || cleanOrigin.includes('mexico')) {
-        transitDays = 12; // Air cargo from North America to Japan
+        transitDays = 12;
         explanation = 'Cross-Pacific Air Cargo (10-14 days)';
       } else {
-        transitDays = 15; // From other locations
+        transitDays = 15;
         explanation = 'Intercontinental Sea-Freight (14-16 days)';
       }
     } else if (
@@ -501,10 +647,10 @@ export function calculateSourcingETA(
       cleanDest.includes('california')
     ) {
       if (cleanOrigin.includes('usa') || cleanOrigin.includes('alaska') || cleanOrigin.includes('maine') || cleanOrigin.includes('mexico')) {
-        transitDays = 5; // Local North America shipping
+        transitDays = 5;
         explanation = 'Domestic Freight (4-6 days)';
       } else if (cleanOrigin.includes('japan') || cleanOrigin.includes('hokkaido')) {
-        transitDays = 13; // Cross-pacific to US
+        transitDays = 13;
         explanation = 'Cross-Pacific Air Cargo (12-14 days)';
       } else {
         transitDays = 14;
@@ -519,7 +665,6 @@ export function calculateSourcingETA(
     explanation = 'Pending address input...';
   }
 
-  // Stock availability delay
   const stockDelayDays = (requestedQty > availableStock || requestedQty <= 0 || availableStock <= 0) ? 14 : 0;
   const totalDays = transitDays + stockDelayDays;
 
@@ -529,11 +674,9 @@ export function calculateSourcingETA(
     explanation += ' + Sourced from Available Stock (No delay)';
   }
 
-  // Calculate target date (today + totalDays)
   const targetDate = new Date();
   targetDate.setDate(targetDate.getDate() + totalDays);
   
-  // Format as YYYY-MM-DD
   const year = targetDate.getFullYear();
   const month = String(targetDate.getMonth() + 1).padStart(2, '0');
   const day = String(targetDate.getDate()).padStart(2, '0');
@@ -548,66 +691,30 @@ export function calculateSourcingETA(
   };
 }
 
-export async function getStoreConfig(): Promise<StoreConfig> {
-  if (isSupabaseConfigured) {
-    try {
-      const { data, error } = await supabase.from('store_config').select('*').limit(1).maybeSingle();
-      if (!error && data) {
-        return data as StoreConfig;
-      }
-    } catch (e) {
-      // fallback
-    }
-  }
-  if (!isBrowser()) return SEAFOOD_PRESET;
-  const stored = localStorage.getItem('bluefine_store_config');
-  if (!stored) {
-    localStorage.setItem('bluefine_store_config', JSON.stringify(SEAFOOD_PRESET));
-    return SEAFOOD_PRESET;
-  }
-  try {
-    return JSON.parse(stored);
-  } catch {
-    return SEAFOOD_PRESET;
-  }
-}
-
-export async function saveStoreConfig(config: StoreConfig): Promise<void> {
-  if (isSupabaseConfigured) {
-    try {
-      await supabase.from('store_config').upsert({ id: 'main', ...config });
-    } catch (e) {
-      // fallback
-    }
-  }
-  if (!isBrowser()) return;
-  localStorage.setItem('bluefine_store_config', JSON.stringify(config));
-  window.dispatchEvent(new Event('store-config-updated'));
-}
-
-export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic'): Promise<FishItem[]> {
+export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic', storeId: string = 'bluefine'): Promise<FishItem[]> {
   const seed = getSeedData(storeType);
+  const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured) {
     try {
-      // Clear product database (delete all rows)
-      await supabase.from('products').delete().neq('id', 'dummy-unmatched-id');
-      // Re-seed with configuration theme
-      const { error } = await supabase.from('products').insert(seed);
+      await supabase.from('products').delete().eq('store_id', storeId);
+      const { error } = await supabase.from('products').insert(seedWithStore);
       if (error) {
         if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing the "unit" column. Retrying reseed without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
-          const { error: retryError } = await supabase.from('products').insert(seed.map(({ unit, ...rest }) => rest));
+          console.warn('Supabase products table is missing "unit" or "store_id" column. Retrying reseed without "unit".');
+          const { error: retryError } = await supabase
+            .from('products')
+            .insert(seedWithStore.map(({ unit, ...rest }) => rest));
           if (retryError) {
             console.error('Failed to retry reseed:', retryError);
           } else {
-            window.dispatchEvent(new Event('products-updated'));
+            window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
             return seed;
           }
         } else {
           console.error('Failed to reseed products in Supabase:', error);
         }
       } else {
-        window.dispatchEvent(new Event('products-updated'));
+        window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
         return seed;
       }
     } catch (e) {
@@ -615,8 +722,8 @@ export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic'): 
     }
   }
   if (isBrowser()) {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(seed));
-    window.dispatchEvent(new Event('products-updated'));
+    localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(seed));
+    window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
   }
   return seed;
 }

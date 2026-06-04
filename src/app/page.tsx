@@ -23,6 +23,7 @@ export default function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [products, setProducts] = useState<FishItem[]>([]);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
+  const [currentStoreId, setCurrentStoreId] = useState<string>('bluefine');
 
   // Cart & UI states
   const [cart, setCart] = useState<CartItemData[]>([]);
@@ -55,11 +56,24 @@ export default function HomePage() {
             // Keep empty if parse fails
           }
         }
-        // Load dynamic products & config
-        getStoreConfig().then((cfg) => {
+        
+        // Resolve store context from URL parameter or localStorage fallback
+        const params = new URLSearchParams(window.location.search);
+        let storeId = params.get('store');
+        
+        if (!storeId) {
+          storeId = localStorage.getItem('bluefine_current_store_id') || 'bluefine';
+        } else {
+          localStorage.setItem('bluefine_current_store_id', storeId);
+        }
+
+        setCurrentStoreId(storeId);
+
+        // Load dynamic products & config scoped to storeId
+        getStoreConfig(storeId).then((cfg) => {
           setStoreConfig(cfg);
         });
-        getProducts().then((p) => {
+        getProducts(storeId).then((p) => {
           setProducts(p);
         });
       }
@@ -67,13 +81,17 @@ export default function HomePage() {
   }, [router]);
 
   useEffect(() => {
-    const handleConfigUpdate = () => {
-      getStoreConfig().then(setStoreConfig);
-      getProducts().then(setProducts);
+    const handleConfigUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const storeId = customEvent.detail?.storeId || localStorage.getItem('bluefine_current_store_id') || 'bluefine';
+      getStoreConfig(storeId).then(setStoreConfig);
+      getProducts(storeId).then(setProducts);
     };
 
-    const handleProductsUpdate = () => {
-      getProducts().then(setProducts);
+    const handleProductsUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const storeId = customEvent.detail?.storeId || localStorage.getItem('bluefine_current_store_id') || 'bluefine';
+      getProducts(storeId).then(setProducts);
     };
 
     window.addEventListener('store-config-updated', handleConfigUpdate);
@@ -188,6 +206,7 @@ export default function HomePage() {
         cartCount={cart.length}
         onCartToggle={() => setIsCartOpen(!isCartOpen)}
         onLogout={handleLogout}
+        storeId={currentStoreId}
       />
 
       <section className={styles.hero}>
@@ -367,6 +386,7 @@ export default function HomePage() {
         cartItems={cart}
         onClearCart={handleClearCart}
         unit={storeConfig.unit}
+        storeId={currentStoreId}
       />
     </div>
   );

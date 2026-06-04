@@ -25,9 +25,10 @@ interface NavbarProps {
   cartCount: number;
   onCartToggle: () => void;
   onLogout: () => void;
+  storeId?: string;
 }
 
-export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProps) {
+export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: NavbarProps) {
   const [userName, setUserName] = useState<string>('Guest');
   const [userRole, setUserRole] = useState<string>('user');
   const [userAvatar, setUserAvatar] = useState<string>('');
@@ -71,7 +72,17 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
     };
 
     const loadStoreConfig = () => {
-      getStoreConfig().then(setStoreConfig);
+      const activeStore = storeId || (typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('store') || localStorage.getItem('bluefine_current_store_id') || 'bluefine') : 'bluefine');
+      getStoreConfig(activeStore).then(setStoreConfig);
+    };
+
+    const handleConfigUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const eventStoreId = customEvent.detail?.storeId;
+      const activeStore = storeId || (typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('store') || localStorage.getItem('bluefine_current_store_id') || 'bluefine') : 'bluefine');
+      if (!eventStoreId || eventStoreId === activeStore) {
+        getStoreConfig(activeStore).then(setStoreConfig);
+      }
     };
 
     loadUser();
@@ -79,14 +90,14 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
 
     window.addEventListener('storage', loadUser);
     window.addEventListener('user-profile-updated', loadUser);
-    window.addEventListener('store-config-updated', loadStoreConfig);
+    window.addEventListener('store-config-updated', handleConfigUpdate);
 
     return () => {
       window.removeEventListener('storage', loadUser);
       window.removeEventListener('user-profile-updated', loadUser);
-      window.removeEventListener('store-config-updated', loadStoreConfig);
+      window.removeEventListener('store-config-updated', handleConfigUpdate);
     };
-  }, []);
+  }, [storeId]);
 
   const getInitials = (name: string) => {
     return name ? name.charAt(0).toUpperCase() : 'U';

@@ -26,6 +26,7 @@ export default function CatalogueDetailPage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [selectedFish, setSelectedFish] = useState<FishItem | null>(null);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
+  const [storeId, setStoreId] = useState<string>('bluefine');
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
@@ -47,14 +48,18 @@ export default function CatalogueDetailPage() {
   // Load custom catalog overrides, products, and store config
   useEffect(() => {
     setMounted(true);
-    getStoreConfig().then(setStoreConfig);
+    const params = new URLSearchParams(window.location.search);
+    const resolvedStoreId = params.get('store') || 'bluefine';
+    setStoreId(resolvedStoreId);
+
+    getStoreConfig(resolvedStoreId).then(setStoreConfig);
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
     if (proposalId) {
-      getCustomCatalogById(proposalId).then((catData) => {
+      getCustomCatalogById(proposalId, resolvedStoreId).then((catData) => {
         if (catData) {
           setCatalog(catData);
-          getProducts().then((prods) => {
+          getProducts(resolvedStoreId).then((prods) => {
             setProducts(prods);
           });
         }
@@ -195,7 +200,7 @@ export default function CatalogueDetailPage() {
     };
 
     try {
-      await addOrder(newOrder);
+      await addOrder(newOrder, storeId);
       setSuccessOrder(newOrder);
     } catch (err) {
       console.error('Failed to log customized catalog sourcing order:', err);

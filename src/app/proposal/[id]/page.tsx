@@ -25,6 +25,7 @@ export default function ProposalDetailPage() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [fish, setFish] = useState<FishItem | null>(null);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
+  const [storeId, setStoreId] = useState<string>('bluefine');
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
@@ -61,16 +62,20 @@ export default function ProposalDetailPage() {
 
   useEffect(() => {
     setMounted(true);
-    getStoreConfig().then(setStoreConfig);
+    const params = new URLSearchParams(window.location.search);
+    const resolvedStoreId = params.get('store') || 'bluefine';
+    setStoreId(resolvedStoreId);
+
+    getStoreConfig(resolvedStoreId).then(setStoreConfig);
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
     if (proposalId) {
-      getProposalById(proposalId).then((propData) => {
+      getProposalById(proposalId, resolvedStoreId).then((propData) => {
         if (propData) {
           setProposal(propData);
           setAddress(propData.marketName || '');
           setQuantity(propData.volumeThreshold && propData.volumeThreshold > 0 ? propData.volumeThreshold : 10);
-          getProducts().then((products) => {
+          getProducts(resolvedStoreId).then((products) => {
             const fishData = products.find((p) => p.id === propData.fishId);
             if (fishData) {
               setFish(fishData);
@@ -181,7 +186,7 @@ export default function ProposalDetailPage() {
     };
 
     try {
-      await addOrder(newOrder);
+      await addOrder(newOrder, storeId);
       setSuccessOrder(newOrder);
     } catch (err) {
       console.error('Failed to submit order to database:', err);

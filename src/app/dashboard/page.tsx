@@ -21,7 +21,9 @@ import {
   deleteCustomCatalog,
   getStoreConfig,
   saveStoreConfig,
-  reseedProducts
+  reseedProducts,
+  getStoresOwnedByUser,
+  getOrdersForBuyer
 } from '@/utils/store';
 import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
@@ -40,6 +42,18 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [customCatalogs, setCustomCatalogs] = useState<CustomCatalog[]>([]);
+
+  // Multi-Tenant States
+  const [userStores, setUserStores] = useState<StoreConfig[]>([]);
+  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  const [dashboardMode, setDashboardMode] = useState<'buyer' | 'seller'>('buyer');
+  
+  // Onboarding Form States
+  const [onboardName, setOnboardName] = useState('');
+  const [onboardTagline, setOnboardTagline] = useState('');
+  const [onboardType, setOnboardType] = useState<'seafood' | 'egg' | 'generic'>('seafood');
+  const [onboardSubmitting, setOnboardSubmitting] = useState(false);
+  const [showStoreCreator, setShowStoreCreator] = useState(false);
 
   // Navigation / UI tabs for Admin
   const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'config'>('orders');
@@ -90,6 +104,7 @@ export default function DashboardPage() {
   const [formPrep, setFormPrep] = useState('');
   const [formDifficulty, setFormDifficulty] = useState<string>('Easy');
 
+  // 1. Initial User load
   useEffect(() => {
     const loadUser = () => {
       const storedUser = localStorage.getItem('bluefine_user');
@@ -100,6 +115,8 @@ export default function DashboardPage() {
           const parsed = JSON.parse(storedUser);
           setUser(parsed);
           setIsAuthenticated(true);
+          // Set initial dashboard mode based on role
+          setDashboardMode(parsed.role === 'admin' ? 'seller' : 'buyer');
         } catch {
           router.push('/login');
         }
@@ -110,21 +127,52 @@ export default function DashboardPage() {
     window.addEventListener('storage', loadUser);
     window.addEventListener('user-profile-updated', loadUser);
 
-    // Load data asynchronously
-    const storedUser = localStorage.getItem('bluefine_user');
-    if (storedUser) {
+    return () => {
+      window.removeEventListener('storage', loadUser);
+      window.removeEventListener('user-profile-updated', loadUser);
+    };
+  }, [router]);
+
+  // 2. Load owned stores once user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      getStoresOwnedByUser(user.email).then((stores) => {
+        setUserStores(stores);
+        if (stores.length > 0) {
+          const savedActive = localStorage.getItem(`bluefine_active_store_id_${user.email}`);
+          const exists = stores.some(s => s.id === savedActive);
+          const initialStoreId = exists && savedActive ? savedActive : stores[0].id || 'bluefine';
+          setActiveStoreId(initialStoreId);
+          localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
+        } else {
+          setActiveStoreId('');
+        }
+      });
+    }
+  }, [isAuthenticated, user]);
+
+  // 3. Load all dashboard data based on mode & active store
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    if (dashboardMode === 'buyer') {
+      getOrdersForBuyer(user.email).then((ords) => {
+        setOrders(ords);
+      });
+    } else if (dashboardMode === 'seller' && activeStoreId) {
       Promise.all([
-        getProducts(),
-        getOrders(),
-        getProposals(),
-        getCustomCatalogs(),
-        getStoreConfig()
+        getProducts(activeStoreId),
+        getOrders(activeStoreId),
+        getProposals(activeStoreId),
+        getCustomCatalogs(activeStoreId),
+        getStoreConfig(activeStoreId)
       ]).then(([prods, ords, props, cats, cfg]) => {
         setProducts(prods);
         setOrders(ords);
         setProposals(props);
         setCustomCatalogs(cats);
         setStoreConfig(cfg);
+
         // Initialize config form fields
         setCfgStoreName(cfg.storeName);
         setCfgStoreTagline(cfg.storeTagline);
@@ -140,12 +188,7 @@ export default function DashboardPage() {
       });
     }
     setMounted(true);
-
-    return () => {
-      window.removeEventListener('storage', loadUser);
-      window.removeEventListener('user-profile-updated', loadUser);
-    };
-  }, [router]);
+  }, [dashboardMode, activeStoreId, isAuthenticated, user]);
 
   // Initialize custom catalog overrides when products are loaded
   useEffect(() => {
@@ -200,9 +243,66 @@ export default function DashboardPage() {
 
   // Order status modification handler
   const handleUpdateStatus = async (orderId: string, status: 'Pending' | 'Dispatched' | 'Delivered') => {
-    await updateOrderStatus(orderId, status);
-    const ords = await getOrders();
+    await updateOrderStatus(orderId, status, activeStoreId);
+    const ords = await getOrders(activeStoreId);
     setOrders(ords);
+  };
+
+  // Create store helper
+  const handleCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onboardName.trim() || !onboardTagline.trim()) return;
+
+    setOnboardSubmitting(true);
+    
+    // Create url-friendly store slug from store name
+    const storeSlug = onboardName
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    
+    // Make sure store slug is unique or append a random number
+    const finalStoreId = `${storeSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const basePreset = onboardType === 'egg' 
+      ? EGG_PRESET 
+      : onboardType === 'generic' 
+        ? GENERIC_PRESET 
+        : SEAFOOD_PRESET;
+
+    const newConfig: StoreConfig = {
+      ...basePreset,
+      id: finalStoreId,
+      ownerEmail: user.email.toLowerCase(),
+      storeName: onboardName,
+      storeTagline: onboardTagline,
+      storeType: onboardType
+    };
+
+    try {
+      await saveStoreConfig(finalStoreId, newConfig);
+      await reseedProducts(onboardType, finalStoreId);
+      toast.success(`Store "${onboardName}" created successfully!`);
+
+      // Reload owned stores
+      const stores = await getStoresOwnedByUser(user.email);
+      setUserStores(stores);
+      
+      // Set as active store
+      setActiveStoreId(finalStoreId);
+      localStorage.setItem(`bluefine_active_store_id_${user.email}`, finalStoreId);
+      
+      // Reset forms & close wizard
+      setOnboardName('');
+      setOnboardTagline('');
+      setShowStoreCreator(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to create store.');
+    } finally {
+      setOnboardSubmitting(false);
+    }
   };
 
   // Open product modal for editing or adding
@@ -222,16 +322,16 @@ export default function DashboardPage() {
       setFormSustainability(product.sustainability);
       setFormPrep(product.prepTime);
       setFormDifficulty(product.difficulty);
-      setFormUnit(product.unit || 'kg');
+      setFormUnit(product.unit || storeConfig.unit);
     } else {
       setEditingProduct(null);
       setFormName('');
       setFormSciName('');
-      setFormCategory('Saltwater');
+      setFormCategory(storeConfig.categories[0] || 'Saltwater');
       setFormPrice(15.0);
       setFormOrigin('');
       setFormStock(20);
-      // Randomly pick one of the default beautiful seafood images
+      // Randomly pick one of the default beautiful images
       const sampleImages = [
         '/images/bluefin_tuna.png',
         '/images/king_salmon.png',
@@ -248,7 +348,7 @@ export default function DashboardPage() {
       setFormSustainability('Wild Caught');
       setFormPrep('');
       setFormDifficulty('Easy');
-      setFormUnit('kg');
+      setFormUnit(storeConfig.unit);
     }
     setIsProductModalOpen(true);
   };
@@ -257,6 +357,8 @@ export default function DashboardPage() {
   const handleApplyConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     const updatedConfig: StoreConfig = {
+      id: activeStoreId,
+      ownerEmail: user.email.toLowerCase(),
       storeName: cfgStoreName,
       storeTagline: cfgStoreTagline,
       storeType: cfgStoreType,
@@ -272,7 +374,7 @@ export default function DashboardPage() {
       }
     };
 
-    await saveStoreConfig(updatedConfig);
+    await saveStoreConfig(activeStoreId, updatedConfig);
     setStoreConfig(updatedConfig);
     toast.success('Configuration Saved', {
       description: 'Store parameters have been successfully updated.'
@@ -300,7 +402,7 @@ export default function DashboardPage() {
 
   const handleReseed = async () => {
     if (confirm('Warning: Reseeding will clear the existing database inventory and replace it with default items for this store preset. Do you want to continue?')) {
-      const seeded = await reseedProducts(cfgStoreType);
+      const seeded = await reseedProducts(cfgStoreType, activeStoreId);
       setProducts(seeded);
       toast.success('Database Reseeded', {
         description: `Catalog has been reseeded with default ${cfgStoreType} items.`
@@ -336,12 +438,12 @@ export default function DashboardPage() {
     };
 
     if (editingProduct) {
-      await updateProduct(productData);
+      await updateProduct(productData, activeStoreId);
     } else {
-      await addProduct(productData);
+      await addProduct(productData, activeStoreId);
     }
 
-    const prods = await getProducts();
+    const prods = await getProducts(activeStoreId);
     setProducts(prods);
     setIsProductModalOpen(false);
   };
@@ -349,15 +451,11 @@ export default function DashboardPage() {
   // Delete product
   const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this product from the inventory catalogue?')) {
-      await deleteProduct(id);
-      const prods = await getProducts();
+      await deleteProduct(id, activeStoreId);
+      const prods = await getProducts(activeStoreId);
       setProducts(prods);
     }
   };
-
-
-
-
 
   const handleOverridePriceChange = (productId: string, price: number) => {
     setCatOverrides((prev) => ({
@@ -436,11 +534,12 @@ export default function DashboardPage() {
         month: 'short',
         day: 'numeric'
       }),
-      overrides: overridesToSave
+      overrides: overridesToSave,
+      store_id: activeStoreId
     };
 
-    await addCustomCatalog(newCatalog);
-    const cats = await getCustomCatalogs();
+    await addCustomCatalog(newCatalog, activeStoreId);
+    const cats = await getCustomCatalogs(activeStoreId);
     setCustomCatalogs(cats);
 
     // Reset form fields
@@ -467,15 +566,15 @@ export default function DashboardPage() {
 
   const handleDeleteCustomCatalog = async (id: string) => {
     if (confirm('Are you sure you want to delete this custom catalogue proposal link?')) {
-      await deleteCustomCatalog(id);
-      const cats = await getCustomCatalogs();
+      await deleteCustomCatalog(id, activeStoreId);
+      const cats = await getCustomCatalogs(activeStoreId);
       setCustomCatalogs(cats);
     }
   };
 
   const handleCopyCatalogLink = (id: string) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const link = `${origin}/catalogue/${id}`;
+    const link = `${origin}/catalogue/${id}?store=${activeStoreId}`;
     navigator.clipboard.writeText(link).then(() => {
       toast.success('Link Copied to Clipboard', {
         description: `Proposal link copied on ${new Date().toLocaleString()}`,
@@ -527,15 +626,233 @@ export default function DashboardPage() {
       />
 
       <main className={styles.container}>
-        {/* Admin Dashboard */}
-        {user.role === 'admin' ? (
-          <div>
-            <header className={styles.header}>
-              <div>
-                <h1 className={styles.title}>Inventory Manager Panel</h1>
-                <span className={styles.titleHighlight}>{storeConfig.storeName} &bull; {storeConfig.storeTagline}</span>
+        {/* Global Dashboard Mode Switcher */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '12px 24px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)' }} className="glassmorphism">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Account Type:</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase' }}>
+              {user.role === 'admin' ? 'Administrator' : 'Business Partner'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setDashboardMode('buyer')}
+              className={`${styles.tabBtn}`}
+              style={{
+                background: dashboardMode === 'buyer' ? 'var(--accent-gold)' : 'transparent',
+                color: dashboardMode === 'buyer' ? '#030812' : 'var(--text-secondary)',
+                border: dashboardMode === 'buyer' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              🛒 Buyer Panel
+            </button>
+            <button
+              onClick={() => setDashboardMode('seller')}
+              className={`${styles.tabBtn}`}
+              style={{
+                background: dashboardMode === 'seller' ? 'var(--accent-cyan)' : 'transparent',
+                color: dashboardMode === 'seller' ? '#030812' : 'var(--text-secondary)',
+                border: dashboardMode === 'seller' ? 'none' : '1px solid rgba(255,255,255,0.1)',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              💼 Store Manager
+            </button>
+          </div>
+        </div>
+
+        {/* Display Seller Dashboard or Onboarding Form */}
+        {dashboardMode === 'seller' ? (
+          userStores.length === 0 || showStoreCreator ? (
+            /* Onboarding Store Creator Wizard */
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', width: '100%' }}>
+              <div className="glassmorphism" style={{ maxWidth: '600px', width: '100%', padding: '32px', borderRadius: '16px', border: '1px solid var(--accent-gold)' }}>
+                <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>Create Your Business Store</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.95rem' }}>
+                  Set up your niche product catalog, define your categories, units, and custom labels. Select a preset below to get started instantly.
+                </p>
+                
+                <form onSubmit={handleCreateStore}>
+                  <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
+                    <label className={styles.label} htmlFor="onboard-name">Business Store Name</label>
+                    <input
+                      type="text"
+                      id="onboard-name"
+                      value={onboardName}
+                      onChange={(e) => setOnboardName(e.target.value)}
+                      placeholder="e.g. Sunrise Organic Eggs, Golden Crust Bakery"
+                      className="luxury-input"
+                      required
+                    />
+                  </div>
+                  
+                  <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
+                    <label className={styles.label} htmlFor="onboard-tagline">Tagline / Slogan</label>
+                    <input
+                      type="text"
+                      id="onboard-tagline"
+                      value={onboardTagline}
+                      onChange={(e) => setOnboardTagline(e.target.value)}
+                      placeholder="e.g. Fresh Pasture-Raised Farm Goods"
+                      className="luxury-input"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.formGroup} style={{ marginBottom: '24px' }}>
+                    <label className={styles.label}>Choose Catalog Preset Niche</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setOnboardType('seafood')}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: onboardType === 'seafood' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+                          background: onboardType === 'seafood' ? 'rgba(0,242,254,0.1)' : 'transparent',
+                          color: onboardType === 'seafood' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🐟 Seafood Catch
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOnboardType('egg')}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: onboardType === 'egg' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+                          background: onboardType === 'egg' ? 'rgba(0,242,254,0.1)' : 'transparent',
+                          color: onboardType === 'egg' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🥚 Egg Farm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOnboardType('generic')}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '8px',
+                          border: onboardType === 'generic' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
+                          background: onboardType === 'generic' ? 'rgba(0,242,254,0.1)' : 'transparent',
+                          color: onboardType === 'generic' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🍞 Bakery / Retail
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    {userStores.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStoreCreator(false)}
+                        className="btn-gold"
+                        style={{ flex: 1, height: '48px', fontSize: '1rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={onboardSubmitting}
+                      className="btn-gold"
+                      style={{ flex: 2, height: '48px', fontSize: '1rem' }}
+                    >
+                      {onboardSubmitting ? 'Establishing Hub...' : 'Establish Sourcing Hub'}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </header>
+            </div>
+          ) : (
+            /* Active Store Manager Dashboard */
+            <div>
+              <header className={styles.header} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <h1 className={styles.title}>Inventory Manager Panel</h1>
+                  <span className={styles.titleHighlight}>{storeConfig.storeName} &bull; {storeConfig.storeTagline}</span>
+                </div>
+                
+                {/* Store Switcher Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {userStores.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label htmlFor="store-select" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Active Store:</label>
+                      <select
+                        id="store-select"
+                        value={activeStoreId}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          setActiveStoreId(newId);
+                          localStorage.setItem(`bluefine_active_store_id_${user.email}`, newId);
+                          toast.info(`Switched active store context to "${userStores.find(s => s.id === newId)?.storeName}"`);
+                        }}
+                        style={{
+                          background: '#0a1424',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          color: 'var(--text-primary)',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          outline: 'none'
+                        }}
+                      >
+                        {userStores.map(store => (
+                          <option key={store.id} value={store.id}>{store.storeName}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowStoreCreator(true)}
+                    className="btn-gold"
+                    style={{ padding: '8px 14px', fontSize: '0.85rem', height: '36px' }}
+                  >
+                    + New Store
+                  </button>
+                </div>
+              </header>
+
+              {/* Shareable Link Banner */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderRadius: '8px', background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.15)', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Shareable Buyer Link:</span>
+                  <code style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 'bold' }}>
+                    {typeof window !== 'undefined' ? `${window.location.origin}/?store=${activeStoreId}` : `/?store=${activeStoreId}`}
+                  </code>
+                </div>
+                <button
+                  onClick={() => {
+                    const url = typeof window !== 'undefined' ? `${window.location.origin}/?store=${activeStoreId}` : `/?store=${activeStoreId}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Store catalog link copied to clipboard!');
+                  }}
+                  className="btn-gold"
+                  style={{ padding: '4px 12px', fontSize: '0.75rem', height: '28px' }}
+                >
+                  Copy Link
+                </button>
+              </div>
 
             {/* Admin Stats Row */}
             <section className={styles.statsGrid}>
@@ -1364,7 +1681,8 @@ export default function DashboardPage() {
               </section>
             )}
           </div>
-        ) : (
+        )
+      ) : (
           /* Chef / User Dashboard */
           <div>
             <header className={styles.header}>
