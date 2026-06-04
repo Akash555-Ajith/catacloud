@@ -23,6 +23,7 @@ import {
   saveStoreConfig,
   reseedProducts,
   getStoresOwnedByUser,
+  getAllStores,
   getOrdersForBuyer
 } from '@/utils/store';
 import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/storeConfig';
@@ -137,7 +138,11 @@ export default function DashboardPage() {
   // 2. Load owned stores once user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      getStoresOwnedByUser(user.email).then(async (stores) => {
+      const loadStoresPromise = user.role === 'admin'
+        ? getAllStores()
+        : getStoresOwnedByUser(user.email);
+
+      loadStoresPromise.then(async (stores) => {
         let finalStores = [...stores];
         if (finalStores.length === 0 && user.role === 'admin') {
           const defaultAdminStore: StoreConfig = {
@@ -308,7 +313,9 @@ export default function DashboardPage() {
       toast.success(`Store "${onboardName}" created successfully!`);
 
       // Reload owned stores
-      const stores = await getStoresOwnedByUser(user.email);
+      const stores = user.role === 'admin'
+        ? await getAllStores()
+        : await getStoresOwnedByUser(user.email);
       setUserStores(stores);
       
       // Set as active store
