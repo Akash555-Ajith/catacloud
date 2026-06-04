@@ -62,7 +62,14 @@ export default function HomePage() {
         let storeId = params.get('store');
         
         if (!storeId) {
-          storeId = localStorage.getItem('bluefine_current_store_id') || 'bluefine';
+          let userActiveStore = '';
+          try {
+            const parsedUser = JSON.parse(user);
+            userActiveStore = localStorage.getItem(`bluefine_active_store_id_${parsedUser.email}`) || '';
+          } catch (e) {
+            // ignore
+          }
+          storeId = userActiveStore || localStorage.getItem('bluefine_current_store_id') || 'bluefine';
         } else {
           localStorage.setItem('bluefine_current_store_id', storeId);
         }
