@@ -137,12 +137,23 @@ export default function DashboardPage() {
   // 2. Load owned stores once user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      getStoresOwnedByUser(user.email).then((stores) => {
-        setUserStores(stores);
-        if (stores.length > 0) {
+      getStoresOwnedByUser(user.email).then(async (stores) => {
+        let finalStores = [...stores];
+        if (finalStores.length === 0 && user.role === 'admin') {
+          const defaultAdminStore: StoreConfig = {
+            ...SEAFOOD_PRESET,
+            id: 'bluefine',
+            ownerEmail: user.email.toLowerCase()
+          };
+          await saveStoreConfig('bluefine', defaultAdminStore);
+          finalStores = [defaultAdminStore];
+        }
+
+        setUserStores(finalStores);
+        if (finalStores.length > 0) {
           const savedActive = localStorage.getItem(`bluefine_active_store_id_${user.email}`);
-          const exists = stores.some(s => s.id === savedActive);
-          const initialStoreId = exists && savedActive ? savedActive : stores[0].id || 'bluefine';
+          const exists = finalStores.some(s => s.id === savedActive);
+          const initialStoreId = exists && savedActive ? savedActive : finalStores[0].id || 'bluefine';
           setActiveStoreId(initialStoreId);
           localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
         } else {
