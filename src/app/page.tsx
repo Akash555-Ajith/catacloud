@@ -143,7 +143,8 @@ export default function HomePage() {
       const matchesSearch =
         fish.name.toLowerCase().includes(search.toLowerCase()) ||
         fish.scientificName.toLowerCase().includes(search.toLowerCase()) ||
-        fish.origin.toLowerCase().includes(search.toLowerCase());
+        fish.origin.toLowerCase().includes(search.toLowerCase()) ||
+        fish.category.toLowerCase().includes(search.toLowerCase());
       
       const matchesCategory = category === 'All' || fish.category === category;
 
@@ -185,8 +186,8 @@ export default function HomePage() {
             <div className={styles.searchWrapper}>
               <svg
                 className={styles.searchIcon}
-                width="18"
-                height="18"
+                width="14"
+                height="14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -201,8 +202,8 @@ export default function HomePage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="luxury-input styles.searchInput"
-                style={{ paddingLeft: '48px' }}
+                className="luxury-input"
+                style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
                 placeholder="Search by variety, scientific name, or origin..."
                 id="search-input-field"
               />
@@ -213,7 +214,20 @@ export default function HomePage() {
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="luxury-input"
-                style={{ appearance: 'none', cursor: 'pointer' }}
+                style={{
+                  height: '34px',
+                  paddingTop: '0px',
+                  paddingBottom: '0px',
+                  paddingLeft: '12px',
+                  paddingRight: '30px',
+                  fontSize: '0.8rem',
+                  appearance: 'none',
+                  cursor: 'pointer',
+                  backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '16px'
+                }}
                 id="sort-select-dropdown"
               >
                 <option value="featured">Featured Sourcing</option>
@@ -225,19 +239,35 @@ export default function HomePage() {
           </div>
 
           <div className={styles.filterRow}>
-            <div className={styles.categories}>
-              {['All', 'Saltwater', 'Shellfish', 'Premium Import'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategory(cat)}
-                  className={`${styles.categoryBtn} ${
-                    category === cat ? styles.categoryBtnActive : ''
-                  }`}
-                  id={`category-btn-${cat.toLowerCase().replace(' ', '-')}`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div style={{ minWidth: '180px' }}>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="luxury-input"
+                style={{
+                  height: '34px',
+                  padding: '0 30px 0 12px',
+                  fontSize: '0.8rem',
+                  appearance: 'none',
+                  cursor: 'pointer',
+                  backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 12px center',
+                  backgroundSize: '16px',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '8px',
+                  background: 'rgba(5, 12, 26, 0.6)',
+                  color: 'var(--text-primary)',
+                  outline: 'none'
+                }}
+                id="category-select-dropdown"
+              >
+                <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
+                <option value="Saltwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Saltwater</option>
+                <option value="Freshwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Freshwater</option>
+                <option value="Shellfish" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Shellfish</option>
+                <option value="Premium Import" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Premium Import</option>
+              </select>
             </div>
 
             <div className={styles.resultsCount} id="search-results-count">

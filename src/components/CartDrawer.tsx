@@ -3,7 +3,8 @@
 import React from 'react';
 import Image from 'next/image';
 import { FishItem } from '@/data/fishData';
-import styles from './CartDrawer.module.css';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
 
 interface CartItemData {
   fish: FishItem;
@@ -27,44 +28,30 @@ export default function CartDrawer({
   onRemoveItem,
   onCheckout
 }: CartDrawerProps) {
-  if (!isOpen) return null;
-
   const totalWeight = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + item.fish.pricePerKg * item.quantity, 0);
 
   return (
-    <>
-      <div className={styles.overlay} onClick={onClose} id="cart-drawer-overlay" />
-      <div className={styles.drawer} role="dialog" aria-modal="true" id="cart-drawer-container">
-        <div className={styles.header}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <h2 className={styles.title}>Your Selection</h2>
+    <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent 
+        side="right"
+        className="w-full sm:max-w-md border-l border-[var(--glass-border)] bg-[rgba(7,16,32,0.95)] backdrop-blur-2xl text-[var(--text-primary)] p-0 flex flex-col h-full shadow-[0_12px_40px_rgba(0,0,0,0.6)]"
+        showCloseButton={true}
+      >
+        <SheetHeader className="p-5 border-b border-[rgba(255,255,255,0.06)] flex flex-row items-center justify-between">
+          <div className="flex items-center gap-2">
+            <SheetTitle className="font-heading text-lg font-bold text-[var(--text-primary)]">Your Selection</SheetTitle>
             {cartItems.length > 0 && (
-              <span className={styles.itemCount} id="cart-item-count-label">
+              <span className="text-[10px] uppercase font-bold text-[var(--accent-cyan)] bg-[rgba(0,242,254,0.08)] border border-[rgba(0,242,254,0.15)] px-2 py-0.5 rounded-full" id="cart-item-count-label">
                 {cartItems.length} {cartItems.length === 1 ? 'variety' : 'varieties'}
               </span>
             )}
           </div>
-          <button className={styles.closeButton} onClick={onClose} aria-label="Close cart" id="close-cart-btn">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+        </SheetHeader>
 
-        <div className={styles.content}>
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {cartItems.length === 0 ? (
-            <div className={styles.emptyState}>
+            <div className="flex flex-col items-center justify-center h-[50vh] text-center">
               <svg
                 width="64"
                 height="64"
@@ -74,49 +61,48 @@ export default function CartDrawer({
                 strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={styles.emptyIcon}
+                className="text-[var(--text-muted)] mb-4"
               >
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
-              <h3 className={styles.emptyTitle}>The Hold is Empty</h3>
-              <p className={styles.emptyText}>
+              <h3 className="text-base font-bold text-[var(--text-primary)] mb-1">The Hold is Empty</h3>
+              <p className="text-xs text-[var(--text-secondary)] max-w-xs leading-relaxed">
                 Explore our fine catalogue to select premium cuts of fish.
               </p>
-              <button
-                className="btn-primary"
-                style={{ marginTop: '24px' }}
+              <Button
+                className="mt-6 h-10 px-6 rounded-lg bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-[#030812] font-semibold text-xs transition-all duration-200"
                 onClick={onClose}
               >
                 Discover Seafood
-              </button>
+              </Button>
             </div>
           ) : (
             cartItems.map((item) => (
-              <div key={item.fish.id} className={styles.cartItem}>
-                <div className={styles.itemImage}>
+              <div key={item.fish.id} className="flex gap-4 p-4 border border-[var(--glass-border)] bg-[rgba(255,255,255,0.01)] rounded-xl">
+                <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                   <Image
                     src={item.fish.image}
                     alt={item.fish.name}
                     fill
                     sizes="70px"
-                    style={{ objectFit: 'cover' }}
+                    className="object-cover"
                   />
                 </div>
-                <div className={styles.itemDetails}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <h4 className={styles.itemName}>{item.fish.name}</h4>
-                      <p className={styles.itemScientific}>{item.fish.scientificName}</p>
+                      <h4 className="text-sm font-semibold text-[var(--text-primary)] leading-tight">{item.fish.name}</h4>
+                      <p className="text-[10px] italic text-[var(--text-secondary)] mt-0.5">{item.fish.scientificName}</p>
                     </div>
                     <button
-                      className={styles.removeButton}
+                      className="text-[var(--text-muted)] hover:text-[var(--accent-danger)] transition-colors cursor-pointer p-1"
                       onClick={() => onRemoveItem(item.fish.id)}
                       aria-label={`Remove ${item.fish.name} from selection`}
                       id={`remove-btn-${item.fish.id}`}
                     >
                       <svg
-                        width="16"
-                        height="16"
+                        width="15"
+                        height="15"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -130,18 +116,18 @@ export default function CartDrawer({
                     </button>
                   </div>
 
-                  <div className={styles.itemMeta}>
-                    <div className={styles.qtyControl}>
+                  <div className="flex justify-between items-end mt-2">
+                    <div className="flex items-center border border-[var(--glass-border)] rounded-md bg-[rgba(5,12,26,0.6)] h-8 px-1.5">
                       <button
-                        className={styles.qtyBtn}
+                        className="w-5 h-5 flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-white cursor-pointer"
                         onClick={() => onUpdateQuantity(item.fish.id, item.quantity - 1)}
                         aria-label="Decrease quantity"
                       >
                         &minus;
                       </button>
-                      <span className={styles.qtyValue}>{item.quantity}kg</span>
+                      <span className="min-w-[32px] text-center text-xs font-bold">{item.quantity}kg</span>
                       <button
-                        className={styles.qtyBtn}
+                        className="w-5 h-5 flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-white cursor-pointer"
                         onClick={() => onUpdateQuantity(item.fish.id, item.quantity + 1)}
                         aria-label="Increase quantity"
                       >
@@ -149,11 +135,11 @@ export default function CartDrawer({
                       </button>
                     </div>
 
-                    <div style={{ textAlign: 'right' }}>
-                      <div className={styles.itemPrice}>
+                    <div className="text-right">
+                      <div className="text-sm font-bold text-[var(--text-primary)]">
                         ${(item.fish.pricePerKg * item.quantity).toFixed(2)}
                       </div>
-                      <span className={styles.itemPricePerKg}>
+                      <span className="text-[10px] text-[var(--text-secondary)]">
                         ${item.fish.pricePerKg.toFixed(2)}/kg
                       </span>
                     </div>
@@ -165,33 +151,31 @@ export default function CartDrawer({
         </div>
 
         {cartItems.length > 0 && (
-          <div className={styles.footer}>
-            <div className={styles.summaryRow}>
+          <div className="p-5 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(5,12,26,0.4)] space-y-3">
+            <div className="flex justify-between text-xs text-[var(--text-secondary)]">
               <span>Total Sourced Weight:</span>
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                {totalWeight} kg
-              </span>
+              <span className="font-semibold text-[var(--text-primary)]">{totalWeight} kg</span>
             </div>
-            <div className={styles.summaryRow}>
+            <div className="flex justify-between text-xs text-[var(--text-secondary)]">
               <span>Logistics & Handling:</span>
-              <span style={{ color: 'var(--accent-success)' }}>Complimentary</span>
+              <span className="text-[var(--accent-success)] font-semibold">Complimentary</span>
             </div>
-            <div className={styles.totalRow}>
-              <span>Estimated Total:</span>
-              <span style={{ color: 'var(--accent-cyan)', textShadow: '0 0 10px rgba(0,242,254,0.2)' }}>
+            <div className="flex justify-between items-baseline pt-2 border-t border-[rgba(255,255,255,0.06)]">
+              <span className="text-sm font-medium">Estimated Total:</span>
+              <span className="text-xl font-bold text-[var(--accent-cyan)]" style={{ textShadow: '0 0 10px rgba(0,242,254,0.2)' }}>
                 ${totalPrice.toFixed(2)}
               </span>
             </div>
-            <button
-              className="btn-primary checkoutBtn"
+            <Button
+              className="w-full h-11 bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-[#030812] font-bold text-sm rounded-lg hover:brightness-110 shadow-md transition-all duration-200 mt-2"
               onClick={onCheckout}
               id="proceed-checkout-btn"
             >
               Proceed to Reserve Catch
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }

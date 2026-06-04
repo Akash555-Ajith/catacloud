@@ -13,6 +13,7 @@ import {
 } from '@/utils/store';
 import { FishItem } from '@/data/fishData';
 import styles from './proposal.module.css';
+import { toast } from 'sonner';
 
 export default function ProposalDetailPage() {
   const pathname = usePathname();
@@ -63,6 +64,8 @@ export default function ProposalDetailPage() {
       getProposalById(proposalId).then((propData) => {
         if (propData) {
           setProposal(propData);
+          setAddress(propData.marketName || '');
+          setQuantity(propData.volumeThreshold && propData.volumeThreshold > 0 ? propData.volumeThreshold : 10);
           getProducts().then((products) => {
             const fishData = products.find((p) => p.id === propData.fishId);
             if (fishData) {
@@ -123,10 +126,20 @@ export default function ProposalDetailPage() {
 
   // Cost calculations
   const unit = fish?.unit || 'kg';
-  const hasVolumeDiscount = !!(proposal.volumeThreshold && proposal.volumeThreshold > 0 && proposal.volumeDiscount && proposal.volumeDiscount > 0);
-  const isVolumeApplied = hasVolumeDiscount && quantity >= proposal.volumeThreshold;
-  
-  const activeDiscount = proposal.discount + (isVolumeApplied ? proposal.volumeDiscount : 0);
+  // Calculate dynamic volume discount based on client general rules:
+  // 10-100 kg: 10% discount
+  // 100-200 kg: 20% discount
+  // > 200 kg: 25% discount
+  let selectedVolumeDiscountPercent = 0;
+  if (quantity >= 10 && quantity <= 100) {
+    selectedVolumeDiscountPercent = 10;
+  } else if (quantity > 100 && quantity <= 200) {
+    selectedVolumeDiscountPercent = 20;
+  } else if (quantity > 200) {
+    selectedVolumeDiscountPercent = 25;
+  }
+
+  const activeDiscount = proposal.discount + selectedVolumeDiscountPercent;
   const finalUnitPrice = proposal.customPrice * (1 - activeDiscount / 100);
   
   const sourcingSubtotal = finalUnitPrice * quantity;
@@ -168,7 +181,9 @@ export default function ProposalDetailPage() {
       setSuccessOrder(newOrder);
     } catch (err) {
       console.error('Failed to submit order to database:', err);
-      alert('Logistics reservation failed. Please try again.');
+      toast.error('Reservation Failed', {
+        description: `Logistics reservation failed at ${new Date().toLocaleString()}. Please try again.`
+      });
     } finally {
       setLoading(false);
     }
@@ -269,16 +284,16 @@ export default function ProposalDetailPage() {
                     <span>-{proposal.discount}% (${(proposal.customPrice * (proposal.discount / 100)).toFixed(2)} / {unit})</span>
                   </div>
                 )}
-                {hasVolumeDiscount && (
-                  <div className={styles.priceRow} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    <span>Bulk Sourcing Discount Tier:</span>
-                    <span>Buy {proposal.volumeThreshold} {unit}+ to get {proposal.volumeDiscount}% off unit price</span>
-                  </div>
-                )}
-                {isVolumeApplied && (
+                <div className={styles.priceRow} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <span>Volume Sourcing Policy:</span>
+                  <span style={{ textAlign: 'right' }}>
+                    10-100 {unit} (10%) &bull; 100-200 {unit} (20%) &bull; &gt; 200 {unit} (25%)
+                  </span>
+                </div>
+                {selectedVolumeDiscountPercent > 0 && (
                   <div className={styles.priceRow} style={{ color: 'var(--accent-success)', fontWeight: 600 }}>
-                    <span>Volume Discount Applied:</span>
-                    <span>-{proposal.volumeDiscount}% (-${(proposal.customPrice * (proposal.volumeDiscount / 100)).toFixed(2)} / {unit})</span>
+                    <span>Volume Discount Applied ({selectedVolumeDiscountPercent}%):</span>
+                    <span>-${(proposal.customPrice * (selectedVolumeDiscountPercent / 100)).toFixed(2)} / {unit}</span>
                   </div>
                 )}
                 {proposal.shippingCharge > 0 && (
@@ -332,18 +347,18 @@ export default function ProposalDetailPage() {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="sourcing-qty">Required Quantity ({unit})</label>
+                  <label className={styles.label} htmlFor="sourcing-qty">Required Quantity ({unit}) [Configured by Admin]</label>
                   <input
                     type="number"
                     id="sourcing-qty"
                     min="1"
                     value={quantity}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
                     className="luxury-input"
                     required
-                    disabled={loading}
+                    disabled={true}
+                    style={{ background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)', border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
                   />
-                  {isVolumeApplied && (
+                  {selectedVolumeDiscountPercent > 0 && (
                     <div style={{
                       marginTop: '8px',
                       display: 'flex',
@@ -361,21 +376,20 @@ export default function ProposalDetailPage() {
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
-                      Bulk Sourcing Tier Unlocked! Additional {proposal.volumeDiscount}% Discount Applied.
+                      Bulk Sourcing Tier Unlocked! Additional {selectedVolumeDiscountPercent}% Discount Applied.
                     </div>
                   )}
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="delivery-port">Port of Delivery Address</label>
+                  <label className={styles.label} htmlFor="delivery-port">Port of Delivery Address [Configured by Admin]</label>
                   <input
                     type="text"
                     id="delivery-port"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
                     className="luxury-input"
-                    placeholder=" Tsukiji Harbour, Kitchen 5A"
                     required
-                    disabled={loading}
+                    disabled={true}
+                    style={{ background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)', border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
                   />
                   {etaResult && address && (
                     <div style={{
@@ -412,11 +426,10 @@ export default function ProposalDetailPage() {
                     type="date"
                     id="delivery-date"
                     value={deliveryDate}
-                    min={etaResult?.targetDateString || ''}
-                    onChange={(e) => setDeliveryDate(e.target.value)}
                     className="luxury-input"
                     required
-                    disabled={loading}
+                    disabled={true}
+                    style={{ background: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-muted)', border: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'not-allowed' }}
                   />
                 </div>
 

@@ -22,12 +22,14 @@ import {
 } from '@/utils/store';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
+import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<{ email: string; name: string; role: 'user' | 'admin' } | null>(null);
+  const [user, setUser] = useState<{ email: string; name: string; role: 'user' | 'admin'; avatar?: string } | null>(null);
 
   // Data states
   const [products, setProducts] = useState<FishItem[]>([]);
@@ -36,19 +38,11 @@ export default function DashboardPage() {
   const [customCatalogs, setCustomCatalogs] = useState<CustomCatalog[]>([]);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'proposals' | 'catalogs'>('orders');
-
-  //  // Sourcing Proposal form states
-  const [propMarket, setPropMarket] = useState('');
-  const [propFishId, setPropFishId] = useState('');
-  const [propPrice, setPropPrice] = useState(0);
-  const [propDiscount, setPropDiscount] = useState(0);
-  const [propShipping, setPropShipping] = useState(0);
-  const [propNotes, setPropNotes] = useState('');
-  const [propVolumeThreshold, setPropVolumeThreshold] = useState(0);
-  const [propVolumeDiscount, setPropVolumeDiscount] = useState(0);
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs'>('orders');
 
   // Custom Catalogue Form Fields
+  const [catSearchQuery, setCatSearchQuery] = useState('');
+  const [catSelectedCategory, setCatSelectedCategory] = useState('All');
   const [catMarket, setCatMarket] = useState('');
   const [catNotes, setCatNotes] = useState('');
   const [catDiscount, setCatDiscount] = useState<number>(0);
@@ -77,34 +71,47 @@ export default function DashboardPage() {
   const [formPrep, setFormPrep] = useState('');
   const [formDifficulty, setFormDifficulty] = useState<'Easy' | 'Medium' | 'Expert'>('Easy');
 
-  // Check login status & load data
   useEffect(() => {
-    const storedUser = localStorage.getItem('bluefine_user');
-    if (!storedUser) {
-      router.push('/login');
-    } else {
-      try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        setIsAuthenticated(true);
-        
-        // Load data asynchronously
-        Promise.all([
-          getProducts(),
-          getOrders(),
-          getProposals(),
-          getCustomCatalogs()
-        ]).then(([prods, ords, props, cats]) => {
-          setProducts(prods);
-          setOrders(ords);
-          setProposals(props);
-          setCustomCatalogs(cats);
-        });
-      } catch {
+    const loadUser = () => {
+      const storedUser = localStorage.getItem('bluefine_user');
+      if (!storedUser) {
         router.push('/login');
+      } else {
+        try {
+          const parsed = JSON.parse(storedUser);
+          setUser(parsed);
+          setIsAuthenticated(true);
+        } catch {
+          router.push('/login');
+        }
       }
+    };
+
+    loadUser();
+    window.addEventListener('storage', loadUser);
+    window.addEventListener('user-profile-updated', loadUser);
+
+    // Load data asynchronously
+    const storedUser = localStorage.getItem('bluefine_user');
+    if (storedUser) {
+      Promise.all([
+        getProducts(),
+        getOrders(),
+        getProposals(),
+        getCustomCatalogs()
+      ]).then(([prods, ords, props, cats]) => {
+        setProducts(prods);
+        setOrders(ords);
+        setProposals(props);
+        setCustomCatalogs(cats);
+      });
     }
     setMounted(true);
+
+    return () => {
+      window.removeEventListener('storage', loadUser);
+      window.removeEventListener('user-profile-updated', loadUser);
+    };
   }, [router]);
 
   // Initialize custom catalog overrides when products are loaded
@@ -118,7 +125,7 @@ export default function DashboardPage() {
           discount: 0,
           threshold: 0,
           volumeDiscount: 0,
-          included: true
+          included: false
         };
       });
       setCatOverrides(initialOverrides);
@@ -260,68 +267,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleFishSelect = (id: string) => {
-    setPropFishId(id);
-    const selected = products.find((p) => p.id === id);
-    if (selected) {
-      setPropPrice(selected.pricePerKg);
-    }
-  };
 
-  const handleProposalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!propFishId || !propMarket) return;
-
-    const newProposal: Proposal = {
-      id: `quote-${Math.floor(100000 + Math.random() * 900000)}`,
-      marketName: propMarket,
-      fishId: propFishId,
-      customPrice: Number(propPrice),
-      discount: Number(propDiscount),
-      shippingCharge: Number(propShipping),
-      notes: propNotes,
-      createdDate: new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }),
-      volumeThreshold: Number(propVolumeThreshold),
-      volumeDiscount: Number(propVolumeDiscount)
-    };
-
-    await addProposal(newProposal);
-    const props = await getProposals();
-    setProposals(props);
-
-    // Reset form
-    setPropMarket('');
-    setPropFishId('');
-    setPropPrice(0);
-    setPropDiscount(0);
-    setPropShipping(0);
-    setPropNotes('');
-    setPropVolumeThreshold(0);
-    setPropVolumeDiscount(0);
-    alert('Custom proposal generated successfully!');
-  };
-
-  const handleDeleteProposal = async (id: string) => {
-    if (confirm('Are you sure you want to delete this custom proposal link?')) {
-      await deleteProposal(id);
-      const props = await getProposals();
-      setProposals(props);
-    }
-  };
-
-  const handleCopyLink = (id: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const link = `${origin}/proposal/${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-      alert(`Proposal link copied to clipboard:\n${link}`);
-    }).catch(() => {
-      alert(`Could not copy link. Manually copy: ${link}`);
-    });
-  };
 
 
 
@@ -383,6 +329,14 @@ export default function DashboardPage() {
       };
     });
 
+    const hasIncluded = Object.values(overridesToSave).some((o) => o.included);
+    if (!hasIncluded) {
+      toast.error('Selection Required', {
+        description: 'Please include at least one specimen in the custom catalogue.'
+      });
+      return;
+    }
+
     const newCatalog: CustomCatalog = {
       id: `cat-proposal-${Math.floor(100000 + Math.random() * 900000)}`,
       marketName: catMarket,
@@ -414,11 +368,13 @@ export default function DashboardPage() {
         discount: 0,
         threshold: 0,
         volumeDiscount: 0,
-        included: true
+        included: false
       };
     });
     setCatOverrides(resetOverrides);
-    alert('Custom catalogue link generated successfully!');
+    toast.success('Catalogue Generated', {
+      description: `Generated successfully on ${new Date().toLocaleString()}`
+    });
   };
 
   const handleDeleteCustomCatalog = async (id: string) => {
@@ -433,9 +389,21 @@ export default function DashboardPage() {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const link = `${origin}/catalogue/${id}`;
     navigator.clipboard.writeText(link).then(() => {
-      alert(`Catalogue proposal link copied to clipboard:\n${link}`);
+      toast.success('Link Copied to Clipboard', {
+        description: `Proposal link copied on ${new Date().toLocaleString()}`,
+        action: {
+          label: 'Open Link',
+          onClick: () => window.open(link, '_blank')
+        }
+      });
     }).catch(() => {
-      alert(`Could not copy link. Manually copy: ${link}`);
+      toast.error('Copy Failed', {
+        description: `Could not copy automatically. Click to open: ${link}`,
+        action: {
+          label: 'Open Link',
+          onClick: () => window.open(link, '_blank')
+        }
+      });
     });
   };
 
@@ -460,8 +428,7 @@ export default function DashboardPage() {
   const adminActiveOrders = orders.filter((o) => o.status !== 'Delivered').length;
   const adminTotalRevenue = orders.reduce((acc, o) => acc + o.totalPrice, 0);
 
-  const selectedProductForProposal = products.find((p) => p.id === propFishId);
-  const selectedProposalUnit = selectedProductForProposal ? (selectedProductForProposal.unit || 'kg') : 'kg';
+
 
   return (
     <div className={styles.pageContainer}>
@@ -523,18 +490,11 @@ export default function DashboardPage() {
                 Catalogue Inventory ({products.length})
               </button>
               <button 
-                onClick={() => setAdminTab('proposals')}
-                className={`${styles.tabBtn} ${adminTab === 'proposals' ? styles.tabBtnActive : ''}`}
-                id="admin-tab-proposals"
-              >
-                Single Specimen Proposals ({proposals.length})
-              </button>
-              <button 
                 onClick={() => setAdminTab('catalogs')}
                 className={`${styles.tabBtn} ${adminTab === 'catalogs' ? styles.tabBtnActive : ''}`}
                 id="admin-tab-catalogs"
               >
-                Full Catalogue Proposals ({customCatalogs.length})
+                Custom Catalogue Proposals ({customCatalogs.length})
               </button>
             </div>
 
@@ -740,187 +700,10 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {/* Proposals Section */}
-            {adminTab === 'proposals' && (
-              <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>Custom Market Proposal Generator</h2>
-                
-                {/* Proposal generator form */}
-                <form onSubmit={handleProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
-                  <div className={styles.formGrid}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Select Specimen</label>
-                      <select
-                        value={propFishId}
-                        onChange={(e) => handleFishSelect(e.target.value)}
-                        className="luxury-input"
-                        style={{ appearance: 'none', cursor: 'pointer' }}
-                        required
-                      >
-                        <option value="">-- Choose Specimen --</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (Base: ${p.pricePerKg.toFixed(2)}/kg)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Target Market / Client Name</label>
-                      <input
-                        type="text"
-                        value={propMarket}
-                        onChange={(e) => setPropMarket(e.target.value)}
-                        className="luxury-input"
-                        placeholder="e.g. Tsukiji Premium Buyer"
-                        required
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Custom Price ($ / {selectedProposalUnit})</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={propPrice}
-                        onChange={(e) => setPropPrice(Number(e.target.value))}
-                        className="luxury-input"
-                        required
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Discount (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={propDiscount}
-                        onChange={(e) => setPropDiscount(Number(e.target.value))}
-                        className="luxury-input"
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Volume Discount Threshold ({selectedProposalUnit})</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={propVolumeThreshold}
-                        onChange={(e) => setPropVolumeThreshold(Number(e.target.value))}
-                        className="luxury-input"
-                        placeholder="e.g. 10 (triggers discount)"
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Volume Discount (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={propVolumeDiscount}
-                        onChange={(e) => setPropVolumeDiscount(Number(e.target.value))}
-                        className="luxury-input"
-                        placeholder="e.g. 10"
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Port Logistics / Shipping Fee ($)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={propShipping}
-                        onChange={(e) => setPropShipping(Number(e.target.value))}
-                        className="luxury-input"
-                      />
-                    </div>
-                    <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-                      <label className={styles.label}>Proposal Notes / Custom Terms</label>
-                      <textarea
-                        value={propNotes}
-                        onChange={(e) => setPropNotes(e.target.value)}
-                        className="luxury-input"
-                        style={{ minHeight: '60px', resize: 'vertical' }}
-                        placeholder="Add special discounts, shipping schedules, or custom terms..."
-                      />
-                    </div>
-                  </div>
-                  <button type="submit" className="btn-primary" style={{ marginTop: '16px' }} id="generate-proposal-btn">
-                    Generate Custom Proposal Link
-                  </button>
-                </form>
-
-                {/* List of generated links */}
-                <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '20px' }}>
-                  Active Proposal Links
-                </h3>
-                {proposals.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <p>No custom proposals generated yet. Fill the form above to generate links.</p>
-                  </div>
-                ) : (
-                  <div className={styles.productsTableWrapper}>
-                    <table className={styles.productsTable}>
-                      <thead>
-                        <tr>
-                          <th>Target Market</th>
-                          <th>Specimen</th>
-                          <th>Custom Price</th>
-                          <th>Discount</th>
-                          <th>Logistics Fee</th>
-                          <th>Created</th>
-                          <th style={{ textAlign: 'center' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {proposals.map((prop) => {
-                          const fish = products.find((p) => p.id === prop.fishId);
-                          return (
-                            <tr key={prop.id}>
-                              <td>
-                                <strong style={{ color: 'var(--text-primary)' }}>{prop.marketName}</strong>
-                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {prop.id}</span>
-                              </td>
-                              <td>{fish ? fish.name : 'Unknown Specimen'}</td>
-                              <td style={{ fontWeight: 600 }}>${prop.customPrice.toFixed(2)}/kg</td>
-                              <td style={{ color: prop.discount > 0 ? 'var(--accent-gold)' : 'var(--text-secondary)' }}>
-                                {prop.discount > 0 ? `${prop.discount}% Off` : 'None'}
-                              </td>
-                              <td>${prop.shippingCharge.toFixed(2)}</td>
-                              <td>{prop.createdDate}</td>
-                              <td>
-                                <div className={styles.actionButtons} style={{ justifyContent: 'center' }}>
-                                  <button
-                                    onClick={() => handleCopyLink(prop.id)}
-                                    className="btn-primary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
-                                    title="Copy Shareable Link"
-                                  >
-                                    Copy Link
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteProposal(prop.id)}
-                                    className={`${styles.btnIcon} ${styles.btnIconDelete}`}
-                                    title="Delete Proposal"
-                                  >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <polyline points="3 6 5 6 21 6" />
-                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            )}
-
             {/* Custom Catalogues Section */}
             {adminTab === 'catalogs' && (
               <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>Custom Full Catalogue Generator</h2>
+                <h2 className={styles.sectionTitle}>Custom Catalogue Proposal Generator</h2>
 
                 {/* Catalogue generator form */}
                 <form onSubmit={handleCatProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
@@ -948,33 +731,219 @@ export default function DashboardPage() {
                     </div>
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Global Sourcing Discount (%)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={catDiscount}
-                        onChange={(e) => setCatDiscount(Number(e.target.value))}
-                        className="luxury-input"
-                        placeholder="0"
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCatDiscount(prev => Math.max(0, prev - 1))}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--glass-border)',
+                            borderRight: 'none',
+                            borderRadius: '8px 0 0 8px',
+                            color: 'var(--text-secondary)',
+                            fontSize: '1.2rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={catDiscount}
+                          onChange={(e) => setCatDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                          className="luxury-input"
+                          style={{
+                            borderRadius: '0',
+                            textAlign: 'center',
+                            height: '40px',
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            flex: 1
+                          }}
+                          placeholder="0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCatDiscount(prev => Math.min(100, prev + 1))}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--glass-border)',
+                            borderLeft: 'none',
+                            borderRadius: '0 8px 8px 0',
+                            color: 'var(--text-secondary)',
+                            fontSize: '1.2rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.formGroup}>
                       <label className={styles.label}>Global Logistics / Delivery Charge ($)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={catDelivery}
-                        onChange={(e) => setCatDelivery(Number(e.target.value))}
-                        className="luxury-input"
-                        placeholder="0.00"
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCatDelivery(prev => Math.max(0, Number((prev - 5).toFixed(2))))}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--glass-border)',
+                            borderRight: 'none',
+                            borderRadius: '8px 0 0 8px',
+                            color: 'var(--text-secondary)',
+                            fontSize: '1.2rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={catDelivery}
+                          onChange={(e) => setCatDelivery(Math.max(0, Number(e.target.value)))}
+                          className="luxury-input"
+                          style={{
+                            borderRadius: '0',
+                            textAlign: 'center',
+                            height: '40px',
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            flex: 1
+                          }}
+                          placeholder="0.00"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCatDelivery(prev => Math.max(0, Number((prev + 5).toFixed(2))))}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid var(--glass-border)',
+                            borderLeft: 'none',
+                            borderRadius: '0 8px 8px 0',
+                            color: 'var(--text-secondary)',
+                            fontSize: '1.2rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                   {/* Overrides Table */}
-                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: '24px 0 12px' }}>
-                    Configure Specimen Overrides
-                  </h3>
+                   {/* Overrides Table Header & Search Filter Controls */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', margin: '24px 0 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                      <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: 0 }}>
+                        Configure Specimen Overrides
+                      </h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          Selected: <strong style={{ color: 'var(--accent-cyan)' }}>{Object.values(catOverrides).filter(o => o.included).length}</strong> / {products.length} specimens
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const bulk: typeof catOverrides = {};
+                            products.forEach(p => {
+                              bulk[p.id] = {
+                                ...catOverrides[p.id],
+                                included: true
+                              };
+                            });
+                            setCatOverrides(bulk);
+                          }}
+                          className="btn-cyan"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(0, 242, 254, 0.05)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                          Add All
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const bulk: typeof catOverrides = {};
+                            products.forEach(p => {
+                              bulk[p.id] = {
+                                ...catOverrides[p.id],
+                                included: false
+                              };
+                            });
+                            setCatOverrides(bulk);
+                          }}
+                          className="btn-gold"
+                          style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(226, 183, 68, 0.05)', color: 'var(--accent-gold)', border: '1px solid rgba(226, 183, 68, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                        >
+                          Remove All
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Search & Category Filter Row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '8px' }}>
+                      <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+                        <input
+                          type="text"
+                          value={catSearchQuery}
+                          onChange={(e) => setCatSearchQuery(e.target.value)}
+                          className="luxury-input"
+                          style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '36px', fontSize: '0.85rem' }}
+                          placeholder="Search overrides by name, scientific name, or origin..."
+                          id="cat-override-search-input"
+                        />
+                        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.9rem' }}>🔍</span>
+                      </div>
+                      <div style={{ minWidth: '180px' }}>
+                        <select
+                          value={catSelectedCategory}
+                          onChange={(e) => setCatSelectedCategory(e.target.value)}
+                          className="luxury-input"
+                          style={{ height: '36px', paddingTop: '0px', paddingBottom: '0px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.85rem', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
+                        >
+                          <option value="All">All Categories</option>
+                          <option value="Saltwater">Saltwater</option>
+                          <option value="Freshwater">Freshwater</option>
+                          <option value="Shellfish">Shellfish</option>
+                          <option value="Premium Import">Premium Import</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                   <div className={styles.productsTableWrapper} style={{ marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
                     <table className={styles.productsTable}>
                       <thead>
@@ -984,14 +953,20 @@ export default function DashboardPage() {
                           <th>Standard Price</th>
                           <th>Custom Proposal Price ($)</th>
                           <th>Proposal Discount (%)</th>
-                          <th>Volume Threshold</th>
-                          <th>Volume Discount (%)</th>
                           <th>Allocated Stock</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((p) => {
-                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, threshold: 0, volumeDiscount: 0, included: true };
+                        {products
+                          .filter((p) => {
+                            const matchesCategory = catSelectedCategory === 'All' || p.category === catSelectedCategory;
+                            const matchesSearch = p.name.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
+                              p.scientificName.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
+                              p.origin.toLowerCase().includes(catSearchQuery.toLowerCase());
+                            return matchesCategory && matchesSearch;
+                          })
+                          .map((p) => {
+                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, threshold: 0, volumeDiscount: 0, included: false };
                           return (
                             <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
                               <td style={{ textAlign: 'center' }}>
@@ -1033,30 +1008,6 @@ export default function DashboardPage() {
                                   style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
                                   disabled={!override.included}
                                   required={override.included}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={override.threshold || 0}
-                                  onChange={(e) => handleOverrideThresholdChange(p.id, Number(e.target.value))}
-                                  className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
-                                  disabled={!override.included}
-                                  placeholder={p.unit || 'kg'}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={override.volumeDiscount || 0}
-                                  onChange={(e) => handleOverrideVolumeDiscountChange(p.id, Number(e.target.value))}
-                                  className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
-                                  disabled={!override.included}
                                 />
                               </td>
                               <td>
@@ -1277,9 +1228,14 @@ export default function DashboardPage() {
 
               {/* Right Column: Profile details */}
               <section className={`${styles.profileCard} glassmorphism`}>
-                <div className={styles.profileAvatar}>
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-[var(--accent-cyan)] to-[var(--accent-blue)] shadow-[0_0_24px_rgba(56,189,248,0.4)] select-none">
+                  {user.avatar && (
+                    <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />
+                  )}
+                  <AvatarFallback className="text-3xl font-extrabold text-[#030812] bg-transparent">
+                    {user.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <h3 className={styles.profileName}>{user.name}</h3>
                 <span className={styles.profileEmail}>{user.email}</span>
 
