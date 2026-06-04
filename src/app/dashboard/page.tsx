@@ -144,14 +144,17 @@ export default function DashboardPage() {
 
       loadStoresPromise.then(async (stores) => {
         let finalStores = [...stores];
-        if (finalStores.length === 0 && user.role === 'admin') {
-          const defaultAdminStore: StoreConfig = {
-            ...SEAFOOD_PRESET,
-            id: 'bluefine',
-            ownerEmail: user.email.toLowerCase()
-          };
-          await saveStoreConfig('bluefine', defaultAdminStore);
-          finalStores = [defaultAdminStore];
+        if (user.role === 'admin') {
+          const hasBluefine = finalStores.some(s => s.id === 'bluefine');
+          if (!hasBluefine) {
+            const defaultAdminStore: StoreConfig = {
+              ...SEAFOOD_PRESET,
+              id: 'bluefine',
+              ownerEmail: user.email.toLowerCase()
+            };
+            await saveStoreConfig('bluefine', defaultAdminStore);
+            finalStores.unshift(defaultAdminStore);
+          }
         }
 
         setUserStores(finalStores);
