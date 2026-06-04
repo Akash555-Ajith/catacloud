@@ -194,7 +194,8 @@ export default function DashboardPage() {
           setActiveStoreId(initialStoreId);
           localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
         } else {
-          setActiveStoreId('');
+          setActiveStoreId('bluefine');
+          localStorage.setItem(`bluefine_active_store_id_${user.email}`, 'bluefine');
         }
       });
     }
@@ -735,7 +736,7 @@ export default function DashboardPage() {
 
         {/* Display Seller Dashboard or Onboarding Form */}
         {dashboardMode === 'seller' ? (
-          userStores.length === 0 || showStoreCreator ? (
+          showStoreCreator ? (
             /* Onboarding Store Creator Wizard */
             <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', width: '100%' }}>
               <div className="glassmorphism" style={{ maxWidth: '600px', width: '100%', padding: '32px', borderRadius: '16px', border: '1px solid var(--accent-gold)' }}>
