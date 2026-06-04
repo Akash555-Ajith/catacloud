@@ -80,7 +80,15 @@ export async function getProducts(): Promise<FishItem[]> {
       // Automatic Seeding: Seed dynamic products on first run if database is empty
       if (!data || data.length === 0) {
         const { error: seedError } = await supabase.from('products').insert(seed);
-        if (seedError) console.warn('Failed to seed products in Supabase:', seedError);
+        if (seedError) {
+          if (seedError.code === 'PGRST204') {
+            console.warn('Supabase products table is missing the "unit" column. Retrying seed without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
+            const { error: retryError } = await supabase.from('products').insert(seed.map(({ unit, ...rest }) => rest));
+            if (retryError) console.error('Failed to retry seed:', retryError);
+          } else {
+            console.warn('Failed to seed products in Supabase:', seedError);
+          }
+        }
         return seed;
       }
       return data as FishItem[];
@@ -106,7 +114,15 @@ export async function saveProducts(products: FishItem[]): Promise<void> {
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase.from('products').upsert(products);
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          console.warn('Supabase products table is missing the "unit" column. Retrying upsert without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
+          const { error: retryError } = await supabase.from('products').upsert(products.map(({ unit, ...rest }) => rest));
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       return;
     } catch (err) {
       console.warn('Error saving products to Supabase:', err);
@@ -121,7 +137,16 @@ export async function addProduct(product: FishItem): Promise<void> {
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase.from('products').insert(product);
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          console.warn('Supabase products table is missing the "unit" column. Retrying insert without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
+          const { unit, ...rest } = product;
+          const { error: retryError } = await supabase.from('products').insert(rest);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       return;
     } catch (err) {
       console.warn('Error adding product to Supabase:', err);
@@ -140,7 +165,19 @@ export async function updateProduct(updatedProduct: FishItem): Promise<void> {
         .from('products')
         .update(updatedProduct)
         .eq('id', updatedProduct.id);
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST204') {
+          console.warn('Supabase products table is missing the "unit" column. Retrying update without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
+          const { unit, ...rest } = updatedProduct;
+          const { error: retryError } = await supabase
+            .from('products')
+            .update(rest)
+            .eq('id', updatedProduct.id);
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       return;
     } catch (err) {
       console.warn('Error updating product in Supabase:', err);
@@ -556,7 +593,20 @@ export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic'): 
       await supabase.from('products').delete().neq('id', 'dummy-unmatched-id');
       // Re-seed with configuration theme
       const { error } = await supabase.from('products').insert(seed);
-      if (!error) {
+      if (error) {
+        if (error.code === 'PGRST204') {
+          console.warn('Supabase products table is missing the "unit" column. Retrying reseed without it. To fix this permanently, run this in Supabase SQL Editor: ALTER TABLE products ADD COLUMN unit text;');
+          const { error: retryError } = await supabase.from('products').insert(seed.map(({ unit, ...rest }) => rest));
+          if (retryError) {
+            console.error('Failed to retry reseed:', retryError);
+          } else {
+            window.dispatchEvent(new Event('products-updated'));
+            return seed;
+          }
+        } else {
+          console.error('Failed to reseed products in Supabase:', error);
+        }
+      } else {
         window.dispatchEvent(new Event('products-updated'));
         return seed;
       }
