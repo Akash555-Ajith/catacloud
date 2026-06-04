@@ -51,7 +51,8 @@ export default function DashboardPage() {
   // Onboarding Form States
   const [onboardName, setOnboardName] = useState('');
   const [onboardTagline, setOnboardTagline] = useState('');
-  const [onboardType, setOnboardType] = useState<'seafood' | 'egg' | 'generic'>('seafood');
+  const [onboardNiche, setOnboardNiche] = useState('');
+  const [onboardUnit, setOnboardUnit] = useState('pcs');
   const [onboardSubmitting, setOnboardSubmitting] = useState(false);
   const [showStoreCreator, setShowStoreCreator] = useState(false);
 
@@ -251,7 +252,7 @@ export default function DashboardPage() {
   // Create store helper
   const handleCreateStore = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!onboardName.trim() || !onboardTagline.trim()) return;
+    if (!onboardName.trim() || !onboardTagline.trim() || !onboardNiche.trim() || !onboardUnit.trim()) return;
 
     setOnboardSubmitting(true);
     
@@ -265,11 +266,18 @@ export default function DashboardPage() {
     // Make sure store slug is unique or append a random number
     const finalStoreId = `${storeSlug}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const basePreset = onboardType === 'egg' 
+    const cleanNiche = onboardNiche.toLowerCase();
+    const resolvedType = cleanNiche.includes('seafood') || cleanNiche.includes('fish')
+      ? 'seafood'
+      : cleanNiche.includes('egg')
+        ? 'egg'
+        : 'generic';
+
+    const basePreset = resolvedType === 'egg' 
       ? EGG_PRESET 
-      : onboardType === 'generic' 
-        ? GENERIC_PRESET 
-        : SEAFOOD_PRESET;
+      : resolvedType === 'seafood' 
+        ? SEAFOOD_PRESET 
+        : GENERIC_PRESET;
 
     const newConfig: StoreConfig = {
       ...basePreset,
@@ -277,12 +285,16 @@ export default function DashboardPage() {
       ownerEmail: user.email.toLowerCase(),
       storeName: onboardName,
       storeTagline: onboardTagline,
-      storeType: onboardType
+      storeType: resolvedType,
+      unit: onboardUnit.trim(),
+      categories: resolvedType === 'generic' 
+        ? ['Featured', 'New Arrivals', 'Sale'] 
+        : basePreset.categories
     };
 
     try {
       await saveStoreConfig(finalStoreId, newConfig);
-      await reseedProducts(onboardType, finalStoreId);
+      await reseedProducts(resolvedType, finalStoreId);
       toast.success(`Store "${onboardName}" created successfully!`);
 
       // Reload owned stores
@@ -296,6 +308,8 @@ export default function DashboardPage() {
       // Reset forms & close wizard
       setOnboardName('');
       setOnboardTagline('');
+      setOnboardNiche('');
+      setOnboardUnit('pcs');
       setShowStoreCreator(false);
     } catch (err) {
       console.error(err);
@@ -708,55 +722,30 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
+                    <label className={styles.label} htmlFor="onboard-niche">Store Niche / Category Type</label>
+                    <input
+                      type="text"
+                      id="onboard-niche"
+                      value={onboardNiche}
+                      onChange={(e) => setOnboardNiche(e.target.value)}
+                      placeholder="e.g. Dairy, Electronics, Clothes, Seafood, Eggs"
+                      className="luxury-input"
+                      required
+                    />
+                  </div>
+
                   <div className={styles.formGroup} style={{ marginBottom: '24px' }}>
-                    <label className={styles.label}>Choose Catalog Preset Niche</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setOnboardType('seafood')}
-                        style={{
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: onboardType === 'seafood' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
-                          background: onboardType === 'seafood' ? 'rgba(0,242,254,0.1)' : 'transparent',
-                          color: onboardType === 'seafood' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        🐟 Seafood Catch
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setOnboardType('egg')}
-                        style={{
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: onboardType === 'egg' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
-                          background: onboardType === 'egg' ? 'rgba(0,242,254,0.1)' : 'transparent',
-                          color: onboardType === 'egg' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        🥚 Egg Farm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setOnboardType('generic')}
-                        style={{
-                          padding: '12px',
-                          borderRadius: '8px',
-                          border: onboardType === 'generic' ? '2px solid var(--accent-cyan)' : '1px solid rgba(255,255,255,0.1)',
-                          background: onboardType === 'generic' ? 'rgba(0,242,254,0.1)' : 'transparent',
-                          color: onboardType === 'generic' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        🍞 Bakery / Retail
-                      </button>
-                    </div>
+                    <label className={styles.label} htmlFor="onboard-unit">Primary Unit of Measurement</label>
+                    <input
+                      type="text"
+                      id="onboard-unit"
+                      value={onboardUnit}
+                      onChange={(e) => setOnboardUnit(e.target.value)}
+                      placeholder="e.g. pcs, kg, litre, box, dozen"
+                      className="luxury-input"
+                      required
+                    />
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px' }}>
