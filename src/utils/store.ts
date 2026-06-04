@@ -60,6 +60,77 @@ export interface Proposal {
 // Check if we are running in the browser
 const isBrowser = () => typeof window !== 'undefined';
 
+let columnsCache: Record<string, string[]> = {};
+
+async function getTableColumns(tableName: string): Promise<string[]> {
+  if (!isSupabaseConfigured) return [];
+  if (columnsCache[tableName]) return columnsCache[tableName];
+  try {
+    const { data, error } = await supabase.from(tableName).select('*').limit(1);
+    if (!error && data) {
+      const columns = data.length > 0 ? Object.keys(data[0]) : [];
+      columnsCache[tableName] = columns;
+      return columns;
+    }
+    // Check if table exists even if empty
+    const { error: idError } = await supabase.from(tableName).select('id').limit(1);
+    if (!idError) {
+      if (tableName === 'products') {
+        columnsCache[tableName] = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty'];
+      } else if (tableName === 'orders') {
+        columnsCache[tableName] = ['id', 'userEmail', 'userName', 'date', 'deliveryDate', 'address', 'items', 'totalPrice', 'status'];
+      } else if (tableName === 'custom_catalogs') {
+        columnsCache[tableName] = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides'];
+      } else if (tableName === 'proposals') {
+        columnsCache[tableName] = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount'];
+      } else {
+        columnsCache[tableName] = ['id'];
+      }
+      return columnsCache[tableName];
+    }
+  } catch (e) {
+    // ignore
+  }
+  columnsCache[tableName] = [];
+  return [];
+}
+
+async function isTableSupported(tableName: string): Promise<boolean> {
+  const columns = await getTableColumns(tableName);
+  return columns.length > 0;
+}
+
+async function isColumnSupported(tableName: string, columnName: string): Promise<boolean> {
+  const columns = await getTableColumns(tableName);
+  return columns.includes(columnName);
+}
+
+async function sanitizePayload(tableName: string, payload: any): Promise<any> {
+  const columns = await getTableColumns(tableName);
+  if (columns.length === 0) return payload;
+
+  const sanitizeItem = (item: any) => {
+    const sanitized: any = {};
+    for (const key of Object.keys(item)) {
+      let dbKey = key;
+      if (key === 'storeId') dbKey = 'store_id';
+      if (key === 'ownerEmail') dbKey = 'owner_email';
+      
+      if (columns.includes(dbKey)) {
+        sanitized[dbKey] = item[key];
+      } else if (columns.includes(key)) {
+        sanitized[key] = item[key];
+      }
+    }
+    return sanitized;
+  };
+
+  if (Array.isArray(payload)) {
+    return payload.map(sanitizeItem);
+  }
+  return sanitizeItem(payload);
+}
+
 function getPresetDefault(storeId: string): StoreConfig {
   const cleanId = storeId.toLowerCase();
   if (cleanId.includes('egg')) {
@@ -78,9 +149,12 @@ export function getSeedData(type: string): FishItem[] {
 }
 
 export async function getStoreConfig(storeId: string = 'bluefine'): Promise<StoreConfig> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('store_config')) {
     try {
-      const { data, error } = await supabase.from('store_config').select('*').eq('id', storeId).maybeSingle();
+      const query = supabase.from('store_config').select('*');
+      const { data, error } = await isColumnSupported('store_config', 'id')
+        ? await query.eq('id', storeId).maybeSingle()
+        : await query.limit(1).maybeSingle();
       if (!error && data) {
         return data as StoreConfig;
       }
@@ -104,9 +178,10 @@ export async function getStoreConfig(storeId: string = 'bluefine'): Promise<Stor
 
 export async function saveStoreConfig(storeId: string, config: StoreConfig): Promise<void> {
   const configWithId = { id: storeId, ...config };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('store_config')) {
     try {
-      await supabase.from('store_config').upsert(configWithId);
+      const sanitized = await sanitizePayload('store_config', configWithId);
+      await supabase.from('store_config').upsert(sanitized);
     } catch (e) {
       // fallback
     }
@@ -117,7 +192,7 @@ export async function saveStoreConfig(storeId: string, config: StoreConfig): Pro
 }
 
 export async function getStoresOwnedByUser(email: string): Promise<StoreConfig[]> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('store_config') && await isColumnSupported('store_config', 'owner_email')) {
     try {
       const { data, error } = await supabase
         .from('store_config')
@@ -148,13 +223,6 @@ export async function getStoresOwnedByUser(email: string): Promise<StoreConfig[]
       }
     }
   }
-  
-  // Add default 'bluefine' if email is admin@gmail.com and it doesn't exist
-  if (email.toLowerCase() === 'admin@gmail.com' && !stores.some(s => s.id === 'bluefine')) {
-    const defaultStore = { ...SEAFOOD_PRESET, id: 'bluefine', ownerEmail: 'admin@gmail.com' };
-    stores.unshift(defaultStore);
-  }
-  
   return stores;
 }
 
@@ -162,31 +230,29 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
   const config = await getStoreConfig(storeId);
   const seed = getSeedData(config.storeType);
 
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      const { data, error } = await supabase.from('products').select('*').eq('store_id', storeId);
-      if (error) throw error;
-      
-      // Automatic Seeding: Seed products on first run if database is empty for this store
-      if (!data || data.length === 0) {
-        const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
-        const { error: seedError } = await supabase.from('products').insert(seedWithStore);
-        if (seedError) {
-          if (seedError.code === 'PGRST204') {
-            console.warn('Supabase products table is missing "unit" or "store_id" column. Retrying seed without "unit".');
-            const { error: retryError } = await supabase
-              .from('products')
-              .insert(seedWithStore.map(({ unit, ...rest }) => rest));
-            if (retryError) console.error('Failed to retry seed:', retryError);
-          } else {
-            console.warn('Failed to seed products in Supabase:', seedError);
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('products').select('*');
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+          const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
+          const sanitized = await sanitizePayload('products', seedWithStore);
+          const { error: seedError } = await supabase.from('products').insert(sanitized);
+          if (seedError) {
+            console.warn('Failed to seed products in Supabase:', seedError.message);
           }
+          return seed;
         }
-        return seed;
+        return data as FishItem[];
       }
-      return data as FishItem[];
-    } catch (err) {
-      console.warn('Error fetching products from Supabase, falling back to LocalStorage:', err);
+    } catch (err: any) {
+      console.warn('Error fetching products from Supabase, falling back to LocalStorage:', err.message || err);
     }
   }
 
@@ -205,23 +271,17 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
 
 export async function saveProducts(products: FishItem[], storeId: string = 'bluefine'): Promise<void> {
   const productsWithStore = products.map(item => ({ ...item, store_id: storeId }));
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      const { error } = await supabase.from('products').upsert(productsWithStore);
-      if (error) {
-        if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing column. Retrying upsert without "unit".');
-          const { error: retryError } = await supabase
-            .from('products')
-            .upsert(productsWithStore.map(({ unit, ...rest }) => rest));
-          if (retryError) throw retryError;
-        } else {
-          throw error;
-        }
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('products', productsWithStore);
+        const { error } = await supabase.from('products').upsert(sanitized);
+        if (error) throw error;
+        return;
       }
-      return;
-    } catch (err) {
-      console.warn('Error saving products to Supabase:', err);
+    } catch (err: any) {
+      console.warn('Error saving products to Supabase:', err.message || err);
     }
   }
 
@@ -231,22 +291,17 @@ export async function saveProducts(products: FishItem[], storeId: string = 'blue
 
 export async function addProduct(product: FishItem, storeId: string = 'bluefine'): Promise<void> {
   const productWithStore = { ...product, store_id: storeId };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      const { error } = await supabase.from('products').insert(productWithStore);
-      if (error) {
-        if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing column. Retrying insert without "unit".');
-          const { unit, ...rest } = productWithStore;
-          const { error: retryError } = await supabase.from('products').insert(rest);
-          if (retryError) throw retryError;
-        } else {
-          throw error;
-        }
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('products', productWithStore);
+        const { error } = await supabase.from('products').insert(sanitized);
+        if (error) throw error;
+        return;
       }
-      return;
-    } catch (err) {
-      console.warn('Error adding product to Supabase:', err);
+    } catch (err: any) {
+      console.warn('Error adding product to Supabase:', err.message || err);
     }
   }
 
@@ -257,30 +312,20 @@ export async function addProduct(product: FishItem, storeId: string = 'bluefine'
 
 export async function updateProduct(updatedProduct: FishItem, storeId: string = 'bluefine'): Promise<void> {
   const productWithStore = { ...updatedProduct, store_id: storeId };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update(productWithStore)
-        .eq('id', updatedProduct.id)
-        .eq('store_id', storeId);
-      if (error) {
-        if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing column. Retrying update without "unit".');
-          const { unit, ...rest } = productWithStore;
-          const { error: retryError } = await supabase
-            .from('products')
-            .update(rest)
-            .eq('id', updatedProduct.id)
-            .eq('store_id', storeId);
-          if (retryError) throw retryError;
-        } else {
-          throw error;
-        }
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('products', productWithStore);
+        const query = supabase.from('products').update(sanitized).eq('id', updatedProduct.id);
+        const { error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return;
       }
-      return;
-    } catch (err) {
-      console.warn('Error updating product in Supabase:', err);
+    } catch (err: any) {
+      console.warn('Error updating product in Supabase:', err.message || err);
     }
   }
 
@@ -293,13 +338,19 @@ export async function updateProduct(updatedProduct: FishItem, storeId: string = 
 }
 
 export async function deleteProduct(id: string, storeId: string = 'bluefine'): Promise<void> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      const { error } = await supabase.from('products').delete().eq('id', id).eq('store_id', storeId);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error deleting product in Supabase:', err);
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('products').delete().eq('id', id);
+        const { error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error deleting product in Supabase:', err.message || err);
     }
   }
 
@@ -309,13 +360,19 @@ export async function deleteProduct(id: string, storeId: string = 'bluefine'): P
 }
 
 export async function getOrders(storeId: string = 'bluefine'): Promise<Order[]> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
-      const { data, error } = await supabase.from('orders').select('*').eq('store_id', storeId);
-      if (error) throw error;
-      return (data || []) as Order[];
-    } catch (err) {
-      console.warn('Error fetching orders from Supabase, falling back to LocalStorage:', err);
+      const hasStoreId = await isColumnSupported('orders', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('orders').select('*');
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return (data || []) as Order[];
+      }
+    } catch (err: any) {
+      console.warn('Error fetching orders from Supabase, falling back to LocalStorage:', err.message || err);
     }
   }
 
@@ -331,13 +388,17 @@ export async function getOrders(storeId: string = 'bluefine'): Promise<Order[]> 
 
 export async function saveOrders(orders: Order[], storeId: string = 'bluefine'): Promise<void> {
   const ordersWithStore = orders.map(item => ({ ...item, store_id: storeId }));
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
-      const { error } = await supabase.from('orders').upsert(ordersWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error saving orders to Supabase:', err);
+      const hasStoreId = await isColumnSupported('orders', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('orders', ordersWithStore);
+        const { error } = await supabase.from('orders').upsert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error saving orders to Supabase:', err.message || err);
     }
   }
 
@@ -347,13 +408,17 @@ export async function saveOrders(orders: Order[], storeId: string = 'bluefine'):
 
 export async function addOrder(order: Order, storeId: string = 'bluefine'): Promise<void> {
   const orderWithStore = { ...order, store_id: storeId };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
-      const { error } = await supabase.from('orders').insert(orderWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error adding order to Supabase:', err);
+      const hasStoreId = await isColumnSupported('orders', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('orders', orderWithStore);
+        const { error } = await supabase.from('orders').insert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error adding order to Supabase:', err.message || err);
     }
   }
 
@@ -363,7 +428,7 @@ export async function addOrder(order: Order, storeId: string = 'bluefine'): Prom
 }
 
 export async function getOrdersForBuyer(email: string): Promise<Order[]> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('orders') && await isColumnSupported('orders', 'userEmail')) {
     try {
       const { data, error } = await supabase.from('orders').select('*').eq('userEmail', email.toLowerCase());
       if (!error && data) {
@@ -401,17 +466,19 @@ export async function updateOrderStatus(
   status: 'Pending' | 'Dispatched' | 'Delivered', 
   storeId: string = 'bluefine'
 ): Promise<void> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
-      const { error } = await supabase
-        .from('orders')
-        .update({ status })
-        .eq('id', orderId)
-        .eq('store_id', storeId);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error updating order status in Supabase:', err);
+      const hasStoreId = await isColumnSupported('orders', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('orders').update({ status }).eq('id', orderId);
+        const { error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error updating order status in Supabase:', err.message || err);
     }
   }
 
@@ -424,13 +491,19 @@ export async function updateOrderStatus(
 }
 
 export async function getProposals(storeId: string = 'bluefine'): Promise<Proposal[]> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
-      const { data, error } = await supabase.from('proposals').select('*').eq('store_id', storeId);
-      if (error) throw error;
-      return (data || []) as Proposal[];
-    } catch (err) {
-      console.warn('Error fetching proposals from Supabase, falling back to LocalStorage:', err);
+      const hasStoreId = await isColumnSupported('proposals', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('proposals').select('*');
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return (data || []) as Proposal[];
+      }
+    } catch (err: any) {
+      console.warn('Error fetching proposals from Supabase, falling back to LocalStorage:', err.message || err);
     }
   }
 
@@ -446,13 +519,17 @@ export async function getProposals(storeId: string = 'bluefine'): Promise<Propos
 
 export async function saveProposals(proposals: Proposal[], storeId: string = 'bluefine'): Promise<void> {
   const proposalsWithStore = proposals.map(item => ({ ...item, store_id: storeId }));
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
-      const { error } = await supabase.from('proposals').upsert(proposalsWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error saving proposals to Supabase:', err);
+      const hasStoreId = await isColumnSupported('proposals', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('proposals', proposalsWithStore);
+        const { error } = await supabase.from('proposals').upsert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error saving proposals to Supabase:', err.message || err);
     }
   }
 
@@ -462,13 +539,17 @@ export async function saveProposals(proposals: Proposal[], storeId: string = 'bl
 
 export async function addProposal(proposal: Proposal, storeId: string = 'bluefine'): Promise<void> {
   const proposalWithStore = { ...proposal, store_id: storeId };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
-      const { error } = await supabase.from('proposals').insert(proposalWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error adding proposal to Supabase:', err);
+      const hasStoreId = await isColumnSupported('proposals', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('proposals', proposalWithStore);
+        const { error } = await supabase.from('proposals').insert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error adding proposal to Supabase:', err.message || err);
     }
   }
 
@@ -478,18 +559,19 @@ export async function addProposal(proposal: Proposal, storeId: string = 'bluefin
 }
 
 export async function getProposalById(id: string, storeId: string = 'bluefine'): Promise<Proposal | undefined> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
-      const { data, error } = await supabase
-        .from('proposals')
-        .select('*')
-        .eq('id', id)
-        .eq('store_id', storeId)
-        .maybeSingle();
-      if (error) throw error;
-      return data ? (data as Proposal) : undefined;
-    } catch (err) {
-      console.warn('Error fetching proposal by ID from Supabase:', err);
+      const hasStoreId = await isColumnSupported('proposals', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('proposals').select('*').eq('id', id);
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId).maybeSingle()
+          : await query.maybeSingle();
+        if (error) throw error;
+        return data ? (data as Proposal) : undefined;
+      }
+    } catch (err: any) {
+      console.warn('Error fetching proposal by ID from Supabase:', err.message || err);
     }
   }
 
@@ -498,13 +580,19 @@ export async function getProposalById(id: string, storeId: string = 'bluefine'):
 }
 
 export async function deleteProposal(id: string, storeId: string = 'bluefine'): Promise<void> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
-      const { error } = await supabase.from('proposals').delete().eq('id', id).eq('store_id', storeId);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error deleting proposal in Supabase:', err);
+      const hasStoreId = await isColumnSupported('proposals', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('proposals').delete().eq('id', id);
+        const { error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error deleting proposal in Supabase:', err.message || err);
     }
   }
 
@@ -514,13 +602,19 @@ export async function deleteProposal(id: string, storeId: string = 'bluefine'): 
 }
 
 export async function getCustomCatalogs(storeId: string = 'bluefine'): Promise<CustomCatalog[]> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
-      const { data, error } = await supabase.from('custom_catalogs').select('*').eq('store_id', storeId);
-      if (error) throw error;
-      return (data || []) as CustomCatalog[];
-    } catch (err) {
-      console.warn('Error fetching custom catalogs from Supabase, falling back to LocalStorage:', err);
+      const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('custom_catalogs').select('*');
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return (data || []) as CustomCatalog[];
+      }
+    } catch (err: any) {
+      console.warn('Error fetching custom catalogs from Supabase, falling back to LocalStorage:', err.message || err);
     }
   }
 
@@ -536,13 +630,17 @@ export async function getCustomCatalogs(storeId: string = 'bluefine'): Promise<C
 
 export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: string = 'bluefine'): Promise<void> {
   const catalogsWithStore = catalogs.map(item => ({ ...item, store_id: storeId }));
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
-      const { error } = await supabase.from('custom_catalogs').upsert(catalogsWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error saving custom catalogs to Supabase:', err);
+      const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('custom_catalogs', catalogsWithStore);
+        const { error } = await supabase.from('custom_catalogs').upsert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error saving custom catalogs to Supabase:', err.message || err);
     }
   }
 
@@ -552,13 +650,17 @@ export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: str
 
 export async function addCustomCatalog(catalog: CustomCatalog, storeId: string = 'bluefine'): Promise<void> {
   const catalogWithStore = { ...catalog, store_id: storeId };
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
-      const { error } = await supabase.from('custom_catalogs').insert(catalogWithStore);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error adding custom catalog to Supabase:', err);
+      const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const sanitized = await sanitizePayload('custom_catalogs', catalogWithStore);
+        const { error } = await supabase.from('custom_catalogs').insert(sanitized);
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error adding custom catalog to Supabase:', err.message || err);
     }
   }
 
@@ -568,18 +670,19 @@ export async function addCustomCatalog(catalog: CustomCatalog, storeId: string =
 }
 
 export async function getCustomCatalogById(id: string, storeId: string = 'bluefine'): Promise<CustomCatalog | undefined> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
-      const { data, error } = await supabase
-        .from('custom_catalogs')
-        .select('*')
-        .eq('id', id)
-        .eq('store_id', storeId)
-        .maybeSingle();
-      if (error) throw error;
-      return data ? (data as CustomCatalog) : undefined;
-    } catch (err) {
-      console.warn('Error fetching custom catalog by ID from Supabase:', err);
+      const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('custom_catalogs').select('*').eq('id', id);
+        const { data, error } = hasStoreId 
+          ? await query.eq('store_id', storeId).maybeSingle()
+          : await query.maybeSingle();
+        if (error) throw error;
+        return data ? (data as CustomCatalog) : undefined;
+      }
+    } catch (err: any) {
+      console.warn('Error fetching custom catalog by ID from Supabase:', err.message || err);
     }
   }
 
@@ -588,13 +691,19 @@ export async function getCustomCatalogById(id: string, storeId: string = 'bluefi
 }
 
 export async function deleteCustomCatalog(id: string, storeId: string = 'bluefine'): Promise<void> {
-  if (isSupabaseConfigured) {
+  if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
-      const { error } = await supabase.from('custom_catalogs').delete().eq('id', id).eq('store_id', storeId);
-      if (error) throw error;
-      return;
-    } catch (err) {
-      console.warn('Error deleting custom catalog in Supabase:', err);
+      const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const query = supabase.from('custom_catalogs').delete().eq('id', id);
+        const { error } = hasStoreId 
+          ? await query.eq('store_id', storeId)
+          : await query;
+        if (error) throw error;
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Error deleting custom catalog in Supabase:', err.message || err);
     }
   }
 
@@ -693,32 +802,30 @@ export function calculateSourcingETA(
 
 export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic', storeId: string = 'bluefine'): Promise<FishItem[]> {
   const seed = getSeedData(storeType);
-  const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
-  if (isSupabaseConfigured) {
+  
+  if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
-      await supabase.from('products').delete().eq('store_id', storeId);
-      const { error } = await supabase.from('products').insert(seedWithStore);
-      if (error) {
-        if (error.code === 'PGRST204') {
-          console.warn('Supabase products table is missing "unit" or "store_id" column. Retrying reseed without "unit".');
-          const { error: retryError } = await supabase
-            .from('products')
-            .insert(seedWithStore.map(({ unit, ...rest }) => rest));
-          if (retryError) {
-            console.error('Failed to retry reseed:', retryError);
-          } else {
-            window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
-            return seed;
-          }
+      const hasStoreId = await isColumnSupported('products', 'store_id');
+      if (hasStoreId || storeId === 'bluefine') {
+        const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
+        const sanitized = await sanitizePayload('products', seedWithStore);
+        
+        if (hasStoreId) {
+          await supabase.from('products').delete().eq('store_id', storeId);
         } else {
-          console.error('Failed to reseed products in Supabase:', error);
+          await supabase.from('products').delete().neq('id', 'dummy_non_existent');
         }
-      } else {
-        window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
-        return seed;
+        
+        const { error } = await supabase.from('products').insert(sanitized);
+        if (error) {
+          console.warn('Failed to seed products in Supabase:', error.message);
+        } else {
+          window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
+          return seed;
+        }
       }
-    } catch (e) {
-      // fallback
+    } catch (e: any) {
+      console.warn('Error reseeding products in Supabase:', e.message || e);
     }
   }
   if (isBrowser()) {
