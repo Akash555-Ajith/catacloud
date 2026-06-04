@@ -151,7 +151,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-12 py-7 border-b border-transparent bg-gradient-to-b from-[rgba(8,20,38,0.92)] to-[rgba(3,8,18,0.92)] backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300">
+    <header className="sticky top-0 z-50 flex items-center justify-between px-12 py-6 bg-gradient-to-b from-[rgba(6,16,32,0.96)] to-[rgba(3,8,18,0.96)] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65),0_1px_0_rgba(255,255,255,0.04),0_0_20px_rgba(0,242,254,0.05)] border-b border-[rgba(0,242,254,0.08)] transition-all duration-300">
       <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.location.href = '/'}>
         {storeConfig.storeType === 'seafood' ? (
           <svg
@@ -280,7 +280,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
 
       <div className="flex items-center gap-8">
         <button
-          className="relative p-4 rounded-xl border border-transparent bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(0,242,254,0.05)] hover:border-transparent transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_18px_rgba(0,242,254,0.15)]"
+          className="relative p-4 rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(0,242,254,0.08)] hover:border-[rgba(0,242,254,0.25)] transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,254,0.22)]"
           onClick={onCartToggle}
           aria-label="Toggle Shopping Cart"
           id="cart-toggle-btn"
@@ -309,7 +309,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
           )}
         </button>
 
-        <div className="flex items-center gap-4 pl-6 border-l border-transparent py-3">
+        <div className="flex items-center gap-4 pl-6 border-l border-[rgba(255,255,255,0.08)] py-3">
           <button 
             type="button"
             onClick={handleOpenProfile}
@@ -440,7 +440,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
               </span>
             </div>
             <button 
-              className="flex items-center text-sm font-medium text-white bg-transparent border border-transparent rounded-full px-6 py-2 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.15)] hover:bg-[rgba(239,68,68,0.08)] hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] select-none hover:scale-[1.02]"
+              className="flex items-center text-xs font-semibold text-white bg-transparent border border-red-500/20 rounded-full px-5 py-1.5 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.05)] hover:bg-[rgba(239,68,68,0.1)] hover:border-red-500/40 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)] select-none hover:scale-[1.02]"
               onClick={onLogout} 
               id="logout-button"
             >

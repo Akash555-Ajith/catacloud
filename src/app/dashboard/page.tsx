@@ -58,7 +58,36 @@ export default function DashboardPage() {
   const [showStoreCreator, setShowStoreCreator] = useState(false);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'config'>('orders');
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'config' | 'all-stores'>('orders');
+  const [globalStoreStats, setGlobalStoreStats] = useState<Record<string, { productsCount: number; ordersCount: number; proposalsCount: number }>>({});
+
+  useEffect(() => {
+    if (adminTab === 'all-stores' && userStores.length > 0) {
+      const statsMap: Record<string, { productsCount: number; ordersCount: number; proposalsCount: number }> = {};
+      Promise.all(
+        userStores.map(async (store) => {
+          const storeIdKey = store.id || '';
+          if (!storeIdKey) return;
+          try {
+            const [prods, ords, props] = await Promise.all([
+              getProducts(storeIdKey),
+              getOrders(storeIdKey),
+              getProposals(storeIdKey)
+            ]);
+            statsMap[storeIdKey] = {
+              productsCount: prods.length,
+              ordersCount: ords.length,
+              proposalsCount: props.length
+            };
+          } catch (e) {
+            statsMap[storeIdKey] = { productsCount: 0, ordersCount: 0, proposalsCount: 0 };
+          }
+        })
+      ).then(() => {
+        setGlobalStoreStats({ ...statsMap });
+      });
+    }
+  }, [adminTab, userStores]);
 
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   
@@ -891,6 +920,15 @@ export default function DashboardPage() {
 
             {/* Tab Controllers */}
             <div className={styles.tabContainer}>
+              {user?.role === 'admin' && (
+                <button 
+                  onClick={() => setAdminTab('all-stores')}
+                  className={`${styles.tabBtn} ${adminTab === 'all-stores' ? styles.tabBtnActive : ''}`}
+                  id="admin-tab-all-stores"
+                >
+                  Global Stores Directory ({userStores.length})
+                </button>
+              )}
               <button 
                 onClick={() => setAdminTab('orders')}
                 className={`${styles.tabBtn} ${adminTab === 'orders' ? styles.tabBtnActive : ''}`}
@@ -920,6 +958,98 @@ export default function DashboardPage() {
                 Store Customizer Settings
               </button>
             </div>
+
+            {/* Global Stores Directory Section */}
+            {adminTab === 'all-stores' && user?.role === 'admin' && (
+              <section className={`${styles.sectionCard} glassmorphism`}>
+                <h2 className={styles.sectionTitle}>Global Stores Directory</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
+                  Below is the master list of all business stores created by platform users. As an Administrator, you can view metrics, copy buyer links, or switch contexts to manage their catalogs directly.
+                </p>
+                <div className={styles.tableResponsive}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Store Details</th>
+                        <th>Owner Email</th>
+                        <th>Niche & Type</th>
+                        <th>Unit</th>
+                        <th>Inventory Items</th>
+                        <th>Orders</th>
+                        <th>Proposals</th>
+                        <th style={{ textAlign: 'center' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {userStores.map((store) => {
+                        const storeIdKey = store.id || '';
+                        const stats = globalStoreStats[storeIdKey] || { productsCount: 0, ordersCount: 0, proposalsCount: 0 };
+                        return (
+                          <tr key={storeIdKey} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td>
+                              <strong style={{ color: 'var(--text-primary)', fontSize: '1rem' }}>{store.storeName}</strong>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {storeIdKey}</span>
+                              <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--accent-cyan)', fontStyle: 'italic' }}>{store.storeTagline}</span>
+                            </td>
+                            <td>
+                              <code style={{ fontSize: '0.85rem', color: 'var(--accent-gold)' }}>{store.ownerEmail || 'system'}</code>
+                            </td>
+                            <td>
+                              <span style={{ 
+                                textTransform: 'capitalize', 
+                                background: 'rgba(0, 242, 254, 0.1)', 
+                                border: '1px solid rgba(0, 242, 254, 0.2)', 
+                                padding: '2px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.8rem',
+                                color: 'var(--accent-cyan)'
+                              }}>
+                                {store.storeType}
+                              </span>
+                            </td>
+                            <td>
+                              <code style={{ color: 'var(--text-secondary)' }}>{store.unit}</code>
+                            </td>
+                            <td>{stats.productsCount} items</td>
+                            <td>{stats.ordersCount} requests</td>
+                            <td>{stats.proposalsCount} proposals</td>
+                            <td>
+                              <div className={styles.actionButtons} style={{ justifyContent: 'center', gap: '8px' }}>
+                                <button
+                                  onClick={() => {
+                                    if (storeIdKey) {
+                                      setActiveStoreId(storeIdKey);
+                                      localStorage.setItem(`bluefine_active_store_id_${user.email}`, storeIdKey);
+                                      toast.success(`Switched active store context to "${store.storeName}"`);
+                                    }
+                                  }}
+                                  className="btn-gold"
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px', display: 'flex', alignItems: 'center' }}
+                                  disabled={activeStoreId === storeIdKey}
+                                >
+                                  {activeStoreId === storeIdKey ? 'Active' : 'Manage Store'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const url = typeof window !== 'undefined' ? `${window.location.origin}/?store=${storeIdKey}` : `/?store=${storeIdKey}`;
+                                    navigator.clipboard.writeText(url);
+                                    toast.success(`Buyer catalogue link for "${store.storeName}" copied to clipboard!`);
+                                  }}
+                                  className="btn-primary"
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px', borderRadius: '6px' }}
+                                >
+                                  Copy Link
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
 
             {/* Orders Logistics Section */}
             {adminTab === 'orders' && (

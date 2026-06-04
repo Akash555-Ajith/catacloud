@@ -11,6 +11,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
+  const [isSignUp, setIsSignUp] = useState<boolean>(false);
+  const [displayName, setDisplayName] = useState<string>('');
+
   // If already logged in, redirect to home page
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
@@ -25,6 +28,11 @@ export default function LoginPage() {
 
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all credentials.');
+      return;
+    }
+
+    if (isSignUp && !displayName.trim()) {
+      setError('Please enter a display name.');
       return;
     }
 
@@ -46,20 +54,76 @@ export default function LoginPage() {
       
       const isSystemAdmin = email.toLowerCase() === 'admin@gmail.com' && password === '12345678';
       
-      const userName = email.split('@')[0];
-      const capitalizedName = isSystemAdmin ? 'Admin Manager' : userName.charAt(0).toUpperCase() + userName.slice(1);
-      const userRole = isSystemAdmin ? 'admin' : 'user';
-      
-      localStorage.setItem(
-        'bluefine_user',
-        JSON.stringify({
-          email: email.toLowerCase(),
-          name: capitalizedName,
-          role: userRole
-        })
-      );
-      
-      router.push('/');
+      // Load accounts from LocalStorage
+      let accounts: any[] = [];
+      try {
+        const stored = localStorage.getItem('bluefine_user_accounts');
+        if (stored) accounts = JSON.parse(stored);
+      } catch (err) {
+        // ignore
+      }
+
+      // Ensure system admin is always registered
+      const hasAdmin = accounts.some(a => a.email.toLowerCase() === 'admin@gmail.com');
+      if (!hasAdmin) {
+        accounts.push({
+          email: 'admin@gmail.com',
+          password: '12345678',
+          name: 'Admin Manager',
+          role: 'admin'
+        });
+        localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+
+      if (isSignUp) {
+        // Sign Up Flow
+        const exists = accounts.some(a => a.email.toLowerCase() === cleanEmail);
+        if (exists) {
+          setError('This email address is already registered. Please login.');
+          return;
+        }
+
+        const newUser = {
+          email: cleanEmail,
+          password: password,
+          name: displayName.trim(),
+          role: cleanEmail === 'admin@gmail.com' ? 'admin' : 'user'
+        };
+
+        accounts.push(newUser);
+        localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+
+        // Auto-login
+        localStorage.setItem('bluefine_user', JSON.stringify({
+          email: cleanEmail,
+          name: newUser.name,
+          role: newUser.role
+        }));
+        
+        router.push('/');
+      } else {
+        // Login Flow
+        const matchedUser = accounts.find(a => a.email.toLowerCase() === cleanEmail && a.password === password);
+        
+        if (isSystemAdmin || matchedUser) {
+          const finalUser = matchedUser || {
+            email: 'admin@gmail.com',
+            name: 'Admin Manager',
+            role: 'admin'
+          };
+
+          localStorage.setItem('bluefine_user', JSON.stringify({
+            email: finalUser.email,
+            name: finalUser.name,
+            role: finalUser.role
+          }));
+          router.push('/');
+        } else {
+          setError('Invalid business email or secure key code.');
+        }
+      }
     }, 1200);
   };
 
@@ -100,11 +164,29 @@ export default function LoginPage() {
             </defs>
           </svg>
           <h1 className={styles.logoText}>Bluefine</h1>
-          <span className={styles.tagline}>Marine Catalogue</span>
+          <span className={styles.tagline}>{isSignUp ? 'Partner Sourcing Sign-Up' : 'Marine Catalogue'}</span>
         </div>
 
         <form onSubmit={handleSubmit} className={styles.form} id="login-form">
           {error && <div className={styles.errorText} id="login-error-message">{error}</div>}
+
+          {isSignUp && (
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="displayName">
+                Display / Business Name
+              </label>
+              <input
+                type="text"
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="luxury-input"
+                placeholder="e.g. Master Chef John, Golden Crust Bakery"
+                required
+                disabled={loading}
+              />
+            </div>
+          )}
 
           <div className={styles.formGroup}>
             <label className={styles.label} htmlFor="email">
@@ -145,14 +227,38 @@ export default function LoginPage() {
             disabled={loading}
             id="login-submit-btn"
           >
-            {loading ? 'Decrypting Credentials...' : 'Authenticate'}
+            {loading ? 'Processing Credentials...' : (isSignUp ? 'Register & Authenticate' : 'Authenticate')}
           </button>
         </form>
+
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.85rem' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            {isSignUp ? 'Already registered? ' : 'First time here? '}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError('');
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-cyan)',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: 0
+            }}
+          >
+            {isSignUp ? 'Log In' : 'Sign Up'}
+          </button>
+        </div>
 
         <div className={styles.demoBox}>
           <div className={styles.demoTitle}>Portal Access & Authorization</div>
           <span style={{ display: 'block', marginBottom: '8px' }}>
-            <strong>Chef Access:</strong> Enter any business email and a password of 6+ characters.
+            <strong>Chef Registry:</strong> Click <strong>Sign Up</strong> to register your unique business account.
           </span>
           <span>
             <strong>Admin Access:</strong> Login using email <code>admin@gmail.com</code> and secure key <code>12345678</code>.
