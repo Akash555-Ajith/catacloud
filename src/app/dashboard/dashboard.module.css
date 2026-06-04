@@ -568,3 +568,46 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 16px;
 }
+
+/* Global Directory Spacious Table Styles */
+.tableResponsive {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.01);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table th {
+  background-color: rgba(6, 16, 32, 0.5);
+  padding: 18px 24px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 20px 24px;
+  font-size: 0.95rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  vertical-align: middle;
+}
+
+.table tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
