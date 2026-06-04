@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FishItem } from '@/data/fishData';
-import { getProducts } from '@/utils/store';
+import { getProducts, getStoreConfig } from '@/utils/store';
+import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
 import FishCard from '@/components/FishCard';
 import FishModal from '@/components/FishModal';
@@ -21,6 +22,7 @@ export default function HomePage() {
   const [mounted, setMounted] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [products, setProducts] = useState<FishItem[]>([]);
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
 
   // Cart & UI states
   const [cart, setCart] = useState<CartItemData[]>([]);
@@ -53,13 +55,35 @@ export default function HomePage() {
             // Keep empty if parse fails
           }
         }
-        // Load dynamic products
+        // Load dynamic products & config
+        getStoreConfig().then((cfg) => {
+          setStoreConfig(cfg);
+        });
         getProducts().then((p) => {
           setProducts(p);
         });
       }
     }, 0);
   }, [router]);
+
+  useEffect(() => {
+    const handleConfigUpdate = () => {
+      getStoreConfig().then(setStoreConfig);
+      getProducts().then(setProducts);
+    };
+
+    const handleProductsUpdate = () => {
+      getProducts().then(setProducts);
+    };
+
+    window.addEventListener('store-config-updated', handleConfigUpdate);
+    window.addEventListener('products-updated', handleProductsUpdate);
+
+    return () => {
+      window.removeEventListener('store-config-updated', handleConfigUpdate);
+      window.removeEventListener('products-updated', handleProductsUpdate);
+    };
+  }, []);
 
   // Persist cart items
   useEffect(() => {
@@ -170,11 +194,22 @@ export default function HomePage() {
         <div className={styles.ambientGlow} />
         <div className={styles.heroContent}>
           <h1 className={styles.title}>
-            Oceanic Delicacies <br />
-            <span className={styles.titleHighlight}>Sourced For Master Chefs</span>
+            {storeConfig.storeType === 'seafood' ? (
+              <>Oceanic Delicacies <br /><span className={styles.titleHighlight}>Sourced For Master Chefs</span></>
+            ) : storeConfig.storeType === 'egg' ? (
+              <>Premium Organic Eggs <br /><span className={styles.titleHighlight}>Sourced Fresh Daily</span></>
+            ) : (
+              <>{storeConfig.storeName} <br /><span className={styles.titleHighlight}>{storeConfig.storeTagline}</span></>
+            )}
           </h1>
           <p className={styles.subtitle}>
-            Explore our curated selection of pristine, sashimi-grade seafood. Hand-picked from sustainable fisheries and flown direct to your kitchen.
+            {storeConfig.storeType === 'seafood' ? (
+              "Explore our curated selection of pristine, sashimi-grade seafood. Hand-picked from sustainable fisheries and flown direct to your kitchen."
+            ) : storeConfig.storeType === 'egg' ? (
+              "Explore our collection of fresh, farm-gathered organic eggs. Rich in nutrients, pasture-raised, and delivered straight to your establishment."
+            ) : (
+              `Explore our curated selection of high-quality products. Sourced directly from trusted providers and crafted with pride.`
+            )}
           </p>
         </div>
       </section>
@@ -204,7 +239,7 @@ export default function HomePage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="luxury-input"
                 style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
-                placeholder="Search by variety, scientific name, or origin..."
+                placeholder={`Search by variety, ${storeConfig.attributes.scientificNameLabel.toLowerCase()}, or origin...`}
                 id="search-input-field"
               />
             </div>
@@ -263,10 +298,11 @@ export default function HomePage() {
                 id="category-select-dropdown"
               >
                 <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
-                <option value="Saltwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Saltwater</option>
-                <option value="Freshwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Freshwater</option>
-                <option value="Shellfish" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Shellfish</option>
-                <option value="Premium Import" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Premium Import</option>
+                {storeConfig.categories.map((cat) => (
+                  <option key={cat} value={cat} style={{ background: '#050c1a', color: 'var(--text-primary)' }}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -279,21 +315,12 @@ export default function HomePage() {
         {/* Catalogue Grid */}
         <section className={styles.grid} id="fish-cards-grid">
           {filteredFish.length === 0 ? (
-            <div className={styles.noResults} id="no-results-view">
-              <svg
-                className={styles.noResultsIcon}
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            <div className={styles.noResults} id="no-search-results">
+              <svg className={styles.noResultsIcon} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-              <h3 className={styles.noResultsTitle}>No Marine Varieties Found</h3>
+              <h3 className={styles.noResultsTitle}>No Products Found</h3>
               <p>Try refining your search terms or clearing the category filters.</p>
             </div>
           ) : (
@@ -302,6 +329,8 @@ export default function HomePage() {
                 key={fish.id}
                 fish={fish}
                 onClick={() => setSelectedFish(fish)}
+                unit={storeConfig.unit}
+                storeType={storeConfig.storeType}
               />
             ))
           )}
@@ -314,6 +343,7 @@ export default function HomePage() {
         fish={selectedFish}
         onClose={() => setSelectedFish(null)}
         onAddToCart={handleAddToCart}
+        storeConfig={storeConfig}
       />
 
       {/* Dynamic Sliding Shopping Cart */}
@@ -327,6 +357,7 @@ export default function HomePage() {
           setIsCartOpen(false);
           setIsCheckoutOpen(true);
         }}
+        unit={storeConfig.unit}
       />
 
       {/* Multi-step Checkout Reservation Wizard */}
@@ -335,6 +366,7 @@ export default function HomePage() {
         onClose={() => setIsCheckoutOpen(false)}
         cartItems={cart}
         onClearCart={handleClearCart}
+        unit={storeConfig.unit}
       />
     </div>
   );

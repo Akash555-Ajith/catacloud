@@ -9,9 +9,11 @@ import {
   calculateSourcingETA,
   ETAPrediction,
   addOrder,
-  Order
+  Order,
+  getStoreConfig
 } from '@/utils/store';
 import { FishItem } from '@/data/fishData';
+import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
 import styles from './catalogue.module.css';
 import { toast } from 'sonner';
 
@@ -23,6 +25,7 @@ export default function CatalogueDetailPage() {
   const [catalog, setCatalog] = useState<CustomCatalog | null>(null);
   const [products, setProducts] = useState<FishItem[]>([]);
   const [selectedFish, setSelectedFish] = useState<FishItem | null>(null);
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
@@ -41,9 +44,10 @@ export default function CatalogueDetailPage() {
     setClientEmail('');
   }, [selectedFish]);
 
-  // Load custom catalog overrides and products
+  // Load custom catalog overrides, products, and store config
   useEffect(() => {
     setMounted(true);
+    getStoreConfig().then(setStoreConfig);
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
     if (proposalId) {
@@ -206,40 +210,85 @@ export default function CatalogueDetailPage() {
   return (
     <div className={styles.pageContainer}>
       <header className={styles.brandHeader}>
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
-        >
-          <path
-            d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
-            fill="url(#logo-grad)"
-          />
-          <path
-            d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
-            fill="url(#logo-grad-accent)"
-            opacity="0.7"
-          />
-          <defs>
-            <linearGradient id="logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#00f2fe" />
-              <stop offset="1" stopColor="#4facfe" />
-            </linearGradient>
-            <linearGradient id="logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#e2b744" />
-              <stop offset="1" stopColor="#b88e1a" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <span className={styles.logoText}>Bluefine</span>
+        {storeConfig.storeType === 'seafood' ? (
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 32 32"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
+          >
+            <path
+              d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
+              fill="url(#logo-grad)"
+            />
+            <path
+              d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
+              fill="url(#logo-grad-accent)"
+              opacity="0.7"
+            />
+            <defs>
+              <linearGradient id="logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+              <linearGradient id="logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#e2b744" />
+                <stop offset="1" stopColor="#b88e1a" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) : storeConfig.storeType === 'egg' ? (
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="url(#logo-grad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
+          >
+            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" fill="url(#logo-grad)" opacity="0.15" />
+            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" />
+            <defs>
+              <linearGradient id="logo-grad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) : (
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="url(#logo-grad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
+          >
+            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" fill="url(#logo-grad)" opacity="0.1" />
+            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            <defs>
+              <linearGradient id="logo-grad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+            </defs>
+          </svg>
+        )}
+        <span className={styles.logoText}>{storeConfig.storeName}</span>
       </header>
 
       <section className={styles.catalogueHeader}>
         <span className={styles.marketBadge}>{catalog.marketName}</span>
-        <h1 className={styles.title}>Specimen Catalogue</h1>
+        <h1 className={styles.title}>{storeConfig.attributes.specimenLabel} Catalogue</h1>
         <div className={styles.dateInfo}>
           Issued &bull; <strong style={{ color: 'var(--text-primary)' }}>{catalog.createdDate}</strong>
         </div>
@@ -322,10 +371,11 @@ export default function CatalogueDetailPage() {
               id="client-catalogue-category-select"
             >
               <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
-              <option value="Saltwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Saltwater</option>
-              <option value="Freshwater" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Freshwater</option>
-              <option value="Shellfish" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Shellfish</option>
-              <option value="Premium Import" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Premium Import</option>
+              {storeConfig.categories.map((cat) => (
+                <option key={cat} value={cat} style={{ background: '#050c1a', color: 'var(--text-primary)' }}>
+                  {cat}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -336,8 +386,8 @@ export default function CatalogueDetailPage() {
       <section className={styles.grid} id="custom-catalogue-grid">
         {proposalItems.length === 0 ? (
           <div className={styles.errorContainer} style={{ gridColumn: '1 / -1', minHeight: '30vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🌊</span>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>No Oceanic Varieties Found</h3>
+            <span style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📦</span>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>No Products Found</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               {searchQuery || selectedCategory !== 'All' 
                 ? 'Try modifying your filters or search text.' 
@@ -511,7 +561,7 @@ export default function CatalogueDetailPage() {
                       <span style={{ fontSize: '0.85rem' }}>✨</span>
                     </div>
                     <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Texture</span>
+                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.textureLabel}</span>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.texture}</span>
                     </div>
                   </div>
@@ -522,7 +572,7 @@ export default function CatalogueDetailPage() {
                       <span style={{ fontSize: '0.85rem' }}>🍳</span>
                     </div>
                     <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Skill Level</span>
+                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.difficultyLabel}</span>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.difficulty}</span>
                     </div>
                   </div>
@@ -533,7 +583,7 @@ export default function CatalogueDetailPage() {
                       <span style={{ fontSize: '0.85rem' }}>🌱</span>
                     </div>
                     <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Eco-Status</span>
+                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.sustainabilityLabel}</span>
                       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.sustainability}</span>
                     </div>
                   </div>

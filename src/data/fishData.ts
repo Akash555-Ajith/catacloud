@@ -2,7 +2,7 @@ export interface FishItem {
   id: string;
   name: string;
   scientificName: string;
-  category: 'Saltwater' | 'Freshwater' | 'Shellfish' | 'Premium Import';
+  category: string;
   pricePerKg: number;
   origin: string;
   stock: number;
@@ -10,9 +10,9 @@ export interface FishItem {
   description: string;
   tasteProfile: string[];
   texture: string;
-  sustainability: 'Sustainably Farmed' | 'Wild Caught' | 'MSC Certified';
+  sustainability: string;
   prepTime: string;
-  difficulty: 'Easy' | 'Medium' | 'Expert';
+  difficulty: string;
   unit?: string; // unit of measurement: kg, L, pcs, etc.
 }
 

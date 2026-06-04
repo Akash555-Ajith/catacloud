@@ -7,10 +7,14 @@ import { Badge } from '@/components/ui/badge';
 interface FishCardProps {
   fish: FishItem;
   onClick: () => void;
+  unit?: string;
+  storeType?: string;
 }
 
-export default function FishCard({ fish, onClick }: FishCardProps) {
-  const isPremium = fish.category === 'Premium Import';
+export default function FishCard({ fish, onClick, unit, storeType }: FishCardProps) {
+  const isPremium = fish.category === 'Premium Import' || fish.category === 'Jumbo Specials';
+  const itemUnit = fish.unit || unit || 'kg';
+  const type = storeType || 'seafood';
 
   return (
     <Card 
@@ -33,13 +37,19 @@ export default function FishCard({ fish, onClick }: FishCardProps) {
           >
             {fish.category}
           </Badge>
-          {isPremium ? (
-            <Badge className="bg-gradient-to-r from-[#e2b744] to-[#b88e1a] text-[#030812] border-none font-bold shadow-[0_2px_8px_rgba(226,183,68,0.4)]">
-              Rare
-            </Badge>
+          {type === 'seafood' ? (
+            isPremium ? (
+              <Badge className="bg-gradient-to-r from-[#e2b744] to-[#b88e1a] text-[#030812] border-none font-bold shadow-[0_2px_8px_rgba(226,183,68,0.4)]">
+                Rare
+              </Badge>
+            ) : (
+              <Badge className="bg-gradient-to-r from-[var(--accent-teal)] to-[var(--accent-blue)] text-[#030812] border-none font-bold shadow-[0_2px_8px_rgba(56,189,248,0.3)]">
+                {fish.sustainability === 'MSC Certified' ? 'MSC' : 'Wild'}
+              </Badge>
+            )
           ) : (
             <Badge className="bg-gradient-to-r from-[var(--accent-teal)] to-[var(--accent-blue)] text-[#030812] border-none font-bold shadow-[0_2px_8px_rgba(56,189,248,0.3)]">
-              {fish.sustainability === 'MSC Certified' ? 'MSC' : 'Wild'}
+              {fish.sustainability}
             </Badge>
           )}
         </div>
@@ -78,7 +88,7 @@ export default function FishCard({ fish, onClick }: FishCardProps) {
             <span className="text-[9px] uppercase tracking-wider text-[var(--text-secondary)] font-bold mb-0.5">Price</span>
             <span className="text-base font-bold text-[var(--text-primary)]">
               ${fish.pricePerKg.toFixed(2)}
-              <span className="text-xs text-[var(--text-secondary)] font-normal"> / kg</span>
+              <span className="text-xs text-[var(--text-secondary)] font-normal"> / {itemUnit}</span>
             </span>
           </div>
 

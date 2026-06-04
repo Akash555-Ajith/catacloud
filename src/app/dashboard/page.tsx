@@ -18,8 +18,12 @@ import {
   CustomCatalog,
   getCustomCatalogs,
   addCustomCatalog,
-  deleteCustomCatalog
+  deleteCustomCatalog,
+  getStoreConfig,
+  saveStoreConfig,
+  reseedProducts
 } from '@/utils/store';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
@@ -38,7 +42,22 @@ export default function DashboardPage() {
   const [customCatalogs, setCustomCatalogs] = useState<CustomCatalog[]>([]);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs'>('orders');
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'config'>('orders');
+
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
+  
+  // Store Config Form States
+  const [cfgStoreName, setCfgStoreName] = useState('');
+  const [cfgStoreTagline, setCfgStoreTagline] = useState('');
+  const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic'>('seafood');
+  const [cfgUnit, setCfgUnit] = useState('kg');
+  const [cfgCategories, setCfgCategories] = useState<string[]>([]);
+  const [cfgSpecimenLabel, setCfgSpecimenLabel] = useState('');
+  const [cfgScientificNameLabel, setCfgScientificNameLabel] = useState('');
+  const [cfgTasteProfileLabel, setCfgTasteProfileLabel] = useState('');
+  const [cfgTextureLabel, setCfgTextureLabel] = useState('');
+  const [cfgSustainabilityLabel, setCfgSustainabilityLabel] = useState('');
+  const [cfgDifficultyLabel, setCfgDifficultyLabel] = useState('');
 
   // Custom Catalogue Form Fields
   const [catSearchQuery, setCatSearchQuery] = useState('');
@@ -59,7 +78,7 @@ export default function DashboardPage() {
   // Product form fields
   const [formName, setFormName] = useState('');
   const [formSciName, setFormSciName] = useState('');
-  const [formCategory, setFormCategory] = useState<'Saltwater' | 'Freshwater' | 'Shellfish' | 'Premium Import'>('Saltwater');
+  const [formCategory, setFormCategory] = useState<string>('');
   const [formPrice, setFormPrice] = useState(0);
   const [formOrigin, setFormOrigin] = useState('');
   const [formStock, setFormStock] = useState(0);
@@ -67,9 +86,9 @@ export default function DashboardPage() {
   const [formDesc, setFormDesc] = useState('');
   const [formTaste, setFormTaste] = useState('');
   const [formTexture, setFormTexture] = useState('');
-  const [formSustainability, setFormSustainability] = useState<'Sustainably Farmed' | 'Wild Caught' | 'MSC Certified'>('Wild Caught');
+  const [formSustainability, setFormSustainability] = useState<string>('Wild Caught');
   const [formPrep, setFormPrep] = useState('');
-  const [formDifficulty, setFormDifficulty] = useState<'Easy' | 'Medium' | 'Expert'>('Easy');
+  const [formDifficulty, setFormDifficulty] = useState<string>('Easy');
 
   useEffect(() => {
     const loadUser = () => {
@@ -98,12 +117,26 @@ export default function DashboardPage() {
         getProducts(),
         getOrders(),
         getProposals(),
-        getCustomCatalogs()
-      ]).then(([prods, ords, props, cats]) => {
+        getCustomCatalogs(),
+        getStoreConfig()
+      ]).then(([prods, ords, props, cats, cfg]) => {
         setProducts(prods);
         setOrders(ords);
         setProposals(props);
         setCustomCatalogs(cats);
+        setStoreConfig(cfg);
+        // Initialize config form fields
+        setCfgStoreName(cfg.storeName);
+        setCfgStoreTagline(cfg.storeTagline);
+        setCfgStoreType(cfg.storeType);
+        setCfgUnit(cfg.unit);
+        setCfgCategories(cfg.categories);
+        setCfgSpecimenLabel(cfg.attributes.specimenLabel);
+        setCfgScientificNameLabel(cfg.attributes.scientificNameLabel);
+        setCfgTasteProfileLabel(cfg.attributes.tasteProfileLabel);
+        setCfgTextureLabel(cfg.attributes.textureLabel);
+        setCfgSustainabilityLabel(cfg.attributes.sustainabilityLabel);
+        setCfgDifficultyLabel(cfg.attributes.difficultyLabel);
       });
     }
     setMounted(true);
@@ -218,6 +251,61 @@ export default function DashboardPage() {
       setFormUnit('kg');
     }
     setIsProductModalOpen(true);
+  };
+
+  // Configuration settings handlers
+  const handleApplyConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedConfig: StoreConfig = {
+      storeName: cfgStoreName,
+      storeTagline: cfgStoreTagline,
+      storeType: cfgStoreType,
+      unit: cfgUnit,
+      categories: cfgCategories,
+      attributes: {
+        specimenLabel: cfgSpecimenLabel,
+        scientificNameLabel: cfgScientificNameLabel,
+        tasteProfileLabel: cfgTasteProfileLabel,
+        textureLabel: cfgTextureLabel,
+        sustainabilityLabel: cfgSustainabilityLabel,
+        difficultyLabel: cfgDifficultyLabel
+      }
+    };
+
+    await saveStoreConfig(updatedConfig);
+    setStoreConfig(updatedConfig);
+    toast.success('Configuration Saved', {
+      description: 'Store parameters have been successfully updated.'
+    });
+  };
+
+  const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic') => {
+    let preset: StoreConfig;
+    if (presetType === 'seafood') preset = SEAFOOD_PRESET;
+    else if (presetType === 'egg') preset = EGG_PRESET;
+    else preset = GENERIC_PRESET;
+
+    setCfgStoreName(preset.storeName);
+    setCfgStoreTagline(preset.storeTagline);
+    setCfgStoreType(preset.storeType);
+    setCfgUnit(preset.unit);
+    setCfgCategories(preset.categories);
+    setCfgSpecimenLabel(preset.attributes.specimenLabel);
+    setCfgScientificNameLabel(preset.attributes.scientificNameLabel);
+    setCfgTasteProfileLabel(preset.attributes.tasteProfileLabel);
+    setCfgTextureLabel(preset.attributes.textureLabel);
+    setCfgSustainabilityLabel(preset.attributes.sustainabilityLabel);
+    setCfgDifficultyLabel(preset.attributes.difficultyLabel);
+  };
+
+  const handleReseed = async () => {
+    if (confirm('Warning: Reseeding will clear the existing database inventory and replace it with default items for this store preset. Do you want to continue?')) {
+      const seeded = await reseedProducts(cfgStoreType);
+      setProducts(seeded);
+      toast.success('Database Reseeded', {
+        description: `Catalog has been reseeded with default ${cfgStoreType} items.`
+      });
+    }
   };
 
   // Submit product add or edit
@@ -445,21 +533,23 @@ export default function DashboardPage() {
             <header className={styles.header}>
               <div>
                 <h1 className={styles.title}>Inventory Manager Panel</h1>
-                <span className={styles.titleHighlight}>Landed Catch & logistics Hub</span>
+                <span className={styles.titleHighlight}>{storeConfig.storeName} &bull; {storeConfig.storeTagline}</span>
               </div>
             </header>
 
             {/* Admin Stats Row */}
             <section className={styles.statsGrid}>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Ocean Varieties</span>
+                <span className={styles.statLabel}>{storeConfig.attributes.specimenLabel} Varieties</span>
                 <span className={styles.statValue}>{products.length}</span>
                 <span className={styles.statSubtext}>Active in catalogue</span>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
                 <span className={styles.statLabel}>Available Stock</span>
-                <span className={styles.statValue}>{adminTotalStock} <span style={{ fontSize: '1.2rem' }}>kg</span></span>
-                <span className={styles.statSubtext}>Across Tsukiji / North Atlantic ports</span>
+                <span className={styles.statValue}>{adminTotalStock} <span style={{ fontSize: '1.2rem' }}>{storeConfig.unit}</span></span>
+                <span className={styles.statSubtext}>
+                  {storeConfig.storeType === 'seafood' ? 'Across Tsukiji / North Atlantic ports' : 'Across regional distribution centers'}
+                </span>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
                 <span className={styles.statLabel}>Active Shipments</span>
@@ -469,7 +559,7 @@ export default function DashboardPage() {
               <div className={`${styles.statCard} ${styles.statCardGold} glassmorphism`}>
                 <span className={styles.statLabel}>Total Sourced Value</span>
                 <span className={styles.statValue} style={{ color: 'var(--accent-gold)' }}>${adminTotalRevenue.toFixed(2)}</span>
-                <span className={styles.statSubtext}>Orders from all partner Chefs</span>
+                <span className={styles.statSubtext}>Orders from all partner Buyers</span>
               </div>
             </section>
 
@@ -494,7 +584,14 @@ export default function DashboardPage() {
                 className={`${styles.tabBtn} ${adminTab === 'catalogs' ? styles.tabBtnActive : ''}`}
                 id="admin-tab-catalogs"
               >
-                Custom Catalogue Proposals ({customCatalogs.length})
+                Custom Proposals ({customCatalogs.length})
+              </button>
+              <button 
+                onClick={() => setAdminTab('config')}
+                className={`${styles.tabBtn} ${adminTab === 'config' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-config"
+              >
+                Store Customizer Settings
               </button>
             </div>
 
@@ -507,7 +604,7 @@ export default function DashboardPage() {
                     <svg className={styles.emptyStateIcon} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                     </svg>
-                    <p>No culinary sourcing orders recorded in history.</p>
+                    <p>No sourcing orders recorded in history.</p>
                   </div>
                 ) : (
                   <div className={styles.ordersList}>
@@ -530,7 +627,7 @@ export default function DashboardPage() {
                         <div className={styles.orderBody}>
                           <div className={styles.orderMetaRow}>
                             <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Chef Account:</span>{' '}
+                              <span style={{ color: 'var(--text-muted)' }}>Account Name:</span>{' '}
                               <strong style={{ color: 'var(--text-primary)' }}>{order.userName}</strong> ({order.userEmail})
                             </div>
                             <div>
@@ -540,7 +637,7 @@ export default function DashboardPage() {
                           </div>
                           <div className={styles.orderMetaRow} style={{ marginBottom: '24px' }}>
                             <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Port of Delivery:</span>{' '}
+                              <span style={{ color: 'var(--text-muted)' }}>Delivery Address:</span>{' '}
                               <span className={styles.orderAddress}>{order.address}</span>
                             </div>
                           </div>
@@ -549,7 +646,7 @@ export default function DashboardPage() {
                             <thead>
                               <tr>
                                 <th>Sourced Product</th>
-                                <th style={{ textAlign: 'right' }}>Weight (kg)</th>
+                                <th style={{ textAlign: 'right' }}>Quantity ({storeConfig.unit})</th>
                                 <th style={{ textAlign: 'right' }}>Unit Price</th>
                                 <th style={{ textAlign: 'right' }}>Total</th>
                               </tr>
@@ -561,7 +658,7 @@ export default function DashboardPage() {
                                     <img src={item.image} alt={item.name} className={styles.itemImage} />
                                     <span>{item.name}</span>
                                   </td>
-                                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} kg</td>
+                                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
                                   <td style={{ textAlign: 'right' }}>${item.price.toFixed(2)}</td>
                                   <td style={{ textAlign: 'right', color: 'var(--accent-cyan)' }}>
                                     ${(item.quantity * item.price).toFixed(2)}
@@ -613,14 +710,14 @@ export default function DashboardPage() {
             {adminTab === 'products' && (
               <section className={`${styles.sectionCard} glassmorphism`}>
                 <div className={styles.sectionTitle}>
-                  <span>Landed Catch Inventory Catalog</span>
+                  <span>Inventory Catalog</span>
                   <button 
                     onClick={() => handleOpenProductModal(null)} 
                     className="btn-primary" 
                     style={{ fontSize: '0.9rem', padding: '8px 16px' }}
                     id="admin-add-product-btn"
                   >
-                    + Land New Catch
+                    + Add Product
                   </button>
                 </div>
 
@@ -628,12 +725,12 @@ export default function DashboardPage() {
                   <table className={styles.productsTable}>
                     <thead>
                       <tr>
-                        <th>Specimen</th>
+                        <th>{storeConfig.attributes.specimenLabel}</th>
                         <th>Category</th>
-                        <th>Price/Kg</th>
+                        <th>Price / Unit</th>
                         <th>Current Stock</th>
                         <th>Origin</th>
-                        <th>Sustainability</th>
+                        <th>{storeConfig.attributes.sustainabilityLabel}</th>
                         <th style={{ textAlign: 'center' }}>Actions</th>
                       </tr>
                     </thead>
@@ -659,9 +756,9 @@ export default function DashboardPage() {
                               {prod.category}
                             </span>
                           </td>
-                          <td style={{ fontWeight: 600 }}>${prod.pricePerKg.toFixed(2)}</td>
+                          <td style={{ fontWeight: 600 }}>${prod.pricePerKg.toFixed(2)} / {prod.unit || storeConfig.unit}</td>
                           <td style={{ color: prod.stock < 10 ? 'var(--accent-danger)' : 'var(--text-primary)' }}>
-                            <strong>{prod.stock}</strong> kg
+                            <strong>{prod.stock}</strong> {prod.unit || storeConfig.unit}
                             {prod.stock < 10 && <span style={{ fontSize: '0.75rem', display: 'block', color: 'var(--accent-danger)' }}>Low Stock</span>}
                           </td>
                           <td>{prod.origin}</td>
@@ -671,7 +768,7 @@ export default function DashboardPage() {
                               <button 
                                 onClick={() => handleOpenProductModal(prod)}
                                 className={styles.btnIcon}
-                                title="Edit Catch Details"
+                                title="Edit Product Details"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -681,7 +778,7 @@ export default function DashboardPage() {
                               <button 
                                 onClick={() => handleDeleteProduct(prod.id)}
                                 className={`${styles.btnIcon} ${styles.btnIconDelete}`}
-                                title="Delete Specimen"
+                                title="Delete Product"
                               >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="3 6 5 6 21 6" />
@@ -871,11 +968,11 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', margin: '24px 0 16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                       <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: 0 }}>
-                        Configure Specimen Overrides
+                        Configure Product Overrides
                       </h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          Selected: <strong style={{ color: 'var(--accent-cyan)' }}>{Object.values(catOverrides).filter(o => o.included).length}</strong> / {products.length} specimens
+                          Selected: <strong style={{ color: 'var(--accent-cyan)' }}>{Object.values(catOverrides).filter(o => o.included).length}</strong> / {products.length} items
                         </span>
                         <button
                           type="button"
@@ -923,7 +1020,7 @@ export default function DashboardPage() {
                           onChange={(e) => setCatSearchQuery(e.target.value)}
                           className="luxury-input"
                           style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '36px', fontSize: '0.85rem' }}
-                          placeholder="Search overrides by name, scientific name, or origin..."
+                          placeholder="Search overrides by name, code, or origin..."
                           id="cat-override-search-input"
                         />
                         <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.9rem' }}>🔍</span>
@@ -936,10 +1033,9 @@ export default function DashboardPage() {
                           style={{ height: '36px', paddingTop: '0px', paddingBottom: '0px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.85rem', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
                         >
                           <option value="All">All Categories</option>
-                          <option value="Saltwater">Saltwater</option>
-                          <option value="Freshwater">Freshwater</option>
-                          <option value="Shellfish">Shellfish</option>
-                          <option value="Premium Import">Premium Import</option>
+                          {storeConfig.categories.map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -949,7 +1045,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr>
                           <th style={{ width: '80px', textAlign: 'center' }}>Include</th>
-                          <th>Specimen Name</th>
+                          <th>{storeConfig.attributes.specimenLabel} Name</th>
                           <th>Standard Price</th>
                           <th>Custom Proposal Price ($)</th>
                           <th>Proposal Discount (%)</th>
@@ -981,7 +1077,7 @@ export default function DashboardPage() {
                                 <strong style={{ color: 'var(--text-primary)' }}>{p.name}</strong>
                                 <span className={styles.productScientificName}>{p.scientificName}</span>
                               </td>
-                              <td>${p.pricePerKg.toFixed(2)}/{p.unit || 'kg'}</td>
+                              <td>${p.pricePerKg.toFixed(2)}/{p.unit || storeConfig.unit}</td>
                               <td>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <input
@@ -994,7 +1090,7 @@ export default function DashboardPage() {
                                     disabled={!override.included}
                                     required={override.included}
                                   />
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/{p.unit || 'kg'}</span>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/{p.unit || storeConfig.unit}</span>
                                 </div>
                               </td>
                               <td>
@@ -1021,7 +1117,7 @@ export default function DashboardPage() {
                                     disabled={!override.included}
                                     required={override.included}
                                   />
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.unit || 'kg'}</span>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.unit || storeConfig.unit}</span>
                                 </div>
                               </td>
                             </tr>
@@ -1050,7 +1146,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr>
                           <th>Target Market</th>
-                          <th>Included Varieties</th>
+                          <th>Included Items</th>
                           <th>Global Discount</th>
                           <th>Delivery Charge</th>
                           <th>Notes</th>
@@ -1067,7 +1163,7 @@ export default function DashboardPage() {
                                 <strong style={{ color: 'var(--text-primary)' }}>{cat.marketName}</strong>
                                 <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {cat.id}</span>
                               </td>
-                              <td>{includedCount} of {products.length} specimens</td>
+                              <td>{includedCount} of {products.length} items</td>
                               <td style={{ color: cat.globalDiscount > 0 ? 'var(--accent-gold)' : 'var(--text-secondary)', fontWeight: 600 }}>
                                 {cat.globalDiscount > 0 ? `${cat.globalDiscount}%` : 'None'}
                               </td>
@@ -1107,23 +1203,183 @@ export default function DashboardPage() {
                 )}
               </section>
             )}
+
+            {adminTab === 'config' && (
+              <section className={`${styles.sectionCard} glassmorphism`}>
+                <h2 className={styles.sectionTitle}>Store Customizer & Parameters</h2>
+                <form onSubmit={handleApplyConfig}>
+                  {/* Preset Selector Card */}
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--glass-border)', padding: '24px', borderRadius: '12px', marginBottom: '32px' }}>
+                    <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', marginBottom: '16px' }}>Quick Niche Presets</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                      <div 
+                        onClick={() => handlePresetChange('seafood')}
+                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'seafood' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'seafood' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
+                      >
+                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'seafood' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Seafood Market</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bluefine Catch & Logistics</span>
+                      </div>
+                      <div 
+                        onClick={() => handlePresetChange('egg')}
+                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'egg' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'egg' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
+                      >
+                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'egg' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Egg Farm</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Eggcellent Organic Eggs</span>
+                      </div>
+                      <div 
+                        onClick={() => handlePresetChange('generic')}
+                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'generic' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'generic' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
+                      >
+                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'generic' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Boutique Retailer</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Generic Provisions Presets</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* General Branding Section */}
+                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>Store Branding</h3>
+                  <div className={styles.formGrid}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Store Name</label>
+                      <input 
+                        type="text" 
+                        value={cfgStoreName} 
+                        onChange={(e) => setCfgStoreName(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Tagline</label>
+                      <input 
+                        type="text" 
+                        value={cfgStoreTagline} 
+                        onChange={(e) => setCfgStoreTagline(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Default Unit of Measurement</label>
+                      <input 
+                        type="text" 
+                        value={cfgUnit} 
+                        onChange={(e) => setCfgUnit(e.target.value)} 
+                        className="luxury-input" 
+                        placeholder="e.g. kg, dozen, box, pcs" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Product Categories (Comma Separated)</label>
+                      <input 
+                        type="text" 
+                        value={cfgCategories.join(', ')} 
+                        onChange={(e) => setCfgCategories(e.target.value.split(',').map(c => c.trim()).filter(Boolean))} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Detail Specification Labels */}
+                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginTop: '32px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>Product Detail Specifications Labels</h3>
+                  <div className={styles.formGrid}>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Variety / Specimen Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgSpecimenLabel} 
+                        onChange={(e) => setCfgSpecimenLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Scientific Name / Grade Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgScientificNameLabel} 
+                        onChange={(e) => setCfgScientificNameLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Taste Profile / Key Features Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgTasteProfileLabel} 
+                        onChange={(e) => setCfgTasteProfileLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Texture / Color Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgTextureLabel} 
+                        onChange={(e) => setCfgTextureLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Sustainability / Sourcing Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgSustainabilityLabel} 
+                        onChange={(e) => setCfgSustainabilityLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label className={styles.label}>Preparation / Handling Care Label</label>
+                      <input 
+                        type="text" 
+                        value={cfgDifficultyLabel} 
+                        onChange={(e) => setCfgDifficultyLabel(e.target.value)} 
+                        className="luxury-input" 
+                        required 
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '40px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                    <button type="submit" className="btn-primary" style={{ padding: '12px 24px' }}>
+                      Apply Configurations
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleReseed} 
+                      className="btn-gold" 
+                      style={{ padding: '12px 24px' }}
+                    >
+                      Reseed Catalog Database
+                    </button>
+                  </div>
+                </form>
+              </section>
+            )}
           </div>
         ) : (
           /* Chef / User Dashboard */
           <div>
             <header className={styles.header}>
               <div>
-                <h1 className={styles.title}>Chef Sourcing Dashboard</h1>
-                <span className={styles.titleHighlight}>Michelin Partner Culinary Hub</span>
+                <h1 className={styles.title}>Sourcing Dashboard</h1>
+                <span className={styles.titleHighlight}>{storeConfig.storeName} Buyer Hub</span>
               </div>
             </header>
 
             {/* Chef Stats Row */}
             <section className={styles.statsGrid}>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Sourced Weight</span>
-                <span className={styles.statValue}>{totalWeightSourced} <span style={{ fontSize: '1.2rem' }}>kg</span></span>
-                <span className={styles.statSubtext}>Premium marine species</span>
+                <span className={styles.statLabel}>Sourced Quantity</span>
+                <span className={styles.statValue}>{totalWeightSourced} <span style={{ fontSize: '1.2rem' }}>{storeConfig.unit}</span></span>
+                <span className={styles.statSubtext}>{storeConfig.storeType === 'seafood' ? 'Premium marine species' : 'Premium products'}</span>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
                 <span className={styles.statLabel}>Sourcing Investment</span>
@@ -1133,14 +1389,14 @@ export default function DashboardPage() {
               <div className={`${styles.statCard} glassmorphism`}>
                 <span className={styles.statLabel}>Sustainability Profile</span>
                 <span className={styles.statValue} style={{ color: 'var(--accent-success)' }}>{sustainabilityScore}</span>
-                <span className={styles.statSubtext}>Responsible harvesting</span>
+                <span className={styles.statSubtext}>Ethical sourcing</span>
               </div>
               <div className={`${styles.statCard} ${styles.statCardGold} glassmorphism`}>
-                <span className={styles.statLabel}>Sourcing Authorization</span>
+                <span className={styles.statLabel}>Account Tier</span>
                 <span className={styles.statValue} style={{ color: 'var(--accent-gold)', fontSize: '1.6rem' }}>
-                  {totalSourcingValue > 1000 ? 'Elite Michelin' : totalSourcingValue > 500 ? 'Preferred Chef' : 'General Sourcing'}
+                  {totalSourcingValue > 1000 ? 'Elite Member' : totalSourcingValue > 500 ? 'Preferred Partner' : 'General Partner'}
                 </span>
-                <span className={styles.statSubtext}>Michelin account tier status</span>
+                <span className={styles.statSubtext}>Account tier status</span>
               </div>
             </section>
 
@@ -1153,8 +1409,8 @@ export default function DashboardPage() {
                     <svg className={styles.emptyStateIcon} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                       <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
                     </svg>
-                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>No Sourced Catch Yet</h3>
-                    <p style={{ marginBottom: '24px' }}>Submit a procurement reservation in our catalog port.</p>
+                    <h3 style={{ color: 'var(--text-primary)', marginBottom: '8px' }}>No Sourced Items Yet</h3>
+                    <p style={{ marginBottom: '24px' }}>Submit a procurement reservation in our catalog.</p>
                     <button onClick={() => router.push('/')} className="btn-primary">
                       Explore Sourcing Catalog
                     </button>
@@ -1180,7 +1436,7 @@ export default function DashboardPage() {
                         <div className={styles.orderBody}>
                           <div className={styles.orderMetaRow}>
                             <div>
-                              <span style={{ color: 'var(--text-muted)' }}>Estimated Sourcing Port (ETA):</span>{' '}
+                              <span style={{ color: 'var(--text-muted)' }}>Estimated Delivery (ETA):</span>{' '}
                               <span className={styles.orderAddress}>{order.deliveryDate}</span>
                             </div>
                             <div>
@@ -1192,8 +1448,8 @@ export default function DashboardPage() {
                           <table className={styles.orderItemsTable}>
                             <thead>
                               <tr>
-                                <th>Specimen Variety</th>
-                                <th style={{ textAlign: 'right' }}>Weight (kg)</th>
+                                <th>Product Item</th>
+                                <th style={{ textAlign: 'right' }}>Quantity ({storeConfig.unit})</th>
                                 <th style={{ textAlign: 'right' }}>Unit Price</th>
                                 <th style={{ textAlign: 'right' }}>Sourced Price</th>
                               </tr>
@@ -1205,7 +1461,7 @@ export default function DashboardPage() {
                                     <img src={item.image} alt={item.name} className={styles.itemImage} />
                                     <span>{item.name}</span>
                                   </td>
-                                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} kg</td>
+                                  <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
                                   <td style={{ textAlign: 'right' }}>${item.price.toFixed(2)}</td>
                                   <td style={{ textAlign: 'right', color: 'var(--accent-cyan)' }}>
                                     ${(item.quantity * item.price).toFixed(2)}
@@ -1275,7 +1531,7 @@ export default function DashboardPage() {
           <div className={`${styles.modalContent} glassmorphism`} onClick={(e) => e.stopPropagation()}>
             <header className={styles.modalHeader}>
               <h2 className={styles.modalTitle}>
-                {editingProduct ? 'Edit Sourcing Catch Details' : 'Land New Catch Variety'}
+                {editingProduct ? `Edit ${storeConfig.attributes.specimenLabel} Details` : `Add New ${storeConfig.attributes.specimenLabel}`}
               </h2>
               <button className={styles.modalCloseBtn} onClick={() => setIsProductModalOpen(false)}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1288,26 +1544,26 @@ export default function DashboardPage() {
             <form onSubmit={handleProductSubmit} id="admin-product-form">
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-name">Name</label>
+                  <label className={styles.label} htmlFor="prod-name">Name / Type</label>
                   <input
                     type="text"
                     id="prod-name"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. Pacific Oyster"
+                    placeholder="e.g. Free-Range Large Brown Eggs"
                     required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-sci-name">Scientific Name</label>
+                  <label className={styles.label} htmlFor="prod-sci-name">{storeConfig.attributes.scientificNameLabel}</label>
                   <input
                     type="text"
                     id="prod-sci-name"
                     value={formSciName}
                     onChange={(e) => setFormSciName(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. Crassostrea gigas"
+                    placeholder="e.g. Grade AA Large"
                     required
                   />
                 </div>
@@ -1316,56 +1572,26 @@ export default function DashboardPage() {
                   <select
                     id="prod-category"
                     value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value as any)}
+                    onChange={(e) => setFormCategory(e.target.value)}
                     className="luxury-input"
                     style={{ appearance: 'none', cursor: 'pointer' }}
                   >
-                    <option value="Saltwater">Saltwater</option>
-                    <option value="Freshwater">Freshwater</option>
-                    <option value="Shellfish">Shellfish</option>
-                    <option value="Premium Import">Premium Import</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-price">Price Per Kg ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="prod-price"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(Number(e.target.value))}
-                    className="luxury-input"
-                    required
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-category">Category</label>
-                  <select
-                    id="prod-category"
-                    value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value as any)}
-                    className="luxury-input"
-                    style={{ appearance: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="Saltwater">Saltwater</option>
-                    <option value="Freshwater">Freshwater</option>
-                    <option value="Shellfish">Shellfish</option>
-                    <option value="Premium Import">Premium Import</option>
+                    {storeConfig.categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
                   </select>
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-unit">Unit of Measurement</label>
-                  <select
+                  <input
+                    type="text"
                     id="prod-unit"
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
                     className="luxury-input"
-                    style={{ appearance: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="kg">kg (Kilograms)</option>
-                    <option value="L">L (Liters)</option>
-                    <option value="pcs">pcs (Pieces)</option>
-                  </select>
+                    placeholder="e.g. kg, dozen, pcs"
+                    required
+                  />
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-price">Price Per Unit ($ / {formUnit})</label>
@@ -1380,19 +1606,19 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-origin">Origin Port / Country</label>
+                  <label className={styles.label} htmlFor="prod-origin">Origin / Source</label>
                   <input
                     type="text"
                     id="prod-origin"
                     value={formOrigin}
                     onChange={(e) => setFormOrigin(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. Miyagi, Japan"
+                    placeholder="e.g. Sunshine Valley Farms"
                     required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-stock">Initial Stock ({formUnit})</label>
+                  <label className={styles.label} htmlFor="prod-stock">Current Stock ({formUnit})</label>
                   <input
                     type="number"
                     id="prod-stock"
@@ -1403,14 +1629,14 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className={`${styles.formGroup} styles.formGroupFull`}>
-                  <label className={styles.label} htmlFor="prod-image">Image Sourcing Path</label>
+                  <label className={styles.label} htmlFor="prod-image">Image Path or URL</label>
                   <input
                     type="text"
                     id="prod-image"
                     value={formImage}
                     onChange={(e) => setFormImage(e.target.value)}
                     className="luxury-input"
-                    placeholder="/images/bluefin_tuna.png"
+                    placeholder="https://images.unsplash.com/... or /images/..."
                     required
                   />
                 </div>
@@ -1422,70 +1648,68 @@ export default function DashboardPage() {
                     onChange={(e) => setFormDesc(e.target.value)}
                     className="luxury-input"
                     style={{ minHeight: '80px', resize: 'vertical' }}
-                    placeholder="Enter detailed taste and sourcing descriptions..."
+                    placeholder="Enter detailed description..."
                     required
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-taste">Taste Profile Tags (Comma Separated)</label>
+                  <label className={styles.label} htmlFor="prod-taste">{storeConfig.attributes.tasteProfileLabel} (Comma Separated)</label>
                   <input
                     type="text"
                     id="prod-taste"
                     value={formTaste}
                     onChange={(e) => setFormTaste(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. Sweet, Briny, Creamy"
+                    placeholder="e.g. Pasture Raised, Organic Feed"
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-texture">Texture</label>
+                  <label className={styles.label} htmlFor="prod-texture">{storeConfig.attributes.textureLabel}</label>
                   <input
                     type="text"
                     id="prod-texture"
                     value={formTexture}
                     onChange={(e) => setFormTexture(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. Plump, velvety, delicate"
+                    placeholder="e.g. Deep orange yolk"
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-sustainability">Sustainability Status</label>
-                  <select
+                  <label className={styles.label} htmlFor="prod-sustainability">{storeConfig.attributes.sustainabilityLabel}</label>
+                  <input
+                    type="text"
                     id="prod-sustainability"
                     value={formSustainability}
-                    onChange={(e) => setFormSustainability(e.target.value as any)}
+                    onChange={(e) => setFormSustainability(e.target.value)}
                     className="luxury-input"
-                    style={{ appearance: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="Wild Caught">Wild Caught</option>
-                    <option value="Sustainably Farmed">Sustainably Farmed</option>
-                    <option value="MSC Certified">MSC Certified</option>
-                  </select>
+                    placeholder="e.g. Free-Range"
+                  />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-prep">Prep Time</label>
+                  <label className={styles.label} htmlFor="prod-prep">
+                    {storeConfig.storeType === 'seafood' ? 'Prep Time' : 'Handling / Storage'}
+                  </label>
                   <input
                     type="text"
                     id="prod-prep"
                     value={formPrep}
                     onChange={(e) => setFormPrep(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. 5 mins (raw) / 10 mins (grill)"
+                    placeholder="e.g. Keep refrigerated (3-5°C)"
                   />
                 </div>
                 <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="prod-difficulty">Preparation Skill Level</label>
-                  <select
+                  <label className={styles.label} htmlFor="prod-difficulty">
+                    {storeConfig.storeType === 'seafood' ? 'Preparation Skill Level' : 'Care Level'}
+                  </label>
+                  <input
+                    type="text"
                     id="prod-difficulty"
                     value={formDifficulty}
-                    onChange={(e) => setFormDifficulty(e.target.value as any)}
+                    onChange={(e) => setFormDifficulty(e.target.value)}
                     className="luxury-input"
-                    style={{ appearance: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Expert">Expert</option>
-                  </select>
+                    placeholder="e.g. Easy"
+                  />
                 </div>
               </div>
 
@@ -1504,7 +1728,7 @@ export default function DashboardPage() {
                   style={{ padding: '10px 20px', fontSize: '0.9rem' }}
                   id="admin-product-submit-btn"
                 >
-                  {editingProduct ? 'Save Changes' : 'Land Variety'}
+                  {editingProduct ? 'Save Changes' : 'Add Item'}
                 </button>
               </div>
             </form>

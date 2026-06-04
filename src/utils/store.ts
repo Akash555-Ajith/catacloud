@@ -1,4 +1,5 @@
 import { fishData, FishItem } from '@/data/fishData';
+import { StoreConfig, SEAFOOD_PRESET, eggSeedData, genericSeedData } from '@/data/storeConfig';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 export interface OrderItem {
@@ -61,7 +62,16 @@ export interface Proposal {
 // Check if we are running in the browser
 const isBrowser = () => typeof window !== 'undefined';
 
+export function getSeedData(type: string): FishItem[] {
+  if (type === 'egg') return eggSeedData;
+  if (type === 'generic') return genericSeedData;
+  return fishData;
+}
+
 export async function getProducts(): Promise<FishItem[]> {
+  const config = await getStoreConfig();
+  const seed = getSeedData(config.storeType);
+
   if (isSupabaseConfigured) {
     try {
       const { data, error } = await supabase.from('products').select('*');
@@ -69,9 +79,9 @@ export async function getProducts(): Promise<FishItem[]> {
       
       // Automatic Seeding: Seed dynamic products on first run if database is empty
       if (!data || data.length === 0) {
-        const { error: seedError } = await supabase.from('products').insert(fishData);
+        const { error: seedError } = await supabase.from('products').insert(seed);
         if (seedError) console.warn('Failed to seed products in Supabase:', seedError);
-        return fishData;
+        return seed;
       }
       return data as FishItem[];
     } catch (err) {
@@ -79,16 +89,16 @@ export async function getProducts(): Promise<FishItem[]> {
     }
   }
 
-  if (!isBrowser()) return fishData;
+  if (!isBrowser()) return seed;
   const stored = localStorage.getItem(PRODUCTS_KEY);
   if (!stored) {
-    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(fishData));
-    return fishData;
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(seed));
+    return seed;
   }
   try {
     return JSON.parse(stored);
   } catch {
-    return fishData;
+    return seed;
   }
 }
 
@@ -499,4 +509,64 @@ export function calculateSourcingETA(
     explanation,
     targetDateString
   };
+}
+
+export async function getStoreConfig(): Promise<StoreConfig> {
+  if (isSupabaseConfigured) {
+    try {
+      const { data, error } = await supabase.from('store_config').select('*').limit(1).maybeSingle();
+      if (!error && data) {
+        return data as StoreConfig;
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return SEAFOOD_PRESET;
+  const stored = localStorage.getItem('bluefine_store_config');
+  if (!stored) {
+    localStorage.setItem('bluefine_store_config', JSON.stringify(SEAFOOD_PRESET));
+    return SEAFOOD_PRESET;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return SEAFOOD_PRESET;
+  }
+}
+
+export async function saveStoreConfig(config: StoreConfig): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      await supabase.from('store_config').upsert({ id: 'main', ...config });
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return;
+  localStorage.setItem('bluefine_store_config', JSON.stringify(config));
+  window.dispatchEvent(new Event('store-config-updated'));
+}
+
+export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic'): Promise<FishItem[]> {
+  const seed = getSeedData(storeType);
+  if (isSupabaseConfigured) {
+    try {
+      // Clear product database (delete all rows)
+      await supabase.from('products').delete().neq('id', 'dummy-unmatched-id');
+      // Re-seed with configuration theme
+      const { error } = await supabase.from('products').insert(seed);
+      if (!error) {
+        window.dispatchEvent(new Event('products-updated'));
+        return seed;
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (isBrowser()) {
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(seed));
+    window.dispatchEvent(new Event('products-updated'));
+  }
+  return seed;
 }

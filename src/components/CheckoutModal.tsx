@@ -18,6 +18,7 @@ interface CheckoutModalProps {
   onClose: () => void;
   cartItems: CartItemData[];
   onClearCart: () => void;
+  unit?: string;
 }
 
 interface FormState {
@@ -29,7 +30,7 @@ interface FormState {
   cardCvv: string;
 }
 
-export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart, unit }: CheckoutModalProps) {
   const [step, setStep] = useState<number>(1);
   const [orderRef, setOrderRef] = useState<string>('');
   const [form, setForm] = useState<FormState>({
@@ -370,9 +371,9 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart 
                 <span className="text-[var(--text-secondary)]">Estimated Arrival:</span>
                 <span className="font-semibold text-[var(--text-primary)]">{form.deliveryDate}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-secondary)]">Sourced Variety Weight:</span>
-                <span className="font-semibold text-[var(--text-primary)]">{totalWeight} kg</span>
+              <div className="flex justify-between text-xs text-[var(--text-secondary)]">
+                <span>Total Quantity:</span>
+                <span className="font-semibold text-[var(--text-primary)]">{totalWeight} {unit || 'units'}</span>
               </div>
               <div className="flex justify-between pt-2.5 border-t border-[rgba(255,255,255,0.06)] text-sm">
                 <span className="font-medium text-[var(--text-primary)]">Amount Paid:</span>

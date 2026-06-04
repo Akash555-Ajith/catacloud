@@ -18,6 +18,7 @@ interface CartDrawerProps {
   onUpdateQuantity: (fishId: string, quantity: number) => void;
   onRemoveItem: (fishId: string) => void;
   onCheckout: () => void;
+  unit?: string;
 }
 
 export default function CartDrawer({
@@ -26,7 +27,8 @@ export default function CartDrawer({
   cartItems,
   onUpdateQuantity,
   onRemoveItem,
-  onCheckout
+  onCheckout,
+  unit
 }: CartDrawerProps) {
   const totalWeight = cartItems.reduce((acc, item) => acc + item.quantity, 0);
   const totalPrice = cartItems.reduce((acc, item) => acc + item.fish.pricePerKg * item.quantity, 0);
@@ -125,7 +127,9 @@ export default function CartDrawer({
                       >
                         &minus;
                       </button>
-                      <span className="min-w-[32px] text-center text-xs font-bold">{item.quantity}kg</span>
+                      <span className="min-w-[32px] text-center text-xs font-bold">
+                        {item.quantity} {item.fish.unit || unit || 'kg'}
+                      </span>
                       <button
                         className="w-5 h-5 flex items-center justify-center text-sm text-[var(--text-secondary)] hover:text-white cursor-pointer"
                         onClick={() => onUpdateQuantity(item.fish.id, item.quantity + 1)}
@@ -140,7 +144,7 @@ export default function CartDrawer({
                         ${(item.fish.pricePerKg * item.quantity).toFixed(2)}
                       </div>
                       <span className="text-[10px] text-[var(--text-secondary)]">
-                        ${item.fish.pricePerKg.toFixed(2)}/kg
+                        ${item.fish.pricePerKg.toFixed(2)}/{item.fish.unit || unit || 'kg'}
                       </span>
                     </div>
                   </div>
@@ -153,8 +157,10 @@ export default function CartDrawer({
         {cartItems.length > 0 && (
           <div className="p-5 border-t border-[rgba(255,255,255,0.06)] bg-[rgba(5,12,26,0.4)] space-y-3">
             <div className="flex justify-between text-xs text-[var(--text-secondary)]">
-              <span>Total Sourced Weight:</span>
-              <span className="font-semibold text-[var(--text-primary)]">{totalWeight} kg</span>
+              <span>Total Sourced Quantity:</span>
+              <span className="font-semibold text-[var(--text-primary)]">
+                {totalWeight} {unit || 'units'}
+              </span>
             </div>
             <div className="flex justify-between text-xs text-[var(--text-secondary)]">
               <span>Logistics & Handling:</span>

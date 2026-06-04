@@ -5,16 +5,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
+import { getStoreConfig } from '@/utils/store';
 
 const PRESET_AVATARS = [
   { name: 'Bluefin Tuna', url: '/images/bluefin_tuna.png' },
@@ -39,6 +33,8 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
   const [userAvatar, setUserAvatar] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  
+  const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   
   // Profile Form state
   const [tempName, setTempName] = useState<string>('');
@@ -74,14 +70,21 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
       }
     };
 
+    const loadStoreConfig = () => {
+      getStoreConfig().then(setStoreConfig);
+    };
+
     loadUser();
+    loadStoreConfig();
 
     window.addEventListener('storage', loadUser);
     window.addEventListener('user-profile-updated', loadUser);
+    window.addEventListener('store-config-updated', loadStoreConfig);
 
     return () => {
       window.removeEventListener('storage', loadUser);
       window.removeEventListener('user-profile-updated', loadUser);
+      window.removeEventListener('store-config-updated', loadStoreConfig);
     };
   }, []);
 
@@ -137,40 +140,86 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-12 py-7 border-b border-[rgba(0,242,254,0.12)] bg-gradient-to-b from-[rgba(8,20,38,0.92)] to-[rgba(3,8,18,0.92)] backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300">
-      <div className="flex items-center gap-4 group cursor-pointer">
-        {/* Luxury Fish/Wave SVG logo */}
-        <svg
-          width="42"
-          height="42"
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ filter: 'drop-shadow(0 0 12px rgba(0, 242, 254, 0.5))' }}
-          className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105"
-        >
-          <path
-            d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
-            fill="url(#logo-grad)"
-          />
-          <path
-            d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
-            fill="url(#logo-grad-accent)"
-            opacity="0.7"
-          />
-          <defs>
-            <linearGradient id="logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#00f2fe" />
-              <stop offset="1" stopColor="#4facfe" />
-            </linearGradient>
-            <linearGradient id="logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#e2b744" />
-              <stop offset="1" stopColor="#b88e1a" />
-            </linearGradient>
-          </defs>
-        </svg>
+    <header className="sticky top-0 z-50 flex items-center justify-between px-12 py-7 border-b border-transparent bg-gradient-to-b from-[rgba(8,20,38,0.92)] to-[rgba(3,8,18,0.92)] backdrop-blur-xl shadow-[0_10px_35px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.03)] transition-all duration-300">
+      <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.location.href = '/'}>
+        {storeConfig.storeType === 'seafood' ? (
+          <svg
+            width="42"
+            height="42"
+            viewBox="0 0 32 32"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ filter: 'drop-shadow(0 0 12px rgba(0, 242, 254, 0.5))' }}
+            className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105"
+          >
+            <path
+              d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
+              fill="url(#logo-grad)"
+            />
+            <path
+              d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
+              fill="url(#logo-grad-accent)"
+              opacity="0.7"
+            />
+            <defs>
+              <linearGradient id="logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+              <linearGradient id="logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#e2b744" />
+                <stop offset="1" stopColor="#b88e1a" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) : storeConfig.storeType === 'egg' ? (
+          <svg
+            width="42"
+            height="42"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="url(#logo-grad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 12px rgba(0, 242, 254, 0.5))' }}
+            className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105"
+          >
+            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" fill="url(#logo-grad)" opacity="0.15" />
+            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" />
+            <defs>
+              <linearGradient id="logo-grad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+            </defs>
+          </svg>
+        ) : (
+          <svg
+            width="42"
+            height="42"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="url(#logo-grad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 12px rgba(0, 242, 254, 0.5))' }}
+            className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105"
+          >
+            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" fill="url(#logo-grad)" opacity="0.1" />
+            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            <defs>
+              <linearGradient id="logo-grad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#00f2fe" />
+                <stop offset="1" stopColor="#4facfe" />
+              </linearGradient>
+            </defs>
+          </svg>
+        )}
         <span className="font-heading text-3xl font-extrabold bg-gradient-to-r from-[var(--accent-cyan)] via-cyan-400 to-[var(--accent-blue)] bg-clip-text text-transparent tracking-widest drop-shadow-[0_0_15px_rgba(0,242,254,0.3)] transition-all duration-300 group-hover:brightness-110">
-          Bluefine
+          {storeConfig.storeName}
         </span>
       </div>
 
@@ -220,7 +269,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
 
       <div className="flex items-center gap-8">
         <button
-          className="relative p-4 rounded-xl border border-[var(--glass-border)] bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(0,242,254,0.05)] hover:border-[rgba(0,242,254,0.35)] transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_18px_rgba(0,242,254,0.15)]"
+          className="relative p-4 rounded-xl border border-transparent bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(0,242,254,0.05)] hover:border-transparent transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_18px_rgba(0,242,254,0.15)]"
           onClick={onCartToggle}
           aria-label="Toggle Shopping Cart"
           id="cart-toggle-btn"
@@ -249,7 +298,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
           )}
         </button>
 
-        <div className="flex items-center gap-4 pl-6 border-l border-[rgba(0,242,254,0.15)] py-3">
+        <div className="flex items-center gap-4 pl-6 border-l border-transparent py-3">
           <button 
             type="button"
             onClick={handleOpenProfile}
@@ -380,7 +429,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout }: NavbarProp
               </span>
             </div>
             <button 
-              className="flex items-center text-sm font-medium text-white bg-transparent border border-[#ef4444] hover:border-red-400 rounded-full px-6 py-2 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.15)] hover:bg-[rgba(239,68,68,0.08)] hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] select-none hover:scale-[1.02]"
+              className="flex items-center text-sm font-medium text-white bg-transparent border border-transparent rounded-full px-6 py-2 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.15)] hover:bg-[rgba(239,68,68,0.08)] hover:shadow-[0_0_15px_rgba(239,68,68,0.3)] select-none hover:scale-[1.02]"
               onClick={onLogout} 
               id="logout-button"
             >
