@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
-import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
+import { supabase, isSupabaseConfigured, cleanedSupabaseUrl } from '@/utils/supabaseClient';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,9 +133,29 @@ export default function LoginPage() {
   };
 
   const handleGoogleAuth = async () => {
-    // If Supabase is configured, trigger real Google OAuth
-    if (isSupabaseConfigured && supabase) {
+    setError('');
+    // If Supabase is configured, trigger real Google OAuth after pre-flight check
+    if (isSupabaseConfigured && supabase && cleanedSupabaseUrl) {
+      setLoading(true);
       try {
+        const testUrl = `${cleanedSupabaseUrl}/auth/v1/authorize?provider=google`;
+        const checkRes = await fetch(testUrl, { method: 'GET', redirect: 'manual' });
+        
+        if (checkRes.status === 400) {
+          const body = await checkRes.json().catch(() => ({}));
+          if (body.error_code === 'validation_failed' || (body.msg && body.msg.includes('provider is not enabled'))) {
+            console.warn('Google provider not enabled in Supabase console. Falling back to simulator.');
+            toast.info('Google Auth is disabled on the Supabase dashboard. Running in simulation mode instead.', {
+              duration: 5000,
+            });
+            setLoading(false);
+            setGoogleEmailInput('');
+            setGoogleNameInput('');
+            setShowGoogleModal(true);
+            return;
+          }
+        }
+        
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -144,10 +165,12 @@ export default function LoginPage() {
         if (error) {
           setError(error.message);
         }
+        setLoading(false);
         return;
       } catch (err: any) {
-        console.warn('Supabase OAuth fail:', err);
+        console.warn('Supabase OAuth preflight failed, falling back to simulator:', err);
       }
+      setLoading(false);
     }
 
     // Fallback: Open premium Google account simulation modal

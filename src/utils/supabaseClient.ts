@@ -55,6 +55,8 @@ if (!isSupabaseConfigured && typeof window !== 'undefined') {
   );
 }
 
+export const cleanedSupabaseUrl = supabaseUrl;
+
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : (null as any);
