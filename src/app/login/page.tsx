@@ -430,16 +430,6 @@ export default function LoginPage() {
             {isSignUp ? 'Log In' : 'Sign Up'}
           </button>
         </div>
-
-        <div className={styles.demoBox}>
-          <div className={styles.demoTitle}>Portal Access & Authorization</div>
-          <span style={{ display: 'block', marginBottom: '8px' }}>
-            <strong>Chef Registry:</strong> Click <strong>Sign Up</strong> to register your unique business account.
-          </span>
-          <span>
-            <strong>Admin Access:</strong> Login using email <code>admin@gmail.com</code> and secure key <code>12345678</code>.
-          </span>
-        </div>
       </div>
 
       {showGoogleModal && (

@@ -923,10 +923,31 @@ export default function DashboardPage() {
             /* Onboarding Store Creator Wizard */
             <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', width: '100%' }}>
               <div className="glassmorphism" style={{ maxWidth: '600px', width: '100%', padding: '32px', borderRadius: '16px', border: '1px solid var(--accent-gold)' }}>
-                <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'center' }}>Create Your Business Store</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.95rem' }}>
-                  Set up your niche product catalog, define your categories, units, and custom labels. Select a preset below to get started instantly.
+                <h2 style={{ fontSize: '2rem', color: 'var(--text-primary)', marginBottom: '12px', textAlign: 'center', fontFamily: 'var(--font-outfit), sans-serif' }}>
+                  Create Your Custom Store & Catalogues
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', textAlign: 'center', fontSize: '0.95rem', lineHeight: '1.6' }}>
+                  Welcome! This platform allows you to build custom storefronts, manage inventories for any niche (e.g. Seafood, Eggs, Bakery, or general retail), and share private custom catalogues/pricing lists directly with your clients.
                 </p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '24px' }}>
+                  <div>
+                    <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>🏪 1. Establish Your Store</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Create niche-specific storefronts with custom measurement units (kg, dozen, pcs) and labels.</p>
+                  </div>
+                  <div>
+                    <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>📦 2. Add Your Products</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Add products, track stock levels, and log offline sales via the POS terminal.</p>
+                  </div>
+                  <div>
+                    <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>📄 3. Share Custom Catalogues</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Build targeted catalogs/proposals for specific buyers with custom discounts and minimum thresholds.</p>
+                  </div>
+                  <div>
+                    <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>🙋 4. Receive Client Orders</h4>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Buyers place orders or request custom volume quotes from your public page directly to your dashboard.</p>
+                  </div>
+                </div>
                 
                 <form onSubmit={handleCreateStore}>
                   <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
@@ -1054,6 +1075,17 @@ export default function DashboardPage() {
                   </button>
                 </div>
               </header>
+
+              {/* Platform Explanation Alert Panel */}
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '16px 20px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '24px' }}>
+                <span style={{ fontSize: '1.5rem', marginTop: '-2px' }}>💡</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>B2B Store & Sourcing Hub Platform</h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
+                    This platform allows you to create niche-specific storefronts (like Seafood, Eggs, or general retail), add and manage inventory, and generate custom catalogs/proposals to share with your clients. Use the switcher at the top-right to create or switch between multiple business stores.
+                  </p>
+                </div>
+              </div>
 
               {/* Shareable Link Banner */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 18px', borderRadius: '8px', background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.15)', marginBottom: '24px' }}>

@@ -80,19 +80,13 @@ export default function HomePage() {
           }
         }
         
-        // Resolve store context from URL parameter or localStorage fallback
+        // Resolve store context from URL parameter
         const params = new URLSearchParams(window.location.search);
         let storeId = params.get('store');
         
         if (!storeId) {
-          let userActiveStore = '';
-          try {
-            const parsedUser = JSON.parse(user);
-            userActiveStore = localStorage.getItem(`bluefine_active_store_id_${parsedUser.email}`) || '';
-          } catch (e) {
-            // ignore
-          }
-          storeId = userActiveStore || localStorage.getItem('bluefine_current_store_id') || 'bluefine';
+          router.push('/dashboard');
+          return;
         } else {
           localStorage.setItem('bluefine_current_store_id', storeId);
         }
