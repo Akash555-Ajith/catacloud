@@ -9,6 +9,7 @@ import {
   updateProduct, 
   deleteProduct, 
   getOrders, 
+  addOrder,
   updateOrderStatus, 
   Order,
   Proposal,
@@ -24,7 +25,11 @@ import {
   reseedProducts,
   getStoresOwnedByUser,
   getAllStores,
-  getOrdersForBuyer
+  getOrdersForBuyer,
+  ProductReview,
+  getReviews,
+  getSourcingRequests,
+  CustomSourcingRequest
 } from '@/utils/store';
 import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
@@ -58,14 +63,23 @@ export default function DashboardPage() {
   const [showStoreCreator, setShowStoreCreator] = useState(false);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'config' | 'all-stores'>('orders');
+  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'all-stores' | 'pos' | 'enquiries'>('orders');
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [sourcingRequests, setSourcingRequests] = useState<CustomSourcingRequest[]>([]);
   const [globalStoreStats, setGlobalStoreStats] = useState<Record<string, { productsCount: number; ordersCount: number; proposalsCount: number }>>({});
+  const [allGlobalStores, setAllGlobalStores] = useState<StoreConfig[]>([]);
+  const [selectedViewStore, setSelectedViewStore] = useState<StoreConfig | null>(null);
+  const [viewStoreProducts, setViewStoreProducts] = useState<FishItem[]>([]);
+  const [viewStoreOrders, setViewStoreOrders] = useState<Order[]>([]);
+  const [viewStoreProposals, setViewStoreProposals] = useState<CustomCatalog[]>([]);
+  const [viewStoreLoading, setViewStoreLoading] = useState(false);
+  const [viewStoreTab, setViewStoreTab] = useState<'info' | 'products' | 'orders' | 'proposals'>('info');
 
   useEffect(() => {
-    if (adminTab === 'all-stores' && userStores.length > 0) {
+    if (adminTab === 'all-stores' && allGlobalStores.length > 0) {
       const statsMap: Record<string, { productsCount: number; ordersCount: number; proposalsCount: number }> = {};
       Promise.all(
-        userStores.map(async (store) => {
+        allGlobalStores.map(async (store) => {
           const storeIdKey = store.id || '';
           if (!storeIdKey) return;
           try {
@@ -87,7 +101,31 @@ export default function DashboardPage() {
         setGlobalStoreStats({ ...statsMap });
       });
     }
-  }, [adminTab, userStores]);
+  }, [adminTab, allGlobalStores]);
+
+  useEffect(() => {
+    if (selectedViewStore?.id) {
+      setViewStoreLoading(true);
+      setViewStoreTab('info');
+      Promise.all([
+        getProducts(selectedViewStore.id),
+        getOrders(selectedViewStore.id),
+        getCustomCatalogs(selectedViewStore.id)
+      ]).then(([prods, ords, props]) => {
+        setViewStoreProducts(prods);
+        setViewStoreOrders(ords);
+        setViewStoreProposals(props);
+        setViewStoreLoading(false);
+      }).catch((e) => {
+        console.error('Failed to load store details', e);
+        setViewStoreLoading(false);
+      });
+    } else {
+      setViewStoreProducts([]);
+      setViewStoreOrders([]);
+      setViewStoreProposals([]);
+    }
+  }, [selectedViewStore]);
 
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   
@@ -97,6 +135,8 @@ export default function DashboardPage() {
   const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic'>('seafood');
   const [cfgUnit, setCfgUnit] = useState('kg');
   const [cfgCategories, setCfgCategories] = useState<string[]>([]);
+  const [cfgStorePhone, setCfgStorePhone] = useState('');
+  const [cfgStoreAddress, setCfgStoreAddress] = useState('');
   const [cfgSpecimenLabel, setCfgSpecimenLabel] = useState('');
   const [cfgScientificNameLabel, setCfgScientificNameLabel] = useState('');
   const [cfgTasteProfileLabel, setCfgTasteProfileLabel] = useState('');
@@ -119,6 +159,112 @@ export default function DashboardPage() {
   // Modal / Form states for product management
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<FishItem | null>(null);
+  
+  // POS System State
+  const [posCart, setPosCart] = useState<{ fish: FishItem; quantity: number }[]>([]);
+  const [posSearch, setPosSearch] = useState('');
+  const [posCategory, setPosCategory] = useState('All');
+  const [posCustomerName, setPosCustomerName] = useState('Walk-in Customer');
+  const [posPaymentMethod, setPosPaymentMethod] = useState<'Cash' | 'Card' | 'Tap'>('Cash');
+  const [posReceipt, setPosReceipt] = useState<Order | null>(null);
+
+  const handleAddToPosCart = (fish: FishItem) => {
+    if (fish.stock <= 0) {
+      toast.error('Out of Stock', { description: `${fish.name} is currently out of stock.` });
+      return;
+    }
+    setPosCart((prev) => {
+      const idx = prev.findIndex((item) => item.fish.id === fish.id);
+      if (idx > -1) {
+        const next = [...prev];
+        const newQty = next[idx].quantity + 1;
+        if (newQty > fish.stock) {
+          toast.warning('Stock Limit Reached', { description: `Cannot add more than ${fish.stock} available units.` });
+          return prev;
+        }
+        next[idx].quantity = newQty;
+        return next;
+      }
+      return [...prev, { fish, quantity: 1 }];
+    });
+  };
+
+  const handleUpdatePosQuantity = (fishId: string, qty: number) => {
+    if (qty <= 0) {
+      setPosCart((prev) => prev.filter((item) => item.fish.id !== fishId));
+      return;
+    }
+    const item = posCart.find((i) => i.fish.id === fishId);
+    if (item && qty > item.fish.stock) {
+      toast.warning('Stock Limit Reached', { description: `Only ${item.fish.stock} units are available.` });
+      return;
+    }
+    setPosCart((prev) =>
+      prev.map((item) => (item.fish.id === fishId ? { ...item, quantity: qty } : item))
+    );
+  };
+
+  const handleRemoveFromPosCart = (fishId: string) => {
+    setPosCart((prev) => prev.filter((item) => item.fish.id !== fishId));
+  };
+
+  const handleCompletePosSale = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (posCart.length === 0) return;
+
+    const totalPrice = posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0);
+    const saleId = `POS-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const newOrder: Order = {
+      id: saleId,
+      userEmail: `${posCustomerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'walkin'}@pos.com`,
+      userName: posCustomerName,
+      date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      deliveryDate: 'Instant (POS)',
+      address: `In-Store Sales (${posPaymentMethod})`,
+      items: posCart.map((item) => ({
+        fishId: item.fish.id,
+        name: item.fish.name,
+        quantity: item.quantity,
+        price: item.fish.pricePerKg,
+        image: item.fish.image
+      })),
+      totalPrice,
+      status: 'Delivered',
+      store_id: activeStoreId
+    };
+
+    try {
+      await addOrder(newOrder, activeStoreId);
+      toast.success('Sale Completed Successfully', {
+        description: `Receipt ${saleId} generated.`
+      });
+
+      // Update statistics and reload products/orders
+      const [prods, ords] = await Promise.all([
+        getProducts(activeStoreId),
+        getOrders(activeStoreId)
+      ]);
+      setProducts(prods);
+      setOrders(ords);
+
+      // Keep receipt open for showing bill/invoice print view
+      setPosReceipt(newOrder);
+      setPosCart([]);
+      setPosCustomerName('Walk-in Customer');
+      setPosPaymentMethod('Cash');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to register POS sale.');
+    }
+  };
+
   
   // Product form fields
   const [formName, setFormName] = useState('');
@@ -167,11 +313,7 @@ export default function DashboardPage() {
   // 2. Load owned stores once user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      const loadStoresPromise = user.role === 'admin'
-        ? getAllStores()
-        : getStoresOwnedByUser(user.email);
-
-      loadStoresPromise.then(async (stores) => {
+      getStoresOwnedByUser(user.email).then(async (stores) => {
         let finalStores = [...stores];
         if (user.role === 'admin') {
           const hasBluefine = finalStores.some(s => s.id === 'bluefine');
@@ -198,6 +340,12 @@ export default function DashboardPage() {
           localStorage.setItem(`bluefine_active_store_id_${user.email}`, 'bluefine');
         }
       });
+
+      if (user.role === 'admin') {
+        getAllStores().then((stores) => {
+          setAllGlobalStores(stores);
+        });
+      }
     }
   }, [isAuthenticated, user]);
 
@@ -215,13 +363,17 @@ export default function DashboardPage() {
         getOrders(activeStoreId),
         getProposals(activeStoreId),
         getCustomCatalogs(activeStoreId),
-        getStoreConfig(activeStoreId)
-      ]).then(([prods, ords, props, cats, cfg]) => {
+        getStoreConfig(activeStoreId),
+        getReviews(activeStoreId),
+        getSourcingRequests(activeStoreId)
+      ]).then(([prods, ords, props, cats, cfg, revs, reqs]) => {
         setProducts(prods);
         setOrders(ords);
         setProposals(props);
         setCustomCatalogs(cats);
         setStoreConfig(cfg);
+        setReviews(revs);
+        setSourcingRequests(reqs);
 
         // Initialize config form fields
         setCfgStoreName(cfg.storeName);
@@ -229,6 +381,8 @@ export default function DashboardPage() {
         setCfgStoreType(cfg.storeType);
         setCfgUnit(cfg.unit);
         setCfgCategories(cfg.categories);
+        setCfgStorePhone(cfg.storePhone || '');
+        setCfgStoreAddress(cfg.storeAddress || '');
         setCfgSpecimenLabel(cfg.attributes.specimenLabel);
         setCfgScientificNameLabel(cfg.attributes.scientificNameLabel);
         setCfgTasteProfileLabel(cfg.attributes.tasteProfileLabel);
@@ -346,10 +500,26 @@ export default function DashboardPage() {
       toast.success(`Store "${onboardName}" created successfully!`);
 
       // Reload owned stores
-      const stores = user.role === 'admin'
-        ? await getAllStores()
-        : await getStoresOwnedByUser(user.email);
-      setUserStores(stores);
+      const stores = await getStoresOwnedByUser(user.email);
+      let finalStores = [...stores];
+      if (user.role === 'admin') {
+        const hasBluefine = finalStores.some(s => s.id === 'bluefine');
+        if (!hasBluefine) {
+          const defaultAdminStore: StoreConfig = {
+            ...SEAFOOD_PRESET,
+            id: 'bluefine',
+            ownerEmail: user.email.toLowerCase()
+          };
+          finalStores.unshift(defaultAdminStore);
+        }
+      }
+      setUserStores(finalStores);
+
+      if (user.role === 'admin') {
+        getAllStores().then((allStores) => {
+          setAllGlobalStores(allStores);
+        });
+      }
       
       // Set as active store
       setActiveStoreId(finalStoreId);
@@ -428,6 +598,8 @@ export default function DashboardPage() {
       storeType: cfgStoreType,
       unit: cfgUnit,
       categories: cfgCategories,
+      storePhone: cfgStorePhone,
+      storeAddress: cfgStoreAddress,
       attributes: {
         specimenLabel: cfgSpecimenLabel,
         scientificNameLabel: cfgScientificNameLabel,
@@ -456,6 +628,8 @@ export default function DashboardPage() {
     setCfgStoreType(preset.storeType);
     setCfgUnit(preset.unit);
     setCfgCategories(preset.categories);
+    setCfgStorePhone(preset.storePhone || '');
+    setCfgStoreAddress(preset.storeAddress || '');
     setCfgSpecimenLabel(preset.attributes.specimenLabel);
     setCfgScientificNameLabel(preset.attributes.scientificNameLabel);
     setCfgTasteProfileLabel(preset.attributes.tasteProfileLabel);
@@ -687,6 +861,7 @@ export default function DashboardPage() {
         cartCount={0}
         onCartToggle={() => {}}
         onLogout={handleLogout}
+        storeId={activeStoreId || 'bluefine'}
       />
 
       <main className={styles.container}>
@@ -927,7 +1102,7 @@ export default function DashboardPage() {
                   className={`${styles.tabBtn} ${adminTab === 'all-stores' ? styles.tabBtnActive : ''}`}
                   id="admin-tab-all-stores"
                 >
-                  Global Stores Directory ({userStores.length})
+                  Global Stores Directory ({allGlobalStores.length})
                 </button>
               )}
               <button 
@@ -936,6 +1111,13 @@ export default function DashboardPage() {
                 id="admin-tab-orders"
               >
                 Logistics & Orders ({orders.length})
+              </button>
+              <button 
+                onClick={() => setAdminTab('pos')}
+                className={`${styles.tabBtn} ${adminTab === 'pos' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-pos"
+              >
+                ⚡ Sell Products (POS)
               </button>
               <button 
                 onClick={() => setAdminTab('products')}
@@ -951,12 +1133,14 @@ export default function DashboardPage() {
               >
                 Custom Proposals ({customCatalogs.length})
               </button>
+
+
               <button 
-                onClick={() => setAdminTab('config')}
-                className={`${styles.tabBtn} ${adminTab === 'config' ? styles.tabBtnActive : ''}`}
-                id="admin-tab-config"
+                onClick={() => setAdminTab('enquiries')}
+                className={`${styles.tabBtn} ${adminTab === 'enquiries' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-enquiries"
               >
-                Store Customizer Settings
+                🙋 Enquiries ({sourcingRequests.length})
               </button>
             </div>
 
@@ -965,7 +1149,7 @@ export default function DashboardPage() {
               <section className={`${styles.sectionCard} glassmorphism`}>
                 <h2 className={styles.sectionTitle}>Global Stores Directory</h2>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
-                  Below is the master list of all business stores created by platform users. As an Administrator, you can view metrics, copy buyer links, or switch contexts to manage their catalogs directly.
+                  Below is the master list of all business stores created by platform users. As an Administrator, you can view metrics, view store detail parameters, or copy buyer catalog links.
                 </p>
                 <div className={styles.tableResponsive}>
                   <table className={styles.table}>
@@ -982,7 +1166,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {userStores.map((store) => {
+                      {allGlobalStores.map((store) => {
                         const storeIdKey = store.id || '';
                         const stats = globalStoreStats[storeIdKey] || { productsCount: 0, ordersCount: 0, proposalsCount: 0 };
                         return (
@@ -1018,28 +1202,12 @@ export default function DashboardPage() {
                               <div className={styles.actionButtons} style={{ justifyContent: 'center', gap: '8px' }}>
                                 <button
                                   onClick={() => {
-                                    if (storeIdKey) {
-                                      setActiveStoreId(storeIdKey);
-                                      localStorage.setItem(`bluefine_active_store_id_${user.email}`, storeIdKey);
-                                      toast.success(`Switched active store context to "${store.storeName}"`);
-                                    }
+                                    setSelectedViewStore(store);
                                   }}
                                   className="btn-gold"
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px', display: 'flex', alignItems: 'center' }}
-                                  disabled={activeStoreId === storeIdKey}
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px', display: 'flex', alignItems: 'center', cursor: 'pointer' }}
                                 >
-                                  {activeStoreId === storeIdKey ? 'Active' : 'Manage Store'}
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const url = typeof window !== 'undefined' ? `${window.location.origin}/?store=${storeIdKey}` : `/?store=${storeIdKey}`;
-                                    navigator.clipboard.writeText(url);
-                                    toast.success(`Buyer catalogue link for "${store.storeName}" copied to clipboard!`);
-                                  }}
-                                  className="btn-primary"
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', height: '32px', borderRadius: '6px' }}
-                                >
-                                  Copy Link
+                                  View Details
                                 </button>
                               </div>
                             </td>
@@ -1160,6 +1328,298 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 )}
+              </section>
+            )}
+
+            {/* POS Point of Sale Section */}
+            {adminTab === 'pos' && (
+              <section className={`${styles.sectionCard} glassmorphism`}>
+                <h2 className={styles.sectionTitle}>⚡ Point of Sale (POS) & Billing</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                  Register direct in-store sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.
+                </p>
+
+                {posReceipt && (
+                  <div className="glassmorphism" style={{ border: '2px solid var(--accent-gold)', borderRadius: '16px', padding: '24px', marginBottom: '32px', background: 'rgba(226, 183, 68, 0.03)', position: 'relative' }}>
+                    <button 
+                      onClick={() => setPosReceipt(null)}
+                      style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}
+                    >
+                      &times;
+                    </button>
+                    <div style={{ textAlign: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '16px', marginBottom: '16px' }}>
+                      <h3 style={{ color: 'var(--accent-gold)', fontSize: '1.4rem', fontFamily: 'var(--font-playfair), serif', margin: '0 0 4px 0' }}>{storeConfig.storeName}</h3>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Official Billing Invoice</span>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Invoice ID:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.id}</strong>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Date:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.date}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-muted)' }}>Client:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.userName}</strong>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Method:</span> <strong style={{ color: 'var(--accent-cyan)' }}>{posReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
+                      </div>
+                    </div>
+
+                    <table className={styles.orderItemsTable} style={{ margin: '16px 0' }}>
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th style={{ textAlign: 'right' }}>Qty</th>
+                          <th style={{ textAlign: 'right' }}>Price</th>
+                          <th style={{ textAlign: 'right' }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {posReceipt.items.map((item, idx) => (
+                          <tr key={idx}>
+                            <td>{item.name}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
+                            <td style={{ textAlign: 'right' }}>${item.price.toFixed(2)}</td>
+                            <td style={{ textAlign: 'right', color: 'var(--accent-cyan)' }}>${(item.quantity * item.price).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '16px', marginTop: '16px' }}>
+                      <div style={{ fontSize: '0.9rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Subtotal:</span>{' '}
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${posReceipt.totalPrice.toFixed(2)}</span>
+                      </div>
+                      <div style={{ fontSize: '0.9rem' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Taxes & Levies:</span>{' '}
+                        <span style={{ color: 'var(--accent-success)', fontWeight: 600 }}>Included</span>
+                      </div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-gold)', marginTop: '8px' }}>
+                        <span>Total Bill Amount:</span>{' '}
+                        <span>${posReceipt.totalPrice.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                      <button 
+                        onClick={() => window.print()}
+                        className="btn-primary"
+                        style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                      >
+                        🖨️ Print Bill Invoice
+                      </button>
+                      <button 
+                        onClick={() => setPosReceipt(null)}
+                        className="btn-gold"
+                        style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem' }}
+                      >
+                        Create New POS Sale
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.splitLayout} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
+                  {/* Left Column: POS Catalog List */}
+                  <div className="glassmorphism" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                      <input 
+                        type="text"
+                        value={posSearch}
+                        onChange={(e) => setPosSearch(e.target.value)}
+                        placeholder="Search POS items..."
+                        className="luxury-input"
+                        style={{ flex: 1, height: '36px', fontSize: '0.85rem' }}
+                      />
+                      <select 
+                        value={posCategory}
+                        onChange={(e) => setPosCategory(e.target.value)}
+                        className="luxury-input"
+                        style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
+                      >
+                        <option value="All">All Categories</option>
+                        {storeConfig.categories.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {products.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                        No inventory available to sell. Go to <strong>Catalogue Inventory</strong> to add items.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {products
+                          .filter((p) => {
+                            const matchCat = posCategory === 'All' || p.category === posCategory;
+                            const matchSearch = p.name.toLowerCase().includes(posSearch.toLowerCase()) ||
+                              p.scientificName.toLowerCase().includes(posSearch.toLowerCase());
+                            return matchCat && matchSearch;
+                          })
+                          .map((p) => (
+                            <div 
+                              key={p.id} 
+                              className="glassmorphism" 
+                              style={{ 
+                                padding: '12px', 
+                                borderRadius: '10px', 
+                                border: '1px solid var(--glass-border)', 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                justifyContent: 'space-between',
+                                opacity: p.stock <= 0 ? 0.5 : 1
+                              }}
+                            >
+                              <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                                <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                {p.stock <= 0 && (
+                                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-danger)', fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                                    Out of Stock
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px 0', lineBreak: 'anywhere' }}>{p.name}</h4>
+                                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '6px', fontStyle: 'italic' }}>{p.scientificName}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>
+                                  ${p.pricePerKg.toFixed(2)}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: p.stock < 10 ? 'var(--accent-danger)' : 'var(--text-secondary)' }}>
+                                  Stock: <strong>{p.stock}</strong>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => handleAddToPosCart(p)}
+                                disabled={p.stock <= 0}
+                                className="btn-primary"
+                                style={{ width: '100%', marginTop: '10px', height: '28px', fontSize: '0.75rem', padding: '0' }}
+                              >
+                                + Add to Sale
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Column: POS Cart Drawer Panel */}
+                  <div className="glassmorphism" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                      Cart Bill Breakdown
+                    </h3>
+
+                    {posCart.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                        <span>🛒 POS Cart is Empty</span>
+                        <span style={{ fontSize: '0.75rem' }}>Select products on the left to start a billing session.</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
+                        {posCart.map((item) => (
+                          <div key={item.fish.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                            <div style={{ flex: 1 }}>
+                              <strong style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-primary)' }}>{item.fish.name}</strong>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>${item.fish.pricePerKg.toFixed(2)} / {item.fish.unit || storeConfig.unit}</span>
+                            </div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity - 1)}
+                                style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                              >
+                                -
+                              </button>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 'bold', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
+                              <button 
+                                type="button"
+                                onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity + 1)}
+                                style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer' }}
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <div style={{ textAlign: 'right', minWidth: '70px' }}>
+                              <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>${(item.fish.pricePerKg * item.quantity).toFixed(2)}</span>
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveFromPosCart(item.fish.id)}
+                                style={{ fontSize: '0.7rem', color: 'var(--accent-danger)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px', marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div className={styles.formGroup} style={{ marginBottom: '4px' }}>
+                        <label className={styles.label} style={{ fontSize: '0.75rem' }}>Billing Client Name</label>
+                        <input 
+                          type="text" 
+                          value={posCustomerName}
+                          onChange={(e) => setPosCustomerName(e.target.value)}
+                          className="luxury-input"
+                          style={{ height: '32px', fontSize: '0.85rem' }}
+                          required
+                        />
+                      </div>
+
+                      <div className={styles.formGroup} style={{ marginBottom: '12px' }}>
+                        <label className={styles.label} style={{ fontSize: '0.75rem' }}>Payment Method</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                          {(['Cash', 'Card', 'Tap'] as const).map((method) => (
+                            <button
+                              key={method}
+                              type="button"
+                              onClick={() => setPosPaymentMethod(method)}
+                              style={{
+                                height: '32px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                borderRadius: '6px',
+                                border: '1px solid',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                borderColor: posPaymentMethod === method ? 'var(--accent-cyan)' : 'var(--glass-border)',
+                                color: posPaymentMethod === method ? '#030812' : 'var(--text-secondary)',
+                                background: posPaymentMethod === method ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.01)'
+                              }}
+                            >
+                              {method}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Bill Amount:</span>
+                        <strong style={{ fontSize: '1.4rem', color: 'var(--accent-cyan)' }}>
+                          ${posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
+                        </strong>
+                      </div>
+
+                      <button 
+                        type="button"
+                        onClick={(e) => handleCompletePosSale(e)}
+                        disabled={posCart.length === 0}
+                        className="btn-cyan" 
+                        style={{ width: '100%', height: '40px', fontSize: '0.9rem', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer' }}
+                      >
+                        🧾 Complete POS Sale & Bill
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </section>
             )}
 
@@ -1661,163 +2121,62 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {adminTab === 'config' && (
+
+
+
+
+            {adminTab === 'enquiries' && (
               <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>Store Customizer & Parameters</h2>
-                <form onSubmit={handleApplyConfig}>
-                  {/* Preset Selector Card */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--glass-border)', padding: '24px', borderRadius: '12px', marginBottom: '32px' }}>
-                    <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', marginBottom: '16px' }}>Quick Niche Presets</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
-                      <div 
-                        onClick={() => handlePresetChange('seafood')}
-                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'seafood' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'seafood' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
-                      >
-                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'seafood' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Seafood Market</strong>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bluefine Catch & Logistics</span>
-                      </div>
-                      <div 
-                        onClick={() => handlePresetChange('egg')}
-                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'egg' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'egg' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
-                      >
-                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'egg' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Egg Farm</strong>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Eggcellent Organic Eggs</span>
-                      </div>
-                      <div 
-                        onClick={() => handlePresetChange('generic')}
-                        style={{ padding: '16px', border: `1px solid ${cfgStoreType === 'generic' ? 'var(--accent-cyan)' : 'var(--glass-border)'}`, borderRadius: '8px', cursor: 'pointer', background: cfgStoreType === 'generic' ? 'rgba(0, 242, 254, 0.05)' : 'rgba(255, 255, 255, 0.01)', transition: 'all 0.2s ease', textAlign: 'center' }}
-                      >
-                        <strong style={{ display: 'block', fontSize: '1rem', color: cfgStoreType === 'generic' ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>Boutique Retailer</strong>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Generic Provisions Presets</span>
-                      </div>
-                    </div>
+                <h2 className={styles.sectionTitle}>Client Sourcing Enquiries</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.9rem' }}>
+                  Incoming custom requests from clients requesting products or quantities not listed in active catalogs.
+                </p>
+                {sourcingRequests.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', border: '1px dashed var(--glass-border)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '16px' }}>🙋</span>
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '8px' }}>No sourcing requests</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enquiries submitted on the client catalogue pages will appear here.</p>
                   </div>
-
-                  {/* General Branding Section */}
-                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>Store Branding</h3>
-                  <div className={styles.formGrid}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Store Name</label>
-                      <input 
-                        type="text" 
-                        value={cfgStoreName} 
-                        onChange={(e) => setCfgStoreName(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Tagline</label>
-                      <input 
-                        type="text" 
-                        value={cfgStoreTagline} 
-                        onChange={(e) => setCfgStoreTagline(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Default Unit of Measurement</label>
-                      <input 
-                        type="text" 
-                        value={cfgUnit} 
-                        onChange={(e) => setCfgUnit(e.target.value)} 
-                        className="luxury-input" 
-                        placeholder="e.g. kg, dozen, box, pcs" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Product Categories (Comma Separated)</label>
-                      <input 
-                        type="text" 
-                        value={cfgCategories.join(', ')} 
-                        onChange={(e) => setCfgCategories(e.target.value.split(',').map(c => c.trim()).filter(Boolean))} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
+                ) : (
+                  <div className={styles.tableResponsive}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Client Partner</th>
+                          <th>Product Requested</th>
+                          <th>Requested Qty</th>
+                          <th>Requirements & Specifications</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sourcingRequests.map((req) => (
+                          <tr key={req.id}>
+                            <td>
+                              <strong style={{ display: 'block', color: 'var(--text-primary)' }}>{req.clientName}</strong>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{req.clientEmail}</span>
+                            </td>
+                            <td>
+                              <span style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>{req.productName}</span>
+                              {req.productId && (
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {req.productId}</span>
+                              )}
+                            </td>
+                            <td>
+                              <strong style={{ color: 'var(--accent-gold)' }}>{req.requestedQuantity}</strong> {storeConfig.unit}
+                            </td>
+                            <td style={{ maxWidth: '300px', whiteSpace: 'normal', wordBreak: 'break-word', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                              {req.notes}
+                            </td>
+                            <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              {req.date}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-
-                  {/* Detail Specification Labels */}
-                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginTop: '32px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>Product Detail Specifications Labels</h3>
-                  <div className={styles.formGrid}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Variety / Specimen Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgSpecimenLabel} 
-                        onChange={(e) => setCfgSpecimenLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Scientific Name / Grade Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgScientificNameLabel} 
-                        onChange={(e) => setCfgScientificNameLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Taste Profile / Key Features Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgTasteProfileLabel} 
-                        onChange={(e) => setCfgTasteProfileLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Texture / Color Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgTextureLabel} 
-                        onChange={(e) => setCfgTextureLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Sustainability / Sourcing Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgSustainabilityLabel} 
-                        onChange={(e) => setCfgSustainabilityLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Preparation / Handling Care Label</label>
-                      <input 
-                        type="text" 
-                        value={cfgDifficultyLabel} 
-                        onChange={(e) => setCfgDifficultyLabel(e.target.value)} 
-                        className="luxury-input" 
-                        required 
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '16px', marginTop: '40px', paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <button type="submit" className="btn-primary" style={{ padding: '12px 24px' }}>
-                      Apply Configurations
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={handleReseed} 
-                      className="btn-gold" 
-                      style={{ padding: '12px 24px' }}
-                    >
-                      Reseed Catalog Database
-                    </button>
-                  </div>
-                </form>
+                )}
               </section>
             )}
           </div>
@@ -2190,6 +2549,325 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Read-Only View Store Details Modal (Visible only to Admin) */}
+      {selectedViewStore && (
+        <div 
+          className={styles.modalBackdrop}
+          onClick={() => setSelectedViewStore(null)}
+          style={{ zIndex: 300 }}
+        >
+          <div 
+            className={`${styles.modalContent} glassmorphism`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto', border: '1px solid var(--accent-gold)' }}
+          >
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.modalTitle} style={{ color: 'var(--accent-gold)' }}>Store Config Details</h3>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Read-Only Inspection &bull; Owner: <code style={{ color: 'var(--accent-cyan)' }}>{selectedViewStore.ownerEmail}</code>
+                </span>
+              </div>
+              <button 
+                onClick={() => setSelectedViewStore(null)}
+                className={styles.closeBtn}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Tabs */}
+            <div className={styles.tabContainer} style={{ marginTop: '20px', marginBottom: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+              <button 
+                type="button"
+                onClick={() => setViewStoreTab('info')}
+                className={`${styles.tabBtn} ${viewStoreTab === 'info' ? styles.tabBtnActive : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                ℹ️ Store Info & Config
+              </button>
+              <button 
+                type="button"
+                onClick={() => setViewStoreTab('products')}
+                className={`${styles.tabBtn} ${viewStoreTab === 'products' ? styles.tabBtnActive : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                📦 Products ({viewStoreProducts.length})
+              </button>
+              <button 
+                type="button"
+                onClick={() => setViewStoreTab('orders')}
+                className={`${styles.tabBtn} ${viewStoreTab === 'orders' ? styles.tabBtnActive : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                📋 Orders ({viewStoreOrders.length})
+              </button>
+              <button 
+                type="button"
+                onClick={() => setViewStoreTab('proposals')}
+                className={`${styles.tabBtn} ${viewStoreTab === 'proposals' ? styles.tabBtnActive : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+              >
+                💼 Proposals ({viewStoreProposals.length})
+              </button>
+            </div>
+
+            {viewStoreLoading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                Loading store details...
+              </div>
+            ) : (
+              <>
+                {/* 1. INFO TAB */}
+                {viewStoreTab === 'info' && (
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Store Name</span>
+                        <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{selectedViewStore.storeName}</strong>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Store Tagline</span>
+                        <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>{selectedViewStore.storeTagline}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Store ID / Slug</span>
+                        <code style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)' }}>{selectedViewStore.id}</code>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Niche & Store Type</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', textTransform: 'capitalize' }}>{selectedViewStore.storeType}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Primary Measurement Unit</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.unit}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Defined Categories</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{selectedViewStore.categories?.join(', ') || 'None'}</span>
+                      </div>
+                    </div>
+
+                    <h4 style={{ color: 'var(--accent-gold)', marginBottom: '12px', fontSize: '1.05rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Custom Attributes Labels</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', marginBottom: '24px' }}>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Specimen / Product Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.specimenLabel || 'Specimen'}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Scientific / Grade Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.scientificNameLabel || 'Scientific Name'}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Taste Profile Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.tasteProfileLabel || 'Taste Profile'}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Texture / Core Feature Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.textureLabel || 'Texture'}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sustainability / Sourcing Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.sustainabilityLabel || 'Sustainability'}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Preparation / Difficulty Label</span>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{selectedViewStore.attributes?.difficultyLabel || 'Preparation Difficulty'}</span>
+                      </div>
+                    </div>
+
+                    <h4 style={{ color: 'var(--accent-gold)', marginBottom: '12px', fontSize: '1.05rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Performance Statistics</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '12px' }}>
+                      <div className={styles.statCard} style={{ padding: '16px' }}>
+                        <span className={styles.statLabel}>Products Uploaded</span>
+                        <span className={styles.statValue} style={{ fontSize: '1.5rem' }}>{viewStoreProducts.length}</span>
+                      </div>
+                      <div className={styles.statCard} style={{ padding: '16px' }}>
+                        <span className={styles.statLabel}>Total Orders</span>
+                        <span className={styles.statValue} style={{ fontSize: '1.5rem' }}>{viewStoreOrders.length}</span>
+                      </div>
+                      <div className={styles.statCard} style={{ padding: '16px' }}>
+                        <span className={styles.statLabel}>Total Proposals</span>
+                        <span className={styles.statValue} style={{ fontSize: '1.5rem' }}>{viewStoreProposals.length}</span>
+                      </div>
+                      <div className={styles.statCard} style={{ padding: '16px', border: '1px solid var(--accent-gold)' }}>
+                        <span className={styles.statLabel}>Accumulated Revenue</span>
+                        <span className={styles.statValue} style={{ fontSize: '1.5rem', color: 'var(--accent-gold)' }}>
+                          ${viewStoreOrders.reduce((acc, o) => acc + (o.totalPrice || 0), 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. PRODUCTS TAB */}
+                {viewStoreTab === 'products' && (
+                  <div>
+                    {viewStoreProducts.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                        No inventory items uploaded by user.
+                      </div>
+                    ) : (
+                      <div className={styles.tableResponsive}>
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th>{selectedViewStore.attributes?.specimenLabel || 'Product Details'}</th>
+                              <th>{selectedViewStore.attributes?.scientificNameLabel || 'Grade'}</th>
+                              <th>Category</th>
+                              <th>Price / Unit</th>
+                              <th>Current Stock</th>
+                              <th>Origin</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewStoreProducts.map((p) => (
+                              <tr key={p.id}>
+                                <td>
+                                  <div className={styles.productNameCell}>
+                                    <img src={p.image} alt={p.name} className={styles.productImg} style={{ width: '32px', height: '32px' }} />
+                                    <div>
+                                      <strong style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{p.name}</strong>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={styles.productScientificName} style={{ fontSize: '0.8rem' }}>{p.scientificName}</span>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.category}</span>
+                                </td>
+                                <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                  ${p.pricePerKg.toFixed(2)} / {p.unit || selectedViewStore.unit}
+                                </td>
+                                <td style={{ fontSize: '0.85rem', color: p.stock < 10 ? 'var(--accent-danger)' : 'var(--text-primary)' }}>
+                                  <strong>{p.stock}</strong> {p.unit || selectedViewStore.unit}
+                                </td>
+                                <td style={{ fontSize: '0.8rem' }}>{p.origin}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. ORDERS TAB */}
+                {viewStoreTab === 'orders' && (
+                  <div>
+                    {viewStoreOrders.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                        No orders recorded for this store.
+                      </div>
+                    ) : (
+                      <div className={styles.tableResponsive}>
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th>Order ID</th>
+                              <th>Date</th>
+                              <th>Buyer Details</th>
+                              <th>Total Amount</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewStoreOrders.map((o) => (
+                              <tr key={o.id}>
+                                <td>
+                                  <code style={{ color: 'var(--accent-cyan)' }}>{o.id}</code>
+                                </td>
+                                <td style={{ fontSize: '0.8rem' }}>{o.date}</td>
+                                <td>
+                                  <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{o.userName}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{o.userEmail}</div>
+                                </td>
+                                <td style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
+                                  ${(o.totalPrice || 0).toFixed(2)}
+                                </td>
+                                <td>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontWeight: 'bold',
+                                    background: o.status === 'Delivered' ? 'rgba(0, 230, 115, 0.15)' : o.status === 'Dispatched' ? 'rgba(0, 180, 216, 0.15)' : 'rgba(255, 179, 0, 0.15)',
+                                    color: o.status === 'Delivered' ? '#00e673' : o.status === 'Dispatched' ? '#00b4d8' : '#ffb300'
+                                  }}>
+                                    {o.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 4. PROPOSALS TAB */}
+                {viewStoreTab === 'proposals' && (
+                  <div>
+                    {viewStoreProposals.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
+                        No proposals created for this store.
+                      </div>
+                    ) : (
+                      <div className={styles.tableResponsive}>
+                        <table className={styles.table}>
+                          <thead>
+                            <tr>
+                              <th>Proposal ID</th>
+                              <th>Target Client</th>
+                              <th>Discount</th>
+                              <th>Delivery Fee</th>
+                              <th>Created Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {viewStoreProposals.map((cat) => (
+                              <tr key={cat.id}>
+                                <td>
+                                  <code style={{ color: 'var(--accent-cyan)' }}>{cat.id}</code>
+                                </td>
+                                <td>
+                                  <strong style={{ color: 'var(--text-primary)', fontSize: '0.85rem' }}>{cat.marketName}</strong>
+                                </td>
+                                <td style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-gold)' }}>
+                                  {cat.globalDiscount}%
+                                </td>
+                                <td style={{ fontSize: '0.85rem' }}>
+                                  ${cat.globalDelivery.toFixed(2)}
+                                </td>
+                                <td style={{ fontSize: '0.8rem' }}>{cat.createdDate}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <button 
+                type="button" 
+                onClick={() => setSelectedViewStore(null)} 
+                className="btn-gold"
+                style={{ padding: '10px 24px', fontSize: '0.9rem', cursor: 'pointer' }}
+              >
+                Close Inspection
+              </button>
+            </div>
           </div>
         </div>
       )}

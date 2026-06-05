@@ -8,6 +8,8 @@ export interface StoreConfig {
   storeType: 'seafood' | 'egg' | 'generic';
   unit: string;
   categories: string[];
+  storePhone?: string;
+  storeAddress?: string;
   attributes: {
     specimenLabel: string;      // e.g. "Specimen" or "Product Type"
     scientificNameLabel: string; // e.g. "Scientific Name" or "Grade / Size"
@@ -24,6 +26,8 @@ export const SEAFOOD_PRESET: StoreConfig = {
   storeType: 'seafood',
   unit: 'kg',
   categories: ['Saltwater', 'Freshwater', 'Shellfish', 'Premium Import'],
+  storePhone: '+1 (555) 347-4886',
+  storeAddress: 'Pier 45, Fisherman\'s Wharf, San Francisco, CA',
   attributes: {
     specimenLabel: 'Specimen',
     scientificNameLabel: 'Scientific Name',
@@ -40,6 +44,8 @@ export const EGG_PRESET: StoreConfig = {
   storeType: 'egg',
   unit: 'dozen',
   categories: ['Free-Range', 'Organic', 'Jumbo Specials', 'Liquid & Egg Whites'],
+  storePhone: '+1 (555) 762-3447',
+  storeAddress: 'Rural Route 4, Petaluma, CA',
   attributes: {
     specimenLabel: 'Egg Variety',
     scientificNameLabel: 'Grade / Size',
@@ -56,6 +62,8 @@ export const GENERIC_PRESET: StoreConfig = {
   storeType: 'generic',
   unit: 'pcs',
   categories: ['Featured', 'New Arrivals', 'Clearance', 'Bestsellers'],
+  storePhone: '+1 (555) 964-1017',
+  storeAddress: '100 Market St, San Francisco, CA',
   attributes: {
     specimenLabel: 'Product Item',
     scientificNameLabel: 'Model / Grade',

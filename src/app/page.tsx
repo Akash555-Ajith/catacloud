@@ -47,8 +47,15 @@ export default function HomePage() {
         router.push('/login');
       } else {
         setIsAuthenticated(true);
-        // Load saved cart
-        const savedCart = localStorage.getItem('bluefine_cart');
+        // Load saved cart scoped to user
+        let userEmail = '';
+        try {
+          const parsed = JSON.parse(user);
+          if (parsed.email) userEmail = parsed.email.toLowerCase();
+        } catch {}
+        
+        const cartKey = userEmail ? `bluefine_cart_${userEmail}` : 'bluefine_cart';
+        const savedCart = localStorage.getItem(cartKey);
         if (savedCart) {
           try {
             setCart(JSON.parse(savedCart));
@@ -110,10 +117,51 @@ export default function HomePage() {
     };
   }, []);
 
-  // Persist cart items
+  // Listen for storage changes from other tabs to sync cart in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent | Event) => {
+      const user = localStorage.getItem('bluefine_user');
+      if (!user) return;
+      try {
+        const parsed = JSON.parse(user);
+        if (parsed.email) {
+          const cartKey = `bluefine_cart_${parsed.email.toLowerCase()}`;
+          const savedCart = localStorage.getItem(cartKey);
+          if (savedCart) {
+            const parsedCart = JSON.parse(savedCart);
+            if (JSON.stringify(parsedCart) !== JSON.stringify(cart)) {
+              setCart(parsedCart);
+            }
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [cart]);
+
+  // Persist cart items scoped to user
   useEffect(() => {
     if (mounted && isAuthenticated) {
-      localStorage.setItem('bluefine_cart', JSON.stringify(cart));
+      const user = localStorage.getItem('bluefine_user');
+      if (user) {
+        try {
+          const parsed = JSON.parse(user);
+          if (parsed.email) {
+            const cartKey = `bluefine_cart_${parsed.email.toLowerCase()}`;
+            localStorage.setItem(cartKey, JSON.stringify(cart));
+            // Trigger storage change manually for same-tab listening (so other tabs can synchronize)
+            window.dispatchEvent(new Event('storage'));
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   }, [cart, mounted, isAuthenticated]);
 

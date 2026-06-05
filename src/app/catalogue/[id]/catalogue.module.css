@@ -199,3 +199,17 @@
   font-size: 2rem;
   margin-bottom: 12px;
 }
+
+.cartContainer {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 20px auto 0 auto;
+}
+@media (min-width: 1024px) {
+  .cartContainer {
+    grid-template-columns: 7.5fr 3.5fr;
+  }
+}

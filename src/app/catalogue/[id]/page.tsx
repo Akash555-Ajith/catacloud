@@ -10,7 +10,10 @@ import {
   ETAPrediction,
   addOrder,
   Order,
-  getStoreConfig
+  getStoreConfig,
+  addReview,
+  addSourcingRequest,
+  CustomSourcingRequest
 } from '@/utils/store';
 import { FishItem } from '@/data/fishData';
 import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
@@ -27,23 +30,45 @@ export default function CatalogueDetailPage() {
   const [selectedFish, setSelectedFish] = useState<FishItem | null>(null);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   const [storeId, setStoreId] = useState<string>('bluefine');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
+  const [checkoutEntireProposal, setCheckoutEntireProposal] = useState<boolean>(false);
 
   // Search & Category states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
-  // Reset checkout states when the selected variety changes
+  // Review states
+  const [reviewProductId, setReviewProductId] = useState('');
+  const [reviewClientName, setReviewClientName] = useState('');
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewComment, setReviewComment] = useState('');
+
+  // Custom Sourcing Request states
+  const [sourcingReqProductId, setSourcingReqProductId] = useState('');
+  const [sourcingReqProductName, setSourcingReqProductName] = useState('');
+  const [sourcingReqQty, setSourcingReqQty] = useState<number>(1);
+  const [sourcingReqNotes, setSourcingReqNotes] = useState('');
+  const [sourcingReqClientName, setSourcingReqClientName] = useState('');
+  const [sourcingReqClientEmail, setSourcingReqClientEmail] = useState('');
+
+  // Reset checkout states when the selected variety changes or entire checkout toggled
   useEffect(() => {
     setSuccessOrder(null);
     setClientName('');
     setClientEmail('');
-  }, [selectedFish]);
+  }, [selectedFish, checkoutEntireProposal]);
+
+  // Sync procurement name/email to sourcing request name/email
+  useEffect(() => {
+    if (clientName && !sourcingReqClientName) setSourcingReqClientName(clientName);
+    if (clientEmail && !sourcingReqClientEmail) setSourcingReqClientEmail(clientEmail);
+  }, [clientName, clientEmail]);
 
   // Load custom catalog overrides, products, and store config
   useEffect(() => {
@@ -61,11 +86,114 @@ export default function CatalogueDetailPage() {
           setCatalog(catData);
           getProducts(resolvedStoreId).then((prods) => {
             setProducts(prods);
+            // Initialize quantities
+            const initialQties: Record<string, number> = {};
+            prods.forEach((p) => {
+              const override = catData.overrides[p.id];
+              if (override && override.included) {
+                initialQties[p.id] = override.customStock || 1;
+              }
+            });
+            setQuantities(initialQties);
           });
         }
       });
     }
   }, [pathname]);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewProductId || !reviewClientName.trim() || !reviewComment.trim()) {
+      toast.error('Please complete all review fields.');
+      return;
+    }
+    const selectedProd = products.find(p => p.id === reviewProductId);
+    if (!selectedProd) return;
+
+    const newReview = {
+      id: `rev-${Math.floor(100000 + Math.random() * 900000)}`,
+      productId: reviewProductId,
+      productName: selectedProd.name,
+      clientName: reviewClientName,
+      rating: reviewRating,
+      comment: reviewComment,
+      date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }),
+      storeId: storeId
+    };
+
+    try {
+      await addReview(newReview, storeId);
+      toast.success('Thank you!', {
+        description: `Feedback review submitted successfully for ${selectedProd.name}.`
+      });
+      // Clear review fields
+      setReviewProductId('');
+      setReviewClientName('');
+      setReviewRating(5);
+      setReviewComment('');
+    } catch (err) {
+      toast.error('Submission Failed', {
+        description: 'Failed to save review details.'
+      });
+    }
+  };
+
+  const handleSourcingRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sourcingReqClientName.trim() || !sourcingReqClientEmail.trim() || sourcingReqQty <= 0) {
+      toast.error('Please complete all required sourcing fields.');
+      return;
+    }
+    
+    let resolvedProductName = sourcingReqProductName.trim();
+    if (sourcingReqProductId) {
+      const p = products.find(prod => prod.id === sourcingReqProductId);
+      if (p) resolvedProductName = p.name;
+    }
+
+    if (!resolvedProductName) {
+      toast.error('Please specify the product you want to request.');
+      return;
+    }
+
+    const newRequest: CustomSourcingRequest = {
+      id: `sr-${Math.floor(100000 + Math.random() * 900000)}`,
+      storeId,
+      clientName: sourcingReqClientName,
+      clientEmail: sourcingReqClientEmail.toLowerCase(),
+      productId: sourcingReqProductId || undefined,
+      productName: resolvedProductName,
+      requestedQuantity: sourcingReqQty,
+      notes: sourcingReqNotes,
+      date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+
+    try {
+      await addSourcingRequest(newRequest, storeId);
+      toast.success('Sourcing Request Submitted!', {
+        description: `Your request for ${sourcingReqQty} units of ${resolvedProductName} has been sent to the partner.`
+      });
+      // Clear inputs
+      setSourcingReqProductId('');
+      setSourcingReqProductName('');
+      setSourcingReqQty(1);
+      setSourcingReqNotes('');
+    } catch (err) {
+      toast.error('Submission Failed', {
+        description: 'Failed to send sourcing request. Please try again.'
+      });
+    }
+  };
 
   if (!mounted) {
     return (
@@ -128,6 +256,42 @@ export default function CatalogueDetailPage() {
 
     return matchesCategory && matchesSearch;
   });
+
+  // Consolidated Proposal Cart Calculations
+  const includedItems = products.filter((p) => {
+    const override = catalog.overrides[p.id];
+    return override && override.included && (quantities[p.id] !== undefined ? quantities[p.id] > 0 : override.customStock > 0);
+  });
+
+  const totalProposalQty = includedItems.reduce((acc, p) => {
+    return acc + (quantities[p.id] !== undefined ? quantities[p.id] : 0);
+  }, 0);
+
+  const totalProposalBill = includedItems.reduce((acc, p) => {
+    const override = catalog.overrides[p.id];
+    if (!override) return acc;
+    const price = override.customPrice;
+    const qty = quantities[p.id] !== undefined ? quantities[p.id] : override.customStock;
+    
+    // Apply dynamic volume discount based on client general rules:
+    // 10-100 kg: 10% discount
+    // 100-200 kg: 20% discount
+    // > 200 kg: 25% discount
+    let volDiscount = 0;
+    if (qty >= 10 && qty <= 100) {
+      volDiscount = 10;
+    } else if (qty > 100 && qty <= 200) {
+      volDiscount = 20;
+    } else if (qty > 200) {
+      volDiscount = 25;
+    }
+
+    const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
+      ? override.customDiscount
+      : (catalog.globalDiscount || 0)) + volDiscount;
+    const finalPrice = price * (1 - discount / 100);
+    return acc + (finalPrice * qty);
+  }, 0) + (catalog.globalDelivery || 0);
 
   // Calculate pricing for the selected specimen modal details
   const selectedOverride = selectedFish ? catalog.overrides[selectedFish.id] : null;
@@ -204,6 +368,89 @@ export default function CatalogueDetailPage() {
       setSuccessOrder(newOrder);
     } catch (err) {
       console.error('Failed to log customized catalog sourcing order:', err);
+      toast.error('Reservation Failed', {
+        description: `Sourcing order reservation failed at ${new Date().toLocaleString()}. Please try again.`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEntireProposalSourcingRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catalog) return;
+    setLoading(true);
+
+    if (includedItems.length === 0) {
+      toast.error('No items included in proposal.');
+      setLoading(false);
+      return;
+    }
+
+    // Calculate longest ETA based on active quantities
+    let maxETADays = 0;
+    let finalETADateString = new Date().toISOString().split('T')[0];
+    includedItems.forEach((p) => {
+      const qty = quantities[p.id] || 0;
+      const eta = calculateSourcingETA(p.origin || '', catalog.marketName || '', qty, p.stock);
+      if (eta && eta.totalDays > maxETADays) {
+        maxETADays = eta.totalDays;
+        finalETADateString = eta.targetDateString;
+      }
+    });
+
+    const orderRef = `BF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newOrder: Order = {
+      id: orderRef,
+      userEmail: clientEmail.toLowerCase(),
+      userName: clientName,
+      date: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      deliveryDate: finalETADateString,
+      address: catalog.marketName,
+      items: includedItems.map((p) => {
+        const override = catalog.overrides[p.id]!;
+        const price = override.customPrice;
+        const qty = quantities[p.id] || 0;
+        
+        let volDiscount = 0;
+        if (qty >= 10 && qty <= 100) {
+          volDiscount = 10;
+        } else if (qty > 100 && qty <= 200) {
+          volDiscount = 20;
+        } else if (qty > 200) {
+          volDiscount = 25;
+        }
+
+        const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
+          ? override.customDiscount
+          : (catalog.globalDiscount || 0)) + volDiscount;
+        const finalPrice = price * (1 - discount / 100);
+        return {
+          fishId: p.id,
+          name: p.name,
+          quantity: qty,
+          price: finalPrice,
+          image: p.image
+        };
+      }),
+      totalPrice: totalProposalBill,
+      status: 'Pending'
+    };
+
+    try {
+      await addOrder(newOrder, storeId);
+      setSuccessOrder(newOrder);
+      toast.success('Sourcing Request Logged', {
+        description: `Order ${orderRef} successfully recorded.`
+      });
+    } catch (err) {
+      console.error('Failed to log proposal sourcing order:', err);
       toast.error('Reservation Failed', {
         description: `Sourcing order reservation failed at ${new Date().toLocaleString()}. Please try again.`
       });
@@ -348,7 +595,7 @@ export default function CatalogueDetailPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="luxury-input"
               style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
-              placeholder="Search by variety name, scientific name, or origin port..."
+              placeholder="Search catalog products by name, origin port, or category..."
               id="client-catalogue-search-input"
             />
           </div>
@@ -387,112 +634,382 @@ export default function CatalogueDetailPage() {
         </div>
       </section>
 
-      {/* Products Grid */}
-      <section className={styles.grid} id="custom-catalogue-grid">
-        {proposalItems.length === 0 ? (
-          <div className={styles.errorContainer} style={{ gridColumn: '1 / -1', minHeight: '30vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📦</span>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>No Products Found</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-              {searchQuery || selectedCategory !== 'All' 
-                ? 'Try modifying your filters or search text.' 
-                : 'No products are included in this customized catalogue proposal.'}
+      {/* Main Side-by-Side Sourcing Pane */}
+      <div className={styles.cartContainer}>
+        {successOrder ? (
+          /* Receipt / Success Screen */
+          <div className="glassmorphism" style={{ gridColumn: '1 / -1', padding: '32px', borderRadius: '16px', border: '1px solid var(--accent-success)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', background: 'rgba(16, 185, 129, 0.02)', animation: 'fadeIn 0.6s ease' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#10b981', width: '60px', height: '60px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>
+              Proposal Sourcing Request Lodged!
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px', maxWidth: '600px' }}>
+              The custom sourcing proposal package has been converted into a logged shipment. A receipt invoice has been prepared for dispatch.
             </p>
+
+            <div style={{ width: '100%', maxWidth: '600px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '12px', padding: '24px', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Invoice ID:</span>
+                <strong style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem' }}>{successOrder.id}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Client Partner:</span>
+                <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{successOrder.userName} ({successOrder.userEmail})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Consolidated weight/qty:</span>
+                <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{totalProposalQty} {storeConfig.unit}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Estimated Arrival:</span>
+                <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                  {new Date(successOrder.deliveryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px', marginTop: '8px', fontSize: '1.2rem', fontWeight: 700 }}>
+                <span style={{ color: 'var(--text-primary)' }}>Consolidated Total Bill:</span>
+                <span style={{ color: 'var(--accent-gold)' }}>${successOrder.totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setSuccessOrder(null)}
+              className="btn-gold"
+              style={{ width: '100%', maxWidth: '300px', height: '44px', fontSize: '0.95rem' }}
+            >
+              Back to Shopping Cart
+            </button>
           </div>
         ) : (
-          proposalItems.map((fishItem) => {
-            const override = catalog.overrides[fishItem.id];
-            const customPrice = override ? override.customPrice : fishItem.pricePerKg;
-            const itemDiscount = (override && override.customDiscount !== undefined && override.customDiscount > 0)
-              ? override.customDiscount
-              : (catalog.globalDiscount || 0);
-            const displayStock = override ? override.customStock : fishItem.stock;
+          <>
+            {/* Left Pane: Amazon-Style Specimen List layout with Bluefine Dark Glassmorphism Theme */}
+            <div className="glassmorphism" style={{ color: 'var(--text-primary)', borderRadius: '12px', padding: '24px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>Specimen Wish List</h2>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Price</span>
+              </div>
 
-            let cardVolumeDiscountPercent = 0;
-            if (displayStock >= 10 && displayStock <= 100) {
-              cardVolumeDiscountPercent = 10;
-            } else if (displayStock > 100 && displayStock <= 200) {
-              cardVolumeDiscountPercent = 20;
-            } else if (displayStock > 200) {
-              cardVolumeDiscountPercent = 25;
-            }
-            const totalCardDiscount = itemDiscount + cardVolumeDiscountPercent;
-            const cardDisplayPrice = customPrice * (1 - totalCardDiscount / 100);
-
-            return (
-              <div 
-                key={fishItem.id} 
-                className={`${styles.card} glassmorphism glow-hover-cyan`}
-                onClick={() => setSelectedFish(fishItem)}
-              >
-                <div className={styles.imageWrapper}>
-                  <img src={fishItem.image} alt={fishItem.name} className={styles.cardImage} />
-                  {itemDiscount > 0 && (
-                    <span 
-                      style={{ 
-                        position: 'absolute', 
-                        top: '12px', 
-                        right: '12px', 
-                        background: 'var(--accent-gold)', 
-                        color: '#030812', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        padding: '4px 10px', 
-                        borderRadius: '20px', 
-                        boxShadow: '0 2px 10px rgba(226, 183, 68, 0.4)',
-                        letterSpacing: '0.5px',
-                        textTransform: 'uppercase'
-                      }}
-                    >
-                      {itemDiscount}% Off
-                    </span>
-                  )}
-                  {cardVolumeDiscountPercent > 0 && (
-                    <span 
-                      style={{ 
-                        position: 'absolute', 
-                        top: '12px', 
-                        left: '12px', 
-                        background: 'var(--accent-cyan)', 
-                        color: '#030812', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        padding: '4px 10px', 
-                        borderRadius: '20px', 
-                        boxShadow: '0 2px 10px rgba(0, 242, 254, 0.4)',
-                        letterSpacing: '0.5px',
-                        textTransform: 'uppercase'
-                      }}
-                    >
-                      +{cardVolumeDiscountPercent}% Vol
-                    </span>
-                  )}
+              {proposalItems.length === 0 ? (
+                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Your Wish List is empty.</h3>
+                  <p style={{ fontSize: '14px', marginTop: '8px' }}>Adjust category and text searches above to load proposal catch options.</p>
                 </div>
-                <div className={styles.cardBody}>
+              ) : (
+                proposalItems.map((p) => {
+                  const override = catalog.overrides[p.id]!;
+                  const qty = quantities[p.id] || 0;
+                  if (qty === 0) return null;
+
+                  const price = override.customPrice;
+                  let volDiscount = 0;
+                  if (qty >= 10 && qty <= 100) {
+                    volDiscount = 10;
+                  } else if (qty > 100 && qty <= 200) {
+                    volDiscount = 20;
+                  } else if (qty > 200) {
+                    volDiscount = 25;
+                  }
+
+                  const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
+                    ? override.customDiscount
+                    : (catalog.globalDiscount || 0)) + volDiscount;
+                  const finalPrice = price * (1 - discount / 100);
+                  const itemSubtotal = finalPrice * qty;
+                  const itemEta = calculateSourcingETA(p.origin || '', catalog.marketName || '', qty, p.stock);
+
+                  return (
+                    <div key={p.id} style={{ display: 'flex', gap: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', marginBottom: '20px' }}>
+                      {/* Left: Product Image */}
+                      <div 
+                        onClick={() => setSelectedFish(p)}
+                        style={{ width: '130px', height: '130px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
+                      >
+                        <img src={p.image} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                      </div>
+
+                      {/* Middle: Specs & Details */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <h3 
+                          onClick={() => setSelectedFish(p)}
+                          style={{ fontSize: '18px', fontWeight: 700, color: 'var(--accent-cyan)', margin: 0, cursor: 'pointer', lineHeight: '1.25' }}
+                        >
+                          {p.name}
+                        </h3>
+                        <div style={{ fontSize: '12px', color: 'var(--accent-success)', fontWeight: 'bold' }}>In stock</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                          FREE delivery <strong style={{ color: 'var(--text-primary)' }}>{new Date(itemEta.targetDateString + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</strong>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                          <span style={{ background: 'var(--accent-gold)', color: '#030812', fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '2px', textTransform: 'uppercase' }}>{storeConfig.storeName.split(' ')[0]}</span>
+                          <span>Fulfilled</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                          <strong>Origin:</strong> {p.origin} &bull; <strong>Scientific Name:</strong> {p.scientificName}
+                        </div>
+
+                        {/* Spec Details instead of interactive cart selectors */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
+                          <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
+                            Quantity: {qty} {p.unit || storeConfig.unit || 'kg'}
+                          </span>
+                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <strong>Stock:</strong> {p.stock} {p.unit || storeConfig.unit || 'kg'} available
+                          </span>
+                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            <strong>Category:</strong> {p.category}
+                          </span>
+                          {p.difficulty && (
+                            <>
+                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                <strong>Difficulty:</strong> {p.difficulty}
+                              </span>
+                            </>
+                          )}
+                          {p.sustainability && (
+                            <>
+                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                <strong>Sustainability:</strong> {p.sustainability}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Subtotal price */}
+                      <div style={{ textAlign: 'right', minWidth: '100px' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--accent-gold)' }}>${itemSubtotal.toFixed(2)}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          ${finalPrice.toFixed(2)} / {p.unit || storeConfig.unit}
+                        </div>
+                        {volDiscount > 0 && (
+                          <div style={{ fontSize: '11px', color: 'var(--accent-success)', fontWeight: 'bold', marginTop: '4px' }}>
+                            Includes {volDiscount}% Volume Sourcing Discount
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {proposalItems.length > 0 && (
+                <div style={{ textAlign: 'right', fontSize: '18px', fontWeight: 400, marginTop: '20px', color: 'var(--text-primary)' }}>
+                  Wish List Total ({totalProposalQty} items): <strong style={{ fontWeight: 700, color: 'var(--accent-gold)' }}>${(totalProposalBill - (catalog.globalDelivery || 0)).toFixed(2)}</strong>
+                </div>
+              )}
+
+
+
+              {/* Custom Sourcing Request Form */}
+              <div className="glassmorphism" style={{ marginTop: '30px', padding: '24px', borderRadius: '12px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>Request Custom Sourcing & Volumes</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
+                  If you need a product not listed in the catalogue, or require larger quantities of an existing product, specify your requirements here.
+                </p>
+                <form onSubmit={handleSourcingRequestSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Select Target Product</label>
+                      <select
+                        value={sourcingReqProductId}
+                        onChange={(e) => {
+                          setSourcingReqProductId(e.target.value);
+                          if (e.target.value !== '') {
+                            setSourcingReqProductName('');
+                          }
+                        }}
+                        className="luxury-input"
+                        style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
+                      >
+                        <option value="">-- Custom / Other Product --</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {!sourcingReqProductId && (
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Product Name</label>
+                        <input
+                          type="text"
+                          value={sourcingReqProductName}
+                          onChange={(e) => setSourcingReqProductName(e.target.value)}
+                          className="luxury-input"
+                          style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
+                          placeholder="e.g. Premium Sea Urchin Uni"
+                          required={!sourcingReqProductId}
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Desired Quantity ({storeConfig.unit})</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={sourcingReqQty}
+                        onChange={(e) => setSourcingReqQty(parseInt(e.target.value) || 1)}
+                        className="luxury-input"
+                        style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Your Name</label>
+                      <input
+                        type="text"
+                        value={sourcingReqClientName}
+                        onChange={(e) => setSourcingReqClientName(e.target.value)}
+                        className="luxury-input"
+                        style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
+                        placeholder="e.g. Chef Mitsu"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Your Email</label>
+                      <input
+                        type="email"
+                        value={sourcingReqClientEmail}
+                        onChange={(e) => setSourcingReqClientEmail(e.target.value)}
+                        className="luxury-input"
+                        style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
+                        placeholder="chef@restaurant.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <h3 className={styles.cardName}>{fishItem.name}</h3>
-                    <span className={styles.cardSciName}>{fishItem.scientificName}</span>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '6px' }}>Requirement Details / Custom Specifications</label>
+                    <textarea
+                      value={sourcingReqNotes}
+                      onChange={(e) => setSourcingReqNotes(e.target.value)}
+                      className="luxury-input"
+                      style={{ width: '100%', padding: '10px', minHeight: '80px', fontSize: '14px', resize: 'vertical' }}
+                      placeholder="Specify size, grade, target pricing, delivery schedule or special packaging..."
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn-cyan"
+                    style={{ width: 'fit-content', padding: '0 24px', height: '40px', fontSize: '14px', alignSelf: 'flex-start' }}
+                  >
+                    Submit Sourcing Request
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* Right Pane: Checkout Sourcing Summary Form and Contact Details in Premium Glassmorphism styling */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', height: 'fit-content', position: 'sticky', top: '100px' }}>
+              <div className="glassmorphism" style={{ color: 'var(--text-primary)', borderRadius: '12px', padding: '24px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-primary)' }}>Order Summary</h3>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px', marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Items Subtotal:</span>
+                    <span style={{ color: 'var(--text-primary)' }}>${(totalProposalBill - (catalog.globalDelivery || 0)).toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Logistics & Handling:</span>
+                    <span style={{ color: 'var(--text-primary)' }}>{catalog.globalDelivery > 0 ? `$${catalog.globalDelivery.toFixed(2)}` : 'Free'}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 700, color: 'var(--accent-gold)', marginBottom: '24px' }}>
+                  <span>Order Total:</span>
+                  <span>${totalProposalBill.toFixed(2)}</span>
+                </div>
+
+                {/* Sourcing form fields */}
+                <form onSubmit={handleEntireProposalSourcingRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }} htmlFor="client-name">Chef Name / Client Licensee</label>
+                    <input
+                      type="text"
+                      id="client-name"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      className="luxury-input"
+                      style={{ width: '100%', padding: '8px 10px', fontSize: '14px' }}
+                      placeholder="e.g. Chef Mitsuhiro Araki"
+                      required
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '4px' }} htmlFor="client-email">Procurement Email</label>
+                    <input
+                      type="email"
+                      id="client-email"
+                      value={clientEmail}
+                      onChange={(e) => setClientEmail(e.target.value)}
+                      className="luxury-input"
+                      style={{ width: '100%', padding: '8px 10px', fontSize: '14px' }}
+                      placeholder="chef@kitchen.com"
+                      required
+                      disabled={loading}
+                    />
                   </div>
                   
-                  <div className={styles.cardMetaRow}>
-                    <span className={styles.cardPrice}>
-                      ${cardDisplayPrice.toFixed(2)}/{fishItem.unit || 'kg'}
-                      {totalCardDiscount > 0 && (
-                        <span style={{ textDecoration: 'line-through', fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
-                          ${customPrice.toFixed(2)}
-                        </span>
-                      )}
-                    </span>
-                    <span className={styles.cardStock}>Stock: {displayStock} {fishItem.unit || 'kg'}</span>
+                  <div style={{ marginTop: '4px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '12px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div>📍 <strong>Destination Port:</strong> {catalog.marketName}</div>
+                    <div>🚚 <strong>Arrival Date:</strong> {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                   </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || totalProposalQty === 0}
+                    className="btn-cyan"
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      marginTop: '12px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {loading ? 'Processing Sourcing Shipment...' : `Place Sourcing Shipment`}
+                  </button>
+                </form>
+              </div>
+
+              {/* Contact Seller Card */}
+              <div className="glassmorphism" style={{ color: 'var(--text-primary)', borderRadius: '12px', padding: '24px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 12px 0', color: 'var(--accent-cyan)' }}>Contact Partner</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  <div>📧 <strong>Email:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.ownerEmail || 'contact@bluefine.com'}</span></div>
+                  {storeConfig.storePhone && (
+                    <div>📞 <strong>Phone:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.storePhone}</span></div>
+                  )}
+                  {storeConfig.storeAddress && (
+                    <div>📍 <strong>Address:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.storeAddress}</span></div>
+                  )}
                 </div>
               </div>
-            );
-          })
+            </div>
+          </>
         )}
-      </section>
 
-      {/* Unified Procurement Details & Checkout Modal */}
+      </div>
+
+      {/* Unified Procurement Details Modal for inspecting single product specifications */}
       {selectedFish && (
         <div 
           className="modalBackdrop" 
@@ -537,265 +1054,44 @@ export default function CatalogueDetailPage() {
                   <span className={styles.cardCategory} style={{ background: 'rgba(56, 189, 248, 0.1)', color: 'var(--accent-blue)', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
                     {selectedFish.category}
                   </span>
-                  <span className={styles.cardCategory} style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                    {selectedFish.sustainability}
-                  </span>
-                </div>
-
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '24px' }}>
-                  {selectedFish.description}
-                </p>
-
-                {/* Sourcing Specifications Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: 'auto' }}>
-                  
-                  {/* Origin */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'rgba(56, 189, 248, 0.04)', border: '1px solid rgba(56, 189, 248, 0.1)', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-blue)', flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.85rem' }}>📍</span>
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Origin</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.origin}</span>
-                    </div>
-                  </div>
-
-                  {/* Texture */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'rgba(56, 189, 248, 0.04)', border: '1px solid rgba(56, 189, 248, 0.1)', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-blue)', flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.85rem' }}>✨</span>
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.textureLabel}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.texture}</span>
-                    </div>
-                  </div>
-
-                  {/* Prep Skill */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'rgba(226, 183, 68, 0.04)', border: '1px solid rgba(226, 183, 68, 0.1)', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-gold)', flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.85rem' }}>🍳</span>
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.difficultyLabel}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.difficulty}</span>
-                    </div>
-                  </div>
-
-                  {/* Sustainable status */}
-                  <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '8px', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'rgba(16, 185, 129, 0.04)', border: '1px solid rgba(16, 185, 129, 0.1)', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-success)', flexShrink: 0 }}>
-                      <span style={{ fontSize: '0.85rem' }}>🌱</span>
-                    </div>
-                    <div>
-                      <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{storeConfig.attributes.sustainabilityLabel}</span>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>{selectedFish.sustainability}</span>
-                    </div>
-                  </div>
-
                 </div>
               </div>
 
-              {/* Right Column: Pricing details, Locked Logistics parameters & Checkout Form */}
-              <div style={{ borderLeft: '1px solid rgba(255, 255, 255, 0.08)', paddingLeft: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              {/* Right Column: Detailed Product Sourcing Rules */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
+                <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)', padding: '20px', borderRadius: '12px' }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', color: 'var(--accent-gold)' }}>Product Sourcing Characteristics</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>{storeConfig.attributes.textureLabel}:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedFish.texture}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>{storeConfig.attributes.tasteProfileLabel}:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedFish.tasteProfile?.join(', ') || 'N/A'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>{storeConfig.attributes.sustainabilityLabel}:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedFish.sustainability}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>{storeConfig.attributes.difficultyLabel}:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedFish.difficulty}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)', display: 'block' }}>Origin:</span>
+                      <strong style={{ color: 'var(--text-primary)' }}>{selectedFish.origin}</strong>
+                    </div>
+                  </div>
+                </div>
                 
-                {!successOrder ? (
-                  <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '16px', fontFamily: 'var(--font-playfair), serif' }}>
-                      Sourcing Proposal Quote
-                    </h3>
-
-                    {/* Cost Breakdown */}
-                    <div style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Custom Base Price:</span>
-                        <span>${selectedCustomPrice.toFixed(2)} / {unit}</span>
-                      </div>
-                      {selectedItemDiscount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--accent-gold)' }}>
-                          <span>Market Discount:</span>
-                          <span>-{selectedItemDiscount}% (-${(selectedCustomPrice * (selectedItemDiscount / 100)).toFixed(2)} / {unit})</span>
-                        </div>
-                      )}
-                      
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', fontSize: '0.8rem', color: 'var(--text-muted)', borderTop: '1px dashed rgba(255, 255, 255, 0.05)', paddingTop: '8px' }}>
-                        <span>Bulk Discount Applied:</span>
-                        <span>
-                          {selectedVolumeDiscountPercent > 0 
-                            ? `Level: ${selectedVolumeDiscountPercent}% off (${allocatedStock} ${unit} ordered)` 
-                            : `None (< 10 ${unit} ordered)`}
-                        </span>
-                      </div>
-
-                      {selectedVolumeDiscountPercent > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--accent-success)', fontWeight: 600 }}>
-                          <span>Volume Discount ({selectedVolumeDiscountPercent}%):</span>
-                          <span>-${(selectedCustomPrice * (selectedVolumeDiscountPercent / 100)).toFixed(2)} / {unit}</span>
-                        </div>
-                      )}
-
-                      {catalog.globalDelivery > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                          <span>Logistics/Delivery Fee:</span>
-                          <span>${catalog.globalDelivery.toFixed(2)}</span>
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '10px', marginTop: '10px', fontSize: '1rem', fontWeight: 700 }}>
-                        <span style={{ color: 'var(--text-primary)' }}>Unit Net Price:</span>
-                        <span style={{ color: 'var(--accent-cyan)' }}>${finalUnitPrice.toFixed(2)} / {unit}</span>
-                      </div>
-                    </div>
-
-                    {/* ETA Alert Box */}
-                    {simulatedETA && (
-                      <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.01)', 
-                        border: `1px solid ${simulatedETA.stockDelayDays > 0 ? 'rgba(226, 183, 68, 0.3)' : 'rgba(0, 242, 254, 0.2)'}`, 
-                        borderRadius: '8px', 
-                        padding: '12px', 
-                        marginBottom: '20px',
-                        fontSize: '0.85rem'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: simulatedETA.stockDelayDays > 0 ? 'var(--accent-gold)' : 'var(--accent-cyan)' }}>
-                          <span>🚚</span>
-                          <span>Estimated Sourcing ETA: {new Date(simulatedETA.targetDateString + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ({simulatedETA.totalDays} Days)</span>
-                        </div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', fontStyle: 'italic' }}>
-                          {simulatedETA.explanation}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Sourcing Reservation Form */}
-                    <form onSubmit={handleSourcingRequest}>
-                      
-                      {/* Chef/Name Sourcing Inputs */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }} htmlFor="cat-client-name">Chef Name</label>
-                          <input
-                            type="text"
-                            id="cat-client-name"
-                            value={clientName}
-                            onChange={(e) => setClientName(e.target.value)}
-                            className="luxury-input"
-                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-                            placeholder="e.g. Chef Mitsu"
-                            required
-                            disabled={loading}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }} htmlFor="cat-client-email">Sourcing Email</label>
-                          <input
-                            type="email"
-                            id="cat-client-email"
-                            value={clientEmail}
-                            onChange={(e) => setClientEmail(e.target.value)}
-                            className="luxury-input"
-                            style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-                            placeholder="chef@kitchen.com"
-                            required
-                            disabled={loading}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Read-Only Locked Parameters set by Admin */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)', padding: '12px', borderRadius: '8px' }}>
-                        <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                            <span>🔒 Port of Delivery</span>
-                          </label>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={catalog.marketName}>
-                            {catalog.marketName}
-                          </div>
-                        </div>
-                        <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                            <span>🔒 Reserved Quantity</span>
-                          </label>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                            {allocatedStock} {unit}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Pricing totals footer */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '12px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Estimated Total Sourcing Cost:</span>
-                        <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-cyan)' }}>${sourcingTotal.toFixed(2)}</span>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="btn-primary"
-                        style={{ width: '100%', height: '44px', fontSize: '0.95rem' }}
-                        disabled={loading}
-                      >
-                        {loading ? 'Logging Procurement...' : 'Reserve Sourcing Catch'}
-                      </button>
-                    </form>
-                  </div>
-                ) : (
-                  
-                  /* Sourcing Order Success Receipt */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: 'var(--accent-success)', width: '54px', height: '54px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                    <h3 style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '8px', fontFamily: 'var(--font-playfair), serif', color: 'var(--text-primary)' }}>
-                      Sourcing Request Logged!
-                    </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '20px' }}>
-                      Your custom procurement reservation has been logged into the vessel cargo database. Our logistics manager has been notified.
-                    </p>
-
-                    {/* Receipt Card */}
-                    <div style={{ width: '100%', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '12px', padding: '16px', marginBottom: '20px', textAlign: 'left' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Reference ID:</span>
-                        <strong style={{ color: 'var(--text-primary)' }}>{successOrder.id}</strong>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Vessel Cargo:</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{selectedFish.name}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Sourced Weight:</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>{allocatedStock} {unit}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Arrival ETA:</span>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          {new Date(successOrder.deliveryDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.825rem' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Destination Port:</span>
-                        <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }} title={successOrder.address}>
-                          {successOrder.address}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '8px', marginTop: '8px', fontSize: '0.95rem', fontWeight: 700 }}>
-                        <span style={{ color: 'var(--text-primary)' }}>Total Sourced Bill:</span>
-                        <span style={{ color: 'var(--accent-cyan)' }}>${successOrder.totalPrice.toFixed(2)}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setSelectedFish(null)}
-                      className="btn-gold"
-                      style={{ width: '100%', height: '40px', fontSize: '0.9rem' }}
-                    >
-                      Done & Close
-                    </button>
-                  </div>
-                )}
-
+                <button
+                  onClick={() => setSelectedFish(null)}
+                  className="btn-gold"
+                  style={{ width: '100%', height: '40px', fontSize: '0.9rem' }}
+                >
+                  Close Specifications
+                </button>
               </div>
 
             </div>

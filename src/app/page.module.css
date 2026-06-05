@@ -6,7 +6,7 @@
 
 .hero {
   position: relative;
-  padding: 16px 40px 12px 40px;
+  padding: 60px 40px 24px 40px;
   text-align: center;
   overflow: hidden;
 }
@@ -20,11 +20,12 @@
 
 .title {
   font-family: var(--font-playfair), serif;
-  font-size: 1.8rem;
+  font-size: 2.6rem;
   font-weight: 800;
-  line-height: 1.15;
-  margin-bottom: 4px;
+  line-height: 1.25;
+  margin-bottom: 12px;
   color: var(--text-primary);
+  text-transform: capitalize;
 }
 
 .titleHighlight {
@@ -35,11 +36,11 @@
 }
 
 .subtitle {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text-secondary);
   max-width: 600px;
-  margin: 0 auto 12px auto;
-  line-height: 1.4;
+  margin: 0 auto 16px auto;
+  line-height: 1.5;
 }
 
 .ambientGlow {
@@ -63,10 +64,10 @@
 
 @media (max-width: 768px) {
   .hero {
-    padding: 16px 20px 12px 20px;
+    padding: 40px 20px 16px 20px;
   }
   .title {
-    font-size: 1.6rem;
+    font-size: 2rem;
   }
   .container {
     padding: 0 20px 40px 20px;

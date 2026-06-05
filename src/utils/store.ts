@@ -142,6 +142,19 @@ function getPresetDefault(storeId: string): StoreConfig {
   return { ...SEAFOOD_PRESET, id: storeId };
 }
 
+function normalizeStoreConfig(store: any): StoreConfig {
+  if (!store) return store;
+  const normalized = { ...store };
+  if ('owner_email' in normalized && !normalized.ownerEmail) {
+    normalized.ownerEmail = normalized.owner_email;
+  }
+  return normalized as StoreConfig;
+}
+
+function normalizeStoreConfigs(stores: any[]): StoreConfig[] {
+  return (stores || []).map(normalizeStoreConfig);
+}
+
 export function getSeedData(type: string): FishItem[] {
   if (type === 'egg') return eggSeedData;
   if (type === 'generic') return genericSeedData;
@@ -156,7 +169,7 @@ export async function getStoreConfig(storeId: string = 'bluefine'): Promise<Stor
         ? await query.eq('id', storeId).maybeSingle()
         : await query.limit(1).maybeSingle();
       if (!error && data) {
-        return data as StoreConfig;
+        return normalizeStoreConfig(data);
       }
     } catch (e) {
       // fallback
@@ -199,7 +212,7 @@ export async function getStoresOwnedByUser(email: string): Promise<StoreConfig[]
         .select('*')
         .eq('owner_email', email.toLowerCase());
       if (!error && data) {
-        return data as StoreConfig[];
+        return normalizeStoreConfigs(data);
       }
     } catch (e) {
       // fallback
@@ -231,7 +244,7 @@ export async function getAllStores(): Promise<StoreConfig[]> {
     try {
       const { data, error } = await supabase.from('store_config').select('*');
       if (!error && data) {
-        return data as StoreConfig[];
+        return normalizeStoreConfigs(data);
       }
     } catch (e) {
       // fallback
@@ -449,17 +462,40 @@ export async function addOrder(order: Order, storeId: string = 'bluefine'): Prom
         const sanitized = await sanitizePayload('orders', orderWithStore);
         const { error } = await supabase.from('orders').insert(sanitized);
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error adding order to Supabase:', err.message || err);
     }
   }
 
-  const orders = await getOrders(storeId);
-  orders.unshift(order);
-  await saveOrders(orders, storeId);
+  // Deduct product stock locally or on remote
+  try {
+    const products = await getProducts(storeId);
+    let stockChanged = false;
+    order.items.forEach(item => {
+      const prod = products.find(p => p.id === item.fishId);
+      if (prod) {
+        prod.stock = Math.max(0, prod.stock - item.quantity);
+        stockChanged = true;
+      }
+    });
+    if (stockChanged) {
+      await saveProducts(products, storeId);
+      if (isBrowser()) {
+        window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
+      }
+    }
+  } catch (e) {
+    console.error('Failed to deduct stock:', e);
+  }
+
+  if (isBrowser()) {
+    const orders = await getOrders(storeId);
+    orders.unshift(order);
+    await saveOrders(orders, storeId);
+  }
 }
+
 
 export async function getOrdersForBuyer(email: string): Promise<Order[]> {
   if (isSupabaseConfigured && await isTableSupported('orders') && await isColumnSupported('orders', 'userEmail')) {
@@ -534,7 +570,9 @@ export async function getProposals(storeId: string = 'bluefine'): Promise<Propos
           ? await query.eq('store_id', storeId)
           : await query;
         if (error) throw error;
-        return (data || []) as Proposal[];
+        if (data && data.length > 0) {
+          return data as Proposal[];
+        }
       }
     } catch (err: any) {
       console.warn('Error fetching proposals from Supabase, falling back to LocalStorage:', err.message || err);
@@ -560,7 +598,6 @@ export async function saveProposals(proposals: Proposal[], storeId: string = 'bl
         const sanitized = await sanitizePayload('proposals', proposalsWithStore);
         const { error } = await supabase.from('proposals').upsert(sanitized);
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error saving proposals to Supabase:', err.message || err);
@@ -580,7 +617,6 @@ export async function addProposal(proposal: Proposal, storeId: string = 'bluefin
         const sanitized = await sanitizePayload('proposals', proposalWithStore);
         const { error } = await supabase.from('proposals').insert(sanitized);
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error adding proposal to Supabase:', err.message || err);
@@ -588,8 +624,10 @@ export async function addProposal(proposal: Proposal, storeId: string = 'bluefin
   }
 
   const proposals = await getProposals(storeId);
-  proposals.unshift(proposalWithStore);
-  await saveProposals(proposals, storeId);
+  if (!proposals.some(p => p.id === proposal.id)) {
+    proposals.unshift(proposalWithStore);
+    await saveProposals(proposals, storeId);
+  }
 }
 
 export async function getProposalById(id: string, storeId: string = 'bluefine'): Promise<Proposal | undefined> {
@@ -602,7 +640,7 @@ export async function getProposalById(id: string, storeId: string = 'bluefine'):
           ? await query.eq('store_id', storeId).maybeSingle()
           : await query.maybeSingle();
         if (error) throw error;
-        return data ? (data as Proposal) : undefined;
+        if (data) return data as Proposal;
       }
     } catch (err: any) {
       console.warn('Error fetching proposal by ID from Supabase:', err.message || err);
@@ -645,7 +683,9 @@ export async function getCustomCatalogs(storeId: string = 'bluefine'): Promise<C
           ? await query.eq('store_id', storeId)
           : await query;
         if (error) throw error;
-        return (data || []) as CustomCatalog[];
+        if (data && data.length > 0) {
+          return data as CustomCatalog[];
+        }
       }
     } catch (err: any) {
       console.warn('Error fetching custom catalogs from Supabase, falling back to LocalStorage:', err.message || err);
@@ -671,7 +711,6 @@ export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: str
         const sanitized = await sanitizePayload('custom_catalogs', catalogsWithStore);
         const { error } = await supabase.from('custom_catalogs').upsert(sanitized);
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error saving custom catalogs to Supabase:', err.message || err);
@@ -691,7 +730,6 @@ export async function addCustomCatalog(catalog: CustomCatalog, storeId: string =
         const sanitized = await sanitizePayload('custom_catalogs', catalogWithStore);
         const { error } = await supabase.from('custom_catalogs').insert(sanitized);
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error adding custom catalog to Supabase:', err.message || err);
@@ -699,8 +737,10 @@ export async function addCustomCatalog(catalog: CustomCatalog, storeId: string =
   }
 
   const catalogs = await getCustomCatalogs(storeId);
-  catalogs.unshift(catalogWithStore);
-  await saveCustomCatalogs(catalogs, storeId);
+  if (!catalogs.some(c => c.id === catalog.id)) {
+    catalogs.unshift(catalogWithStore);
+    await saveCustomCatalogs(catalogs, storeId);
+  }
 }
 
 export async function getCustomCatalogById(id: string, storeId: string = 'bluefine'): Promise<CustomCatalog | undefined> {
@@ -713,7 +753,7 @@ export async function getCustomCatalogById(id: string, storeId: string = 'bluefi
           ? await query.eq('store_id', storeId).maybeSingle()
           : await query.maybeSingle();
         if (error) throw error;
-        return data ? (data as CustomCatalog) : undefined;
+        if (data) return data as CustomCatalog;
       }
     } catch (err: any) {
       console.warn('Error fetching custom catalog by ID from Supabase:', err.message || err);
@@ -868,3 +908,144 @@ export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic', s
   }
   return seed;
 }
+
+export interface ProductReview {
+  id: string;
+  productId: string;
+  productName: string;
+  clientName: string;
+  rating: number; // 1 to 5
+  comment: string;
+  date: string;
+  storeId: string;
+}
+
+export async function getReviews(storeId: string = 'bluefine'): Promise<ProductReview[]> {
+  if (isSupabaseConfigured && await isTableSupported('reviews')) {
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!error && data) {
+        return data.map((item: any) => ({
+          ...item,
+          storeId: item.store_id,
+          productId: item.product_id,
+          productName: item.product_name,
+          clientName: item.client_name
+        })) as ProductReview[];
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return [];
+  const stored = localStorage.getItem(`bluefine_reviews_${storeId}`);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export async function addReview(review: ProductReview, storeId: string = 'bluefine'): Promise<void> {
+  const reviewWithStore = { 
+    ...review, 
+    store_id: storeId,
+    product_id: review.productId,
+    product_name: review.productName,
+    client_name: review.clientName
+  };
+  if (isSupabaseConfigured && await isTableSupported('reviews')) {
+    try {
+      const sanitized = await sanitizePayload('reviews', reviewWithStore);
+      const { error } = await supabase.from('reviews').insert(sanitized);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Error adding review to Supabase:', err.message || err);
+    }
+  }
+
+  const reviews = await getReviews(storeId);
+  reviews.unshift(review);
+  if (isBrowser()) {
+    localStorage.setItem(`bluefine_reviews_${storeId}`, JSON.stringify(reviews));
+    window.dispatchEvent(new CustomEvent('reviews-updated', { detail: { storeId } }));
+  }
+}
+
+export interface CustomSourcingRequest {
+  id: string;
+  storeId: string;
+  clientName: string;
+  clientEmail: string;
+  productId?: string;
+  productName: string;
+  requestedQuantity: number;
+  notes: string;
+  date: string;
+}
+
+export async function getSourcingRequests(storeId: string = 'bluefine'): Promise<CustomSourcingRequest[]> {
+  if (isSupabaseConfigured && await isTableSupported('sourcing_requests')) {
+    try {
+      const { data, error } = await supabase
+        .from('sourcing_requests')
+        .select('*')
+        .eq('store_id', storeId);
+      if (!error && data) {
+        return data.map((item: any) => ({
+          ...item,
+          storeId: item.store_id,
+          clientName: item.client_name,
+          clientEmail: item.client_email,
+          productId: item.product_id,
+          productName: item.product_name,
+          requestedQuantity: item.requested_quantity
+        })) as CustomSourcingRequest[];
+      }
+    } catch (e) {
+      // fallback
+    }
+  }
+  if (!isBrowser()) return [];
+  const stored = localStorage.getItem(`bluefine_sourcing_requests_${storeId}`);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return [];
+  }
+}
+
+export async function addSourcingRequest(request: CustomSourcingRequest, storeId: string = 'bluefine'): Promise<void> {
+  const requestWithStore = {
+    ...request,
+    store_id: storeId,
+    client_name: request.clientName,
+    client_email: request.clientEmail,
+    product_id: request.productId,
+    product_name: request.productName,
+    requested_quantity: request.requestedQuantity
+  };
+  if (isSupabaseConfigured && await isTableSupported('sourcing_requests')) {
+    try {
+      const sanitized = await sanitizePayload('sourcing_requests', requestWithStore);
+      const { error } = await supabase.from('sourcing_requests').insert(sanitized);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Error adding sourcing request to Supabase:', err.message || err);
+    }
+  }
+
+  const requests = await getSourcingRequests(storeId);
+  requests.unshift(request);
+  if (isBrowser()) {
+    localStorage.setItem(`bluefine_sourcing_requests_${storeId}`, JSON.stringify(requests));
+    window.dispatchEvent(new CustomEvent('sourcing-requests-updated', { detail: { storeId } }));
+  }
+}
+
+
