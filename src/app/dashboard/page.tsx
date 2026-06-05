@@ -336,9 +336,11 @@ export default function DashboardPage() {
           const initialStoreId = exists && savedActive ? savedActive : finalStores[0].id || 'bluefine';
           setActiveStoreId(initialStoreId);
           localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
+          setShowStoreCreator(false);
         } else {
-          setActiveStoreId('bluefine');
-          localStorage.setItem(`bluefine_active_store_id_${user.email}`, 'bluefine');
+          setActiveStoreId('');
+          localStorage.removeItem(`bluefine_active_store_id_${user.email}`);
+          setShowStoreCreator(true);
         }
       });
 
