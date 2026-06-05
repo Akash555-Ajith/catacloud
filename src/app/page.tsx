@@ -316,67 +316,56 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* Interactive Mockup Container */}
-            <section className="glassmorphism" style={{ maxWidth: '1000px', width: '100%', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', position: 'relative', overflow: 'hidden', boxShadow: '0 30px 100px rgba(0,0,0,0.8), 0 0 80px rgba(99,102,241,0.15)' }}>
-              <div className={styles.ambientGlow} style={{ opacity: 0.2, pointerEvents: 'none' }} />
+            {/* Interactive Logo Container */}
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'visible', margin: '40px 0 20px 0' }}>
+              {/* Glowing Background Radial Orbs */}
+              <div style={{ position: 'absolute', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(0, 242, 254, 0.08)', filter: 'blur(80px)', animation: 'pulseNeon 4s ease-in-out infinite', pointerEvents: 'none' }} />
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', background: 'rgba(5, 10, 20, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b' }} />
-                <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }} />
-                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '12px', fontFamily: 'monospace', opacity: 0.6 }}>bluefine.app/dashboard</span>
-              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10 }}>
+                {/* Large animated SVG logo */}
+                <svg
+                  width="160"
+                  height="160"
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  style={{ 
+                    filter: 'drop-shadow(0 0 30px rgba(0, 242, 254, 0.5))', 
+                    animation: 'float 4s ease-in-out infinite' 
+                  }}
+                >
+                  <path
+                    d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
+                    fill="url(#mockup-logo-grad)"
+                  />
+                  <path
+                    d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
+                    fill="url(#mockup-logo-grad-accent)"
+                    opacity="0.8"
+                  />
+                  <defs>
+                    <linearGradient id="mockup-logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#00f2fe" />
+                      <stop offset="1" stopColor="#4facfe" />
+                    </linearGradient>
+                    <linearGradient id="mockup-logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#e2b744" />
+                      <stop offset="1" stopColor="#b88e1a" />
+                    </linearGradient>
+                  </defs>
+                </svg>
 
-              <div style={{ width: '100%', height: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at center, #0f1c30 0%, #030812 100%)', position: 'relative', overflow: 'hidden' }}>
-                {/* Glowing Background Radial Orbs */}
-                <div style={{ position: 'absolute', width: '250px', height: '250px', borderRadius: '50%', background: 'rgba(0, 242, 254, 0.08)', filter: 'blur(60px)', animation: 'pulseNeon 4s ease-in-out infinite' }} />
-                
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10 }}>
-                  {/* Large animated SVG logo */}
-                  <svg
-                    width="160"
-                    height="160"
-                    viewBox="0 0 32 32"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    style={{ 
-                      filter: 'drop-shadow(0 0 30px rgba(0, 242, 254, 0.5))', 
-                      animation: 'float 4s ease-in-out infinite' 
-                    }}
-                  >
-                    <path
-                      d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
-                      fill="url(#mockup-logo-grad)"
-                    />
-                    <path
-                      d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
-                      fill="url(#mockup-logo-grad-accent)"
-                      opacity="0.8"
-                    />
-                    <defs>
-                      <linearGradient id="mockup-logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#00f2fe" />
-                        <stop offset="1" stopColor="#4facfe" />
-                      </linearGradient>
-                      <linearGradient id="mockup-logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#e2b744" />
-                        <stop offset="1" stopColor="#b88e1a" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-
-                  {/* Animated branding name under logo */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '2.2rem', fontWeight: 900, fontFamily: 'var(--font-outfit), sans-serif', letterSpacing: '4px', backgroundImage: 'linear-gradient(to right, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 20px rgba(0, 242, 254, 0.2)' }}>
-                      BLUEFINE
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '3px', textTransform: 'uppercase', opacity: 0.8 }}>
-                      Future of B2B Commerce
-                    </span>
-                  </div>
+                {/* Animated branding name under logo */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 900, fontFamily: 'var(--font-outfit), sans-serif', letterSpacing: '4px', backgroundImage: 'linear-gradient(to right, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 20px rgba(0, 242, 254, 0.2)' }}>
+                    BLUEFINE
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '3px', textTransform: 'uppercase', opacity: 0.8 }}>
+                    Future of B2B Commerce
+                  </span>
                 </div>
               </div>
-            </section>
+            </div>
 
             {/* Feature Grid Section */}
             <section id="features-section" style={{ display: 'flex', flexDirection: 'column', gap: '48px', width: '100%', marginTop: '40px' }}>
