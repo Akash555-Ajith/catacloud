@@ -25,6 +25,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   const [currentStoreId, setCurrentStoreId] = useState<string>('bluefine');
+  const [isLandingPage, setIsLandingPage] = useState<boolean>(false);
 
 
   // Cart & UI states
@@ -85,9 +86,10 @@ export default function HomePage() {
         let storeId = params.get('store');
         
         if (!storeId) {
-          router.push('/dashboard');
+          setIsLandingPage(true);
           return;
         } else {
+          setIsLandingPage(false);
           localStorage.setItem('bluefine_current_store_id', storeId);
         }
 
@@ -222,9 +224,99 @@ export default function HomePage() {
     );
   }
 
+  if (isLandingPage) {
+    return (
+      <div className={styles.main}>
+        <Navbar
+          cartCount={0}
+          onCartToggle={() => {}}
+          onLogout={handleLogout}
+          storeId="bluefine"
+        />
 
+        <main className={styles.container} style={{ paddingTop: '120px', display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+          <section className="glassmorphism" style={{ maxWidth: '960px', width: '100%', padding: '48px', borderRadius: '24px', border: '1px solid var(--glass-border)', position: 'relative', overflow: 'hidden', boxShadow: 'var(--shadow-glass)' }}>
+            <div className={styles.ambientGlow} style={{ opacity: 0.15, pointerEvents: 'none' }} />
+            
+            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+              <span style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 'bold', textShadow: '0 0 10px rgba(0, 242, 254, 0.3)' }}>
+                B2B Sourcing Platform
+              </span>
+              <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '12px', marginBottom: '16px', fontFamily: 'var(--font-outfit), sans-serif', lineHeight: '1.2' }}>
+                Create Your Own Store & <span className={styles.titleHighlight}>Send Catalogues</span>
+              </h1>
+              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
+                Bluefine is a next-generation custom catalog builder designed for wholesale suppliers, producers, and distributors. Tailor your storefronts, manage products, and share secure proposals directly with your clients.
+              </p>
+            </div>
 
+            {/* How It Works Steps Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '48px' }}>
+              
+              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>1</div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>🏪 Launch Business Store</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
+                      Register your account and launch a custom storefront. Choose your niche (Seafood, Bakery, Egg Farm, or general retail) with custom labels and specific units of measurement (e.g. kg, box, dozen).
+                    </p>
+                  </div>
+                </div>
+              </div>
 
+              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>2</div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📦 Manage Products & POS</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
+                      Add items to your catalog, manage stock levels, and set base pricing. Keep track of stock counts automatically, and check out walk-in or phone sales instantly using the built-in POS Billing Terminal.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>3</div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📄 Share Targeted Catalogues</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
+                      Create custom pricing overrides, set volume discount thresholds, and hide specific products to target individual procurement partners. Share private catalog links (e.g. <code>/?store=your-store-id</code>) with your clients.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>4</div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>🙋 Receive Enquiries & Orders</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
+                      Your clients can browse your catalog, place wholesale orders, or submit custom volume sourcing requests. Receive instant logistics logs and track pending orders inside your unified Seller Dashboard.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="btn-gold"
+                style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}
+              >
+                Go to Store Manager Dashboard 🚀
+              </button>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   // Cart operations
   const handleAddToCart = (fish: FishItem, qty: number) => {

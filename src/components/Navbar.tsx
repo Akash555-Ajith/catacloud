@@ -245,7 +245,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
                   : 'text-[var(--text-secondary)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300'
               }`}
             >
-              Catalogue
+              How it Works
             </Link>
           </li>
           <li>
