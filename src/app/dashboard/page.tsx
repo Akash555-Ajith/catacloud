@@ -36,6 +36,7 @@ import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
+import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardPage() {
@@ -914,35 +915,37 @@ export default function DashboardPage() {
               {user.role === 'admin' ? 'Administrator' : 'Business Partner'}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '4px', background: 'rgba(5, 12, 26, 0.6)', padding: '4px', borderRadius: '9999px', border: '1px solid var(--glass-border)' }}>
             <button
               onClick={() => setDashboardMode('buyer')}
-              className={`${styles.tabBtn}`}
               style={{
-                background: dashboardMode === 'buyer' ? 'var(--accent-gold)' : 'transparent',
+                background: dashboardMode === 'buyer' ? 'var(--gradient-gold)' : 'transparent',
                 color: dashboardMode === 'buyer' ? '#030812' : 'var(--text-secondary)',
-                border: dashboardMode === 'buyer' ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                padding: '8px 16px',
-                borderRadius: '8px',
+                border: 'none',
+                padding: '8px 20px',
+                borderRadius: '9999px',
                 fontSize: '0.85rem',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all var(--transition-smooth)',
+                boxShadow: dashboardMode === 'buyer' ? '0 2px 10px rgba(226, 183, 68, 0.2)' : 'none'
               }}
             >
               🛒 Buyer Panel
             </button>
             <button
               onClick={() => setDashboardMode('seller')}
-              className={`${styles.tabBtn}`}
               style={{
-                background: dashboardMode === 'seller' ? 'var(--accent-cyan)' : 'transparent',
+                background: dashboardMode === 'seller' ? 'var(--gradient-premium)' : 'transparent',
                 color: dashboardMode === 'seller' ? '#030812' : 'var(--text-secondary)',
-                border: dashboardMode === 'seller' ? 'none' : '1px solid rgba(255,255,255,0.1)',
-                padding: '8px 16px',
-                borderRadius: '8px',
+                border: 'none',
+                padding: '8px 20px',
+                borderRadius: '9999px',
                 fontSize: '0.85rem',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all var(--transition-smooth)',
+                boxShadow: dashboardMode === 'seller' ? '0 2px 10px rgba(0, 242, 254, 0.2)' : 'none'
               }}
             >
               💼 Store Manager
@@ -1144,26 +1147,46 @@ export default function DashboardPage() {
             {/* Admin Stats Row */}
             <section className={styles.statsGrid}>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>{storeConfig.attributes.specimenLabel} Varieties</span>
-                <span className={styles.statValue}>{products.length}</span>
-                <span className={styles.statSubtext}>Active in catalogue</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>{storeConfig.attributes.specimenLabel} Varieties</span>
+                  <Target size={18} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue}>{products.length}</span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Active in catalogue</span>
+                </div>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Available Stock</span>
-                <span className={styles.statValue}>{adminTotalStock} <span style={{ fontSize: '1.2rem' }}>{storeConfig.unit}</span></span>
-                <span className={styles.statSubtext}>
-                  {storeConfig.storeType === 'seafood' ? 'Across Tsukiji / North Atlantic ports' : 'Across regional distribution centers'}
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Available Stock</span>
+                  <Package size={18} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue}>{adminTotalStock} <span style={{ fontSize: '1.2rem', fontWeight: 500 }}>{storeConfig.unit}</span></span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>
+                    {storeConfig.storeType === 'seafood' ? 'Across Tsukiji / North Atlantic ports' : 'Across regional distribution centers'}
+                  </span>
+                </div>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Active Shipments</span>
-                <span className={styles.statValue} style={{ color: 'var(--accent-cyan)' }}>{adminActiveOrders}</span>
-                <span className={styles.statSubtext}>Pending or Dispatched</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Active Shipments</span>
+                  <Clock size={18} style={{ color: 'var(--accent-cyan)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue} style={{ color: 'var(--accent-cyan)' }}>{adminActiveOrders}</span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Pending or Dispatched</span>
+                </div>
               </div>
               <div className={`${styles.statCard} ${styles.statCardGold} glassmorphism`}>
-                <span className={styles.statLabel}>Total Sourced Value</span>
-                <span className={styles.statValue} style={{ color: 'var(--accent-gold)' }}>${adminTotalRevenue.toFixed(2)}</span>
-                <span className={styles.statSubtext}>Orders from all partner Buyers</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Total Sourced Value</span>
+                  <DollarSign size={18} style={{ color: 'var(--accent-gold)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue} style={{ color: 'var(--accent-gold)' }}>${adminTotalRevenue.toFixed(2)}</span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Orders from all partner Buyers</span>
+                </div>
               </div>
             </section>
 
@@ -2267,26 +2290,46 @@ export default function DashboardPage() {
             {/* Chef Stats Row */}
             <section className={styles.statsGrid}>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Sourced Quantity</span>
-                <span className={styles.statValue}>{totalWeightSourced} <span style={{ fontSize: '1.2rem' }}>{storeConfig.unit}</span></span>
-                <span className={styles.statSubtext}>{storeConfig.storeType === 'seafood' ? 'Premium marine species' : 'Premium products'}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Sourced Quantity</span>
+                  <Package size={18} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue}>{totalWeightSourced} <span style={{ fontSize: '1.2rem', fontWeight: 500 }}>{storeConfig.unit}</span></span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>{storeConfig.storeType === 'seafood' ? 'Premium marine species' : 'Premium products'}</span>
+                </div>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Sourcing Investment</span>
-                <span className={styles.statValue} style={{ color: 'var(--accent-cyan)' }}>${totalSourcingValue.toFixed(2)}</span>
-                <span className={styles.statSubtext}>Total catalog investment</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Sourcing Investment</span>
+                  <DollarSign size={18} style={{ color: 'var(--accent-cyan)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue} style={{ color: 'var(--accent-cyan)' }}>${totalSourcingValue.toFixed(2)}</span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Total catalog investment</span>
+                </div>
               </div>
               <div className={`${styles.statCard} glassmorphism`}>
-                <span className={styles.statLabel}>Sustainability Profile</span>
-                <span className={styles.statValue} style={{ color: 'var(--accent-success)' }}>{sustainabilityScore}</span>
-                <span className={styles.statSubtext}>Ethical sourcing</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Sustainability Profile</span>
+                  <Activity size={18} style={{ color: 'var(--accent-success)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue} style={{ color: 'var(--accent-success)' }}>{sustainabilityScore}</span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Ethical sourcing</span>
+                </div>
               </div>
               <div className={`${styles.statCard} ${styles.statCardGold} glassmorphism`}>
-                <span className={styles.statLabel}>Account Tier</span>
-                <span className={styles.statValue} style={{ color: 'var(--accent-gold)', fontSize: '1.6rem' }}>
-                  {totalSourcingValue > 1000 ? 'Elite Member' : totalSourcingValue > 500 ? 'Preferred Partner' : 'General Partner'}
-                </span>
-                <span className={styles.statSubtext}>Account tier status</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <span className={styles.statLabel}>Account Tier</span>
+                  <ShieldCheck size={18} style={{ color: 'var(--accent-gold)', opacity: 0.8 }} />
+                </div>
+                <div>
+                  <span className={styles.statValue} style={{ color: 'var(--accent-gold)', fontSize: '1.6rem' }}>
+                    {totalSourcingValue > 1000 ? 'Elite Member' : totalSourcingValue > 500 ? 'Preferred Partner' : 'General Partner'}
+                  </span>
+                  <span className={styles.statSubtext} style={{ display: 'block' }}>Account tier status</span>
+                </div>
               </div>
             </section>
 
