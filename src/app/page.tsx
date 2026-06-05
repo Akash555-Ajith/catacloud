@@ -256,7 +256,8 @@ export default function HomePage() {
               {isAuthenticated ? (
                 <button
                   onClick={() => router.push('/dashboard')}
-                  className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+                  className="btn-primary flex items-center gap-2 hover:scale-105 transition-all cursor-pointer border-none"
+                  style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: '9999px', background: 'var(--gradient-premium)', color: '#030812' }}
                 >
                   Go to Store Dashboard
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -265,7 +266,8 @@ export default function HomePage() {
                 <>
                   <button
                     onClick={() => router.push('/login')}
-                    className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2 hover:scale-105 transition-all cursor-pointer border-none"
+                    style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: '9999px', background: 'var(--gradient-premium)', color: '#030812' }}
                   >
                     Start for free
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -274,7 +276,8 @@ export default function HomePage() {
                     onClick={() => {
                       document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="px-8 py-4 rounded-full border border-[rgba(255,255,255,0.15)] bg-transparent hover:bg-white/5 font-bold text-white transition-all cursor-pointer flex items-center gap-2"
+                    className="btn-secondary flex items-center gap-2 hover:scale-105 transition-all cursor-pointer"
+                    style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: '9999px' }}
                   >
                     Learn how it works
                   </button>
@@ -366,7 +369,8 @@ export default function HomePage() {
             </p>
             <button
               onClick={() => router.push(isAuthenticated ? '/dashboard' : '/login')}
-              className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+              className="btn-primary flex items-center gap-2 hover:scale-105 transition-all cursor-pointer border-none"
+              style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', borderRadius: '9999px', background: 'var(--gradient-premium)', color: '#030812' }}
             >
               {isAuthenticated ? 'Go to Store Dashboard' : 'Get Started Now'}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
