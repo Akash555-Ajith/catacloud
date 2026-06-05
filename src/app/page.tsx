@@ -24,6 +24,7 @@ export default function HomePage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   const [currentStoreId, setCurrentStoreId] = useState<string>('bluefine');
+  const [isForbidden, setIsForbidden] = useState<boolean>(false);
 
   // Cart & UI states
   const [cart, setCart] = useState<CartItemData[]>([]);
@@ -35,6 +36,13 @@ export default function HomePage() {
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('featured');
+
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem('bluefine_user');
+    localStorage.removeItem('bluefine_cart');
+    router.push('/login');
+  };
 
   // Guard route & Hydration safety
   useEffect(() => {
@@ -85,7 +93,25 @@ export default function HomePage() {
 
         // Load dynamic products & config scoped to storeId
         getStoreConfig(storeId).then((cfg) => {
-          setStoreConfig(cfg);
+          let loggedInEmail = '';
+          let loggedInRole = '';
+          try {
+            const parsed = JSON.parse(user || '{}');
+            loggedInEmail = parsed.email?.toLowerCase() || '';
+            loggedInRole = parsed.role || '';
+          } catch {}
+
+          if (
+            loggedInEmail && 
+            cfg.ownerEmail && 
+            cfg.ownerEmail.toLowerCase() !== loggedInEmail && 
+            loggedInRole !== 'admin'
+          ) {
+            setIsForbidden(true);
+          } else {
+            setIsForbidden(false);
+            setStoreConfig(cfg);
+          }
         });
         getProducts(storeId).then((p) => {
           setProducts(p);
@@ -195,12 +221,33 @@ export default function HomePage() {
     );
   }
 
-  // Logout handler
-  const handleLogout = () => {
-    localStorage.removeItem('bluefine_user');
-    localStorage.removeItem('bluefine_cart');
-    router.push('/login');
-  };
+  if (isForbidden) {
+    return (
+      <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)', padding: '24px', textAlign: 'center' }}>
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent-danger)" strokeWidth="1.5" style={{ marginBottom: '20px' }}>
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>
+          Access Denied
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px', maxWidth: '500px', lineHeight: '1.6' }}>
+          You are currently logged into a different partner seller account. You cannot open or inspect another user's business store.
+        </p>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <button onClick={() => router.push('/dashboard')} className="btn-primary" style={{ padding: '10px 20px', fontSize: '0.9rem', cursor: 'pointer' }}>
+            Go to My Dashboard
+          </button>
+          <button onClick={handleLogout} className="btn-gold" style={{ padding: '10px 20px', fontSize: '0.9rem', cursor: 'pointer' }}>
+            Log Out of Seller
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+
 
   // Cart operations
   const handleAddToCart = (fish: FishItem, qty: number) => {
