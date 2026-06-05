@@ -151,8 +151,8 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
   };
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-12 py-6 bg-gradient-to-b from-[rgba(6,16,32,0.96)] to-[rgba(3,8,18,0.96)] backdrop-blur-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65),0_1px_0_rgba(255,255,255,0.04),0_0_20px_rgba(0,242,254,0.05)] border-b border-[rgba(0,242,254,0.08)] transition-all duration-300">
-      <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.location.href = '/'}>
+    <header className="sticky top-6 z-50 w-full max-w-[95%] mx-auto flex items-center justify-between px-10 py-5 rounded-2xl bg-[rgba(8,12,24,0.88)] backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)] transition-all duration-300 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[2px] before:bg-gradient-to-r before:from-indigo-600 before:via-indigo-400 before:to-cyan-400">
+      <div className="flex items-center gap-4 group cursor-pointer z-10" onClick={() => window.location.href = '/'}>
         {storeConfig.storeType === 'seafood' ? (
           <svg
             width="42"
@@ -229,49 +229,54 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
             </defs>
           </svg>
         )}
-        <span className="font-heading text-3xl font-extrabold bg-gradient-to-r from-[var(--accent-cyan)] via-cyan-400 to-[var(--accent-blue)] bg-clip-text text-transparent tracking-widest drop-shadow-[0_0_15px_rgba(0,242,254,0.3)] transition-all duration-300 group-hover:brightness-110">
+        <span className="font-heading text-3xl font-extrabold bg-gradient-to-r from-indigo-400 via-indigo-300 to-cyan-300 bg-clip-text text-transparent tracking-widest drop-shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all duration-300 group-hover:brightness-110">
           {storeConfig.storeName}
         </span>
       </div>
 
       <nav className="hidden md:block">
-        <ul className="flex items-center gap-12 list-none">
+        <ul className="flex items-center gap-12 list-none m-0 p-0">
           <li>
             <Link 
               href="/" 
-              className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-[var(--accent-cyan)] ${
+              className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-indigo-300 flex items-center ${
                 pathname === '/' 
-                  ? 'text-[var(--accent-cyan)] drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[var(--accent-cyan)] after:rounded' 
-                  : 'text-[var(--text-secondary)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300'
+                  ? 'text-indigo-300 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-500 after:rounded' 
+                  : 'text-slate-400 after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300'
               }`}
             >
+              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
               How it Works
             </Link>
           </li>
           <li>
             <Link 
               href="/dashboard" 
-              className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-[var(--accent-cyan)] ${
+              className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-indigo-300 flex items-center ${
                 pathname === '/dashboard' 
-                  ? 'text-[var(--accent-cyan)] drop-shadow-[0_0_12px_rgba(0,242,254,0.4)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-[var(--accent-cyan)] after:rounded' 
-                  : 'text-[var(--text-secondary)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300'
+                  ? 'text-indigo-300 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-500 after:rounded' 
+                  : 'text-slate-400 after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300'
               }`}
             >
+              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
               Dashboard
             </Link>
           </li>
           <li>
-            <span className="text-base font-semibold text-[var(--text-secondary)] cursor-pointer hover:text-[var(--accent-cyan)] relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300 transition-colors">
+            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
+              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 22c1.25-6.7 5.25-12 12-12m0 0c-3-3-8.25-3-11 0m11 0c2.5-3 7-3 9.5 0m-9.5 0v12"></path></svg>
               Sustainability
             </span>
           </li>
           <li>
-            <span className="text-base font-semibold text-[var(--text-secondary)] cursor-pointer hover:text-[var(--accent-cyan)] relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300 transition-colors">
+            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
+              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               Direct Source
             </span>
           </li>
           <li>
-            <span className="text-base font-semibold text-[var(--text-secondary)] cursor-pointer hover:text-[var(--accent-cyan)] relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--accent-cyan)] hover:after:w-full after:transition-all after:duration-300 transition-colors">
+            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
+              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 8h1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-1M6 2v6a4 4 0 0 0 4 4v10M10 2v6M14 2v6a4 4 0 0 1-4 4"></path></svg>
               Chef Portal
             </span>
           </li>
