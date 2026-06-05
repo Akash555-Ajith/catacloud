@@ -282,6 +282,37 @@ export default function DashboardPage() {
   const [formPrep, setFormPrep] = useState('');
   const [formDifficulty, setFormDifficulty] = useState<string>('Easy');
 
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        setFormImage(data.url);
+        toast.success('Image uploaded successfully to Cloudflare R2!');
+      } else {
+        toast.error(data.error || 'Upload failed. Check your R2 environment variables.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('An error occurred while uploading. Ensure your R2 API keys are set.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // 1. Initial User load
   useEffect(() => {
     const loadUser = () => {
@@ -2489,15 +2520,45 @@ export default function DashboardPage() {
                 </div>
                 <div className={`${styles.formGroup} styles.formGroupFull`}>
                   <label className={styles.label} htmlFor="prod-image">Image Path or URL</label>
-                  <input
-                    type="text"
-                    id="prod-image"
-                    value={formImage}
-                    onChange={(e) => setFormImage(e.target.value)}
-                    className="luxury-input"
-                    placeholder="https://images.unsplash.com/... or /images/..."
-                    required
-                  />
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%' }}>
+                    <input
+                      type="text"
+                      id="prod-image"
+                      value={formImage}
+                      onChange={(e) => setFormImage(e.target.value)}
+                      className="luxury-input"
+                      style={{ flex: 1 }}
+                      placeholder="https://images.unsplash.com/... or /images/..."
+                      required
+                    />
+                    <div style={{ position: 'relative', overflow: 'hidden' }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={isUploading}
+                        style={{ height: '42px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {isUploading ? (
+                          <>
+                            <span className="animate-spin" style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Upload File
+                          </>
+                        )}
+                      </button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                        style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className={`${styles.formGroup} styles.formGroupFull`}>
                   <label className={styles.label} htmlFor="prod-description">Description</label>
