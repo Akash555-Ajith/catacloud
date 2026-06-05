@@ -57,12 +57,48 @@ export default function HomePage() {
 
   // Guard route & Hydration safety
   useEffect(() => {
-    const user = localStorage.getItem('bluefine_user');
-    const params = new URLSearchParams(window.location.search);
-    const storeId = params.get('store');
-    
-    // Defer state updates to avoid synchronous setState inside render effect
-    setTimeout(() => {
+    const checkAuthAndInit = async () => {
+      let user = localStorage.getItem('bluefine_user');
+      
+      // If no local storage user, check if we have a valid Supabase session
+      if (!user && isSupabaseConfigured && supabase) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const userEmail = session.user.email || '';
+            const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split('@')[0];
+            const appUser = {
+              email: userEmail.toLowerCase(),
+              name: userName,
+              role: userEmail.toLowerCase() === 'admin@gmail.com' ? 'admin' : 'user'
+            };
+            localStorage.setItem('bluefine_user', JSON.stringify(appUser));
+            user = JSON.stringify(appUser);
+            // Sync user details to accounts directory
+            let accounts: any[] = [];
+            try {
+              const stored = localStorage.getItem('bluefine_user_accounts');
+              if (stored) accounts = JSON.parse(stored);
+            } catch (e) {}
+            if (!accounts.some(a => a.email.toLowerCase() === appUser.email)) {
+              accounts.push({
+                email: appUser.email,
+                password: 'google-oauth-dummy-password',
+                name: appUser.name,
+                role: appUser.role
+              });
+              localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+            }
+            window.dispatchEvent(new Event('storage'));
+          }
+        } catch (e) {
+          console.warn('Failed to recover session on mount:', e);
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const storeId = params.get('store');
+
       setMounted(true);
       if (!user) {
         setIsAuthenticated(false);
@@ -125,6 +161,10 @@ export default function HomePage() {
           setProducts(p);
         });
       }
+    };
+
+    setTimeout(() => {
+      checkAuthAndInit();
     }, 0);
   }, [router]);
 
