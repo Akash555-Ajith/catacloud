@@ -151,7 +151,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
   };
 
   return (
-    <header className="sticky top-6 z-50 w-full max-w-[95%] mx-auto flex items-center justify-between px-10 py-5 rounded-2xl bg-[rgba(8,12,24,0.88)] backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)] transition-all duration-300 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[2px] before:bg-gradient-to-r before:from-indigo-600 before:via-indigo-400 before:to-cyan-400">
+    <header className="sticky top-0 z-50 w-full max-w-full flex items-center justify-between px-10 py-5 rounded-b-2xl rounded-t-none bg-[rgba(8,12,24,0.88)] backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.03)] border-x border-b border-[rgba(255,255,255,0.05)] transition-all duration-300 relative overflow-hidden">
       <div className="flex items-center gap-4 group cursor-pointer z-10" onClick={() => window.location.href = '/'}>
         {storeConfig.storeType === 'seafood' ? (
           <svg
