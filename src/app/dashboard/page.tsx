@@ -452,7 +452,7 @@ export default function DashboardPage() {
         console.warn('Supabase logout error:', e);
       }
     }
-    router.push('/login');
+    router.push('/');
   };
 
   // Order status modification handler

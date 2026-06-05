@@ -50,7 +50,7 @@ export default function HomePage() {
         console.warn('Supabase logout error:', e);
       }
     }
-    router.push('/login');
+    router.push('/');
   };
 
   // Guard route & Hydration safety
