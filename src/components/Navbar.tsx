@@ -35,6 +35,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
   const [userEmail, setUserEmail] = useState<string>('');
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
   
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
   
   // Profile Form state
@@ -47,6 +48,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
     const loadUser = () => {
       const storedUser = localStorage.getItem('bluefine_user');
       if (storedUser) {
+        setIsLoggedIn(true);
         try {
           const parsed = JSON.parse(storedUser);
           if (parsed && parsed.name) {
@@ -68,6 +70,12 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         } catch {
           setUserName(storedUser);
         }
+      } else {
+        setIsLoggedIn(false);
+        setUserName('Guest');
+        setUserRole('user');
+        setUserAvatar('');
+        setUserEmail('');
       }
     };
 
@@ -266,190 +274,209 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
       </nav>
 
       <div className="flex items-center gap-8">
-        <button
-          className="relative p-4 rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(0,242,254,0.08)] hover:border-[rgba(0,242,254,0.25)] transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,254,0.22)]"
-          onClick={onCartToggle}
-          aria-label="Toggle Shopping Cart"
-          id="cart-toggle-btn"
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="9" cy="21" r="1" />
-            <circle cx="20" cy="21" r="1" />
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-          </svg>
-          {cartCount > 0 && (
-            <span 
-              className="absolute -top-1.5 -right-1.5 flex h-6.5 w-6.5 items-center justify-center rounded-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-xs font-bold text-[#030812] shadow-[0_2px_12px_rgba(0,242,254,0.5)] border border-[#030812]"
-              id="cart-badge-count"
-            >
-              {cartCount}
-            </span>
-          )}
-        </button>
-
-        <div className="flex items-center gap-4 pl-6 border-l border-[rgba(255,255,255,0.08)] py-3">
-          <button 
-            type="button"
-            onClick={handleOpenProfile}
-            className="cursor-pointer group/profile bg-transparent border-none p-1 text-left focus:outline-none shrink-0"
-            title="Customize Profile"
-          >
-            <Avatar className="h-12 w-12 bg-[var(--accent-cyan)] shadow-[0_0_18px_rgba(0,242,254,0.55)] transition-transform duration-300 hover:scale-105 shrink-0 select-none">
-              {userAvatar && (
-                <AvatarImage src={userAvatar} alt={userName} className="object-cover" />
-              )}
-              <AvatarFallback className="text-xl font-black text-[#081426] bg-[var(--accent-cyan)]">
-                {getInitials(userName)}
-              </AvatarFallback>
-            </Avatar>
-          </button>
-
-          <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
-            <DialogContent className="max-w-md bg-[rgba(8,20,38,0.98)] border border-[rgba(0,242,254,0.2)] text-[var(--text-primary)] p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-xl focus:outline-none">
-              <DialogHeader className="mb-4">
-                <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] bg-clip-text text-transparent">
-                  Customize Profile
-                </DialogTitle>
-                <DialogDescription className="text-slate-400 text-sm mt-1">
-                  Update your business name and choose a premium avatar representation.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="flex flex-col gap-5 py-4">
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="profile-name" className="text-sm font-semibold text-[var(--accent-cyan)]">
-                    Display Name
-                  </label>
-                  <input
-                    id="profile-name"
-                    type="text"
-                    value={tempName}
-                    onChange={(e) => setTempName(e.target.value)}
-                    className="luxury-input w-full h-11 px-4 rounded-xl border border-[rgba(0,242,254,0.15)] bg-[rgba(3,8,18,0.6)] text-white focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)] transition-all focus:outline-none"
-                    placeholder="Enter your display name"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-[var(--accent-cyan)] mb-1">
-                    Select Avatar Icon
-                  </span>
-                  <div className="grid grid-cols-4 gap-3 max-h-44 overflow-y-auto pr-1">
-                    {PRESET_AVATARS.map((preset) => (
-                      <button
-                        key={preset.name}
-                        type="button"
-                        onClick={() => setTempAvatar(preset.url)}
-                        className={`relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 ${
-                          tempAvatar === preset.url
-                            ? 'border-[var(--accent-cyan)] scale-105 shadow-[0_0_12px_rgba(0,242,254,0.4)]'
-                            : 'border-[rgba(255,255,255,0.08)] hover:border-[rgba(0,242,254,0.25)]'
-                        }`}
-                        title={preset.name}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preset.url}
-                          alt={preset.name}
-                          className="w-full h-full object-cover"
-                        />
-                        {tempAvatar === preset.url && (
-                          <div className="absolute inset-0 bg-[rgba(0,242,254,0.15)] flex items-center justify-center">
-                            <span className="text-white text-xs font-bold bg-[#030812] px-1.5 py-0.5 rounded border border-[var(--accent-cyan)]">✓</span>
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label htmlFor="profile-avatar-url" className="text-sm font-semibold text-[var(--accent-cyan)]">
-                    Or Custom Image URL
-                  </label>
-                  <input
-                    id="profile-avatar-url"
-                    type="url"
-                    value={tempAvatar}
-                    onChange={(e) => setTempAvatar(e.target.value)}
-                    className="luxury-input w-full h-11 px-4 rounded-xl border border-[rgba(0,242,254,0.15)] bg-[rgba(3,8,18,0.6)] text-white focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)] transition-all focus:outline-none"
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                </div>
-              </div>
-
-              <DialogFooter className="mt-6 gap-3">
-                <DialogClose 
-                  render={
-                    <button
-                      type="button"
-                      className="px-5 py-2.5 rounded-xl border border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.05)] text-sm font-semibold text-slate-300 transition-all cursor-pointer"
-                    />
-                  }
-                >
-                  Cancel
-                </DialogClose>
-                <button
-                  type="button"
-                  onClick={handleSaveProfile}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-slate-900 text-sm font-bold shadow-[0_4px_15px_rgba(0,242,254,0.3)] hover:scale-[1.02] transition-all cursor-pointer border-none"
-                >
-                  Save Changes
-                </button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <div className="flex flex-col items-start gap-1.5">
-            <div className="flex items-center gap-2.5">
-              <button 
-                type="button"
-                onClick={handleOpenProfile}
-                className="text-xl font-bold text-white hover:text-[var(--accent-cyan)] transition-colors cursor-pointer border-none bg-none p-0 text-left focus:outline-none tracking-wide"
-              >
-                {userName}
-              </button>
-              <span className={`text-[11px] font-black px-3 py-0.5 rounded-full uppercase tracking-normal select-none border border-white/5 ${
-                userRole === 'admin' 
-                  ? 'bg-[var(--accent-cyan)] text-[#081426] shadow-[0_0_12px_rgba(0,242,254,0.4)]' 
-                  : 'bg-[var(--accent-gold)] text-[#081426] shadow-[0_0_12px_rgba(226,183,68,0.4)]'
-              }`}>
-                {userRole === 'admin' ? 'Admin' : 'Chef'}
-              </span>
-            </div>
-            <button 
-              className="flex items-center text-xs font-semibold text-white bg-transparent border border-red-500/20 rounded-full px-5 py-1.5 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.05)] hover:bg-[rgba(239,68,68,0.1)] hover:border-red-500/40 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)] select-none hover:scale-[1.02]"
-              onClick={onLogout} 
-              id="logout-button"
+        {isLoggedIn ? (
+          <>
+            <button
+              className="relative p-4 rounded-xl border border-[rgba(255,255,255,0.05)] bg-[rgba(255,255,255,0.01)] hover:bg-[rgba(0,242,254,0.08)] hover:border-[rgba(0,242,254,0.25)] transition-all duration-300 cursor-pointer text-[var(--text-primary)] hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,254,0.22)]"
+              onClick={onCartToggle}
+              aria-label="Toggle Shopping Cart"
+              id="cart-toggle-btn"
             >
               <svg
-                width="14"
-                height="14"
+                width="24"
+                height="24"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2.5"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="mr-2 text-white"
               >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
               </svg>
-              Logout
+              {cartCount > 0 && (
+                <span 
+                  className="absolute -top-1.5 -right-1.5 flex h-6.5 w-6.5 items-center justify-center rounded-full bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-xs font-bold text-[#030812] shadow-[0_2px_12px_rgba(0,242,254,0.5)] border border-[#030812]"
+                  id="cart-badge-count"
+                >
+                  {cartCount}
+                </span>
+              )}
             </button>
+
+            <div className="flex items-center gap-4 pl-6 border-l border-[rgba(255,255,255,0.08)] py-3">
+              <button 
+                type="button"
+                onClick={handleOpenProfile}
+                className="cursor-pointer group/profile bg-transparent border-none p-1 text-left focus:outline-none shrink-0"
+                title="Customize Profile"
+              >
+                <Avatar className="h-12 w-12 bg-[var(--accent-cyan)] shadow-[0_0_18px_rgba(0,242,254,0.55)] transition-transform duration-300 hover:scale-105 shrink-0 select-none">
+                  {userAvatar && (
+                    <AvatarImage src={userAvatar} alt={userName} className="object-cover" />
+                  )}
+                  <AvatarFallback className="text-xl font-black text-[#081426] bg-[var(--accent-cyan)]">
+                    {getInitials(userName)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+
+              <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+                <DialogContent className="max-w-md bg-[rgba(8,20,38,0.98)] border border-[rgba(0,242,254,0.2)] text-[var(--text-primary)] p-6 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-xl focus:outline-none">
+                  <DialogHeader className="mb-4">
+                    <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] bg-clip-text text-transparent">
+                      Customize Profile
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 text-sm mt-1">
+                      Update your business name and choose a premium avatar representation.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex flex-col gap-5 py-4">
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="profile-name" className="text-sm font-semibold text-[var(--accent-cyan)]">
+                        Display Name
+                      </label>
+                      <input
+                        id="profile-name"
+                        type="text"
+                        value={tempName}
+                        onChange={(e) => setTempName(e.target.value)}
+                        className="luxury-input w-full h-11 px-4 rounded-xl border border-[rgba(0,242,254,0.15)] bg-[rgba(3,8,18,0.6)] text-white focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)] transition-all focus:outline-none"
+                        placeholder="Enter your display name"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <span className="text-sm font-semibold text-[var(--accent-cyan)] mb-1">
+                        Select Avatar Icon
+                      </span>
+                      <div className="grid grid-cols-4 gap-3 max-h-44 overflow-y-auto pr-1">
+                        {PRESET_AVATARS.map((preset) => (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            onClick={() => setTempAvatar(preset.url)}
+                            className={`relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 ${
+                              tempAvatar === preset.url
+                                ? 'border-[var(--accent-cyan)] scale-105 shadow-[0_0_12px_rgba(0,242,254,0.4)]'
+                                : 'border-[rgba(255,255,255,0.08)] hover:border-[rgba(0,242,254,0.25)]'
+                            }`}
+                            title={preset.name}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={preset.url}
+                              alt={preset.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {tempAvatar === preset.url && (
+                              <div className="absolute inset-0 bg-[rgba(0,242,254,0.15)] flex items-center justify-center">
+                                <span className="text-white text-xs font-bold bg-[#030812] px-1.5 py-0.5 rounded border border-[var(--accent-cyan)]">✓</span>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="profile-avatar-url" className="text-sm font-semibold text-[var(--accent-cyan)]">
+                        Or Custom Image URL
+                      </label>
+                      <input
+                        id="profile-avatar-url"
+                        type="url"
+                        value={tempAvatar}
+                        onChange={(e) => setTempAvatar(e.target.value)}
+                        className="luxury-input w-full h-11 px-4 rounded-xl border border-[rgba(0,242,254,0.15)] bg-[rgba(3,8,18,0.6)] text-white focus:border-[var(--accent-cyan)] focus:ring-1 focus:ring-[var(--accent-cyan)] transition-all focus:outline-none"
+                        placeholder="https://example.com/avatar.jpg"
+                      />
+                    </div>
+                  </div>
+
+                  <DialogFooter className="mt-6 gap-3">
+                    <DialogClose 
+                      render={
+                        <button
+                          type="button"
+                          className="px-5 py-2.5 rounded-xl border border-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.05)] text-sm font-semibold text-slate-300 transition-all cursor-pointer"
+                        />
+                      }
+                    >
+                      Cancel
+                    </DialogClose>
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[var(--accent-cyan)] to-[var(--accent-blue)] text-slate-900 text-sm font-bold shadow-[0_4px_15px_rgba(0,242,254,0.3)] hover:scale-[1.02] transition-all cursor-pointer border-none"
+                    >
+                      Save Changes
+                    </button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <div className="flex flex-col items-start gap-1.5">
+                <div className="flex items-center gap-2.5">
+                  <button 
+                    type="button"
+                    onClick={handleOpenProfile}
+                    className="text-xl font-bold text-white hover:text-[var(--accent-cyan)] transition-colors cursor-pointer border-none bg-none p-0 text-left focus:outline-none tracking-wide"
+                  >
+                    {userName}
+                  </button>
+                  <span className={`text-[11px] font-black px-3 py-0.5 rounded-full uppercase tracking-normal select-none border border-white/5 ${
+                    userRole === 'admin' 
+                      ? 'bg-[var(--accent-cyan)] text-[#081426] shadow-[0_0_12px_rgba(0,242,254,0.4)]' 
+                      : 'bg-[var(--accent-gold)] text-[#081426] shadow-[0_0_12px_rgba(226,183,68,0.4)]'
+                  }`}>
+                    {userRole === 'admin' ? 'Admin' : 'Chef'}
+                  </span>
+                </div>
+                <button 
+                  className="flex items-center text-xs font-semibold text-white bg-transparent border border-red-500/20 rounded-full px-5 py-1.5 transition-all cursor-pointer shadow-[0_0_8px_rgba(239,68,68,0.05)] hover:bg-[rgba(239,68,68,0.1)] hover:border-red-500/40 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)] select-none hover:scale-[1.02]"
+                  onClick={onLogout} 
+                  id="logout-button"
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2 text-white"
+                  >
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  Logout
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-6">
+            <Link 
+              href="/login" 
+              className="text-base font-semibold text-slate-300 hover:text-white transition-colors"
+            >
+              Log in
+            </Link>
+            <Link 
+              href="/login" 
+              className="px-6 py-2.5 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 text-sm font-bold shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:scale-105 transition-all cursor-pointer border-none"
+            >
+              Start for free
+            </Link>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

@@ -56,12 +56,19 @@ export default function HomePage() {
   // Guard route & Hydration safety
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
+    const params = new URLSearchParams(window.location.search);
+    const storeId = params.get('store');
     
     // Defer state updates to avoid synchronous setState inside render effect
     setTimeout(() => {
       setMounted(true);
       if (!user) {
-        router.push('/login');
+        setIsAuthenticated(false);
+        if (storeId) {
+          router.push('/login');
+        } else {
+          setIsLandingPage(true);
+        }
       } else {
         setIsAuthenticated(true);
         // Load saved cart scoped to user
@@ -80,10 +87,6 @@ export default function HomePage() {
             // Keep empty if parse fails
           }
         }
-        
-        // Resolve store context from URL parameter
-        const params = new URLSearchParams(window.location.search);
-        let storeId = params.get('store');
         
         if (!storeId) {
           setIsLandingPage(true);
@@ -194,7 +197,7 @@ export default function HomePage() {
     }
   }, [cart, mounted, isAuthenticated]);
 
-  if (!mounted || !isAuthenticated) {
+  if (!mounted) {
     // Elegant loading screen during verification
     return (
       <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)' }}>
@@ -226,7 +229,7 @@ export default function HomePage() {
 
   if (isLandingPage) {
     return (
-      <div className={styles.main}>
+      <div className={styles.main} style={{ background: 'radial-gradient(circle at top, #0f1c30 0%, #030812 100%)', minHeight: '100vh', overflowX: 'hidden' }}>
         <Navbar
           cartCount={0}
           onCartToggle={() => {}}
@@ -234,86 +237,153 @@ export default function HomePage() {
           storeId="bluefine"
         />
 
-        <main className={styles.container} style={{ paddingTop: '120px', display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
-          <section className="glassmorphism" style={{ maxWidth: '960px', width: '100%', padding: '48px', borderRadius: '24px', border: '1px solid var(--glass-border)', position: 'relative', overflow: 'hidden', boxShadow: 'var(--shadow-glass)' }}>
-            <div className={styles.ambientGlow} style={{ opacity: 0.15, pointerEvents: 'none' }} />
+        {/* Hero Section */}
+        <main className={styles.container} style={{ paddingTop: '140px', display: 'flex', flexDirection: 'column', gap: '80px', alignItems: 'center', maxWidth: '1280px', margin: '0 auto', paddingLeft: '24px', paddingRight: '24px' }}>
+          
+          <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: '880px', margin: '0 auto', gap: '24px' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '4px', fontWeight: 'bold', textShadow: '0 0 15px rgba(0, 242, 254, 0.4)' }}>
+              THE ULTIMATE B2B COMMERCE PLATFORM
+            </span>
+            <h1 style={{ fontSize: '4rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '8px', marginBottom: '8px', fontFamily: 'var(--font-outfit), sans-serif', lineHeight: '1.15', letterSpacing: '-1px' }}>
+              Establish your custom catalogues.<br />
+              <span className={styles.titleHighlight} style={{ backgroundImage: 'linear-gradient(to right, #818cf8, #22d3ee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', color: 'transparent' }}>Be the next household name</span>
+            </h1>
+            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6', fontFamily: 'var(--font-inter), sans-serif' }}>
+              Bluefine gives wholesale suppliers, producers, and distributors the power to build custom B2B storefronts, manage dynamic pricing, and dispatch secure catalogs directly to clients.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '16px' }}>
+              {isAuthenticated ? (
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+                >
+                  Go to Store Dashboard
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => router.push('/login')}
+                    className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+                  >
+                    Start for free
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                  </button>
+                  <button
+                    onClick={() => {
+                      document.getElementById('features-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-8 py-4 rounded-full border border-[rgba(255,255,255,0.15)] bg-transparent hover:bg-white/5 font-bold text-white transition-all cursor-pointer flex items-center gap-2"
+                  >
+                    Learn how it works
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Interactive Mockup Container */}
+          <section className="glassmorphism" style={{ maxWidth: '1000px', width: '100%', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', position: 'relative', overflow: 'hidden', boxShadow: '0 30px 100px rgba(0,0,0,0.8), 0 0 80px rgba(99,102,241,0.15)' }}>
+            <div className={styles.ambientGlow} style={{ opacity: 0.2, pointerEvents: 'none' }} />
             
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <span style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 'bold', textShadow: '0 0 10px rgba(0, 242, 254, 0.3)' }}>
-                B2B Sourcing Platform
-              </span>
-              <h1 style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '12px', marginBottom: '16px', fontFamily: 'var(--font-outfit), sans-serif', lineHeight: '1.2' }}>
-                Create Your Own Store & <span className={styles.titleHighlight}>Send Catalogues</span>
-              </h1>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', maxWidth: '720px', margin: '0 auto', lineHeight: '1.6' }}>
-                Bluefine is a next-generation custom catalog builder designed for wholesale suppliers, producers, and distributors. Tailor your storefronts, manage products, and share secure proposals directly with your clients.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '16px 24px', background: 'rgba(5, 10, 20, 0.4)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }} />
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b' }} />
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }} />
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginLeft: '12px', fontFamily: 'monospace', opacity: 0.6 }}>bluefine.app/dashboard</span>
+            </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80" 
+              alt="Bluefine Sourcing Platform Overview" 
+              style={{ width: '100%', height: '400px', objectFit: 'cover', opacity: 0.85, filter: 'brightness(0.95)' }} 
+            />
+          </section>
+
+          {/* Feature Grid Section */}
+          <section id="features-section" style={{ display: 'flex', flexDirection: 'column', gap: '48px', width: '100%', marginTop: '40px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-outfit), sans-serif' }}>
+                Everything you need to trade globally
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', marginTop: '12px' }}>
+                Simplify operations, curate catalogs, and handle logistics from one integrated panel.
               </p>
             </div>
 
-            {/* How It Works Steps Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '48px' }}>
-              
-              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>1</div>
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>🏪 Launch Business Store</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                      Register your account and launch a custom storefront. Choose your niche (Seafood, Bakery, Egg Farm, or general retail) with custom labels and specific units of measurement (e.g. kg, box, dozen).
-                    </p>
-                  </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '28px' }}>
+              <div className="glassmorphism hover:scale-[1.02] transition-all duration-300" style={{ padding: '32px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '16px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>🏪</div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Launch Store</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                    Establish your custom B2B storefront. Choose your industry preset (Seafood, Bakery, Egg Farm, or general retail) with bespoke attributes and product units.
+                  </p>
                 </div>
               </div>
 
-              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>2</div>
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📦 Manage Products & POS</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                      Add items to your catalog, manage stock levels, and set base pricing. Keep track of stock counts automatically, and check out walk-in or phone sales instantly using the built-in POS Billing Terminal.
-                    </p>
-                  </div>
+              <div className="glassmorphism hover:scale-[1.02] transition-all duration-300" style={{ padding: '32px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: 'rgba(99, 102, 241, 0.08)', color: 'var(--accent-blue)', borderRadius: '16px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>📦</div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Manage POS & Items</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                    Keep inventories synchronized automatically. Add new product lines, track stock counts, and check out walk-in or telephone sales on the terminal.
+                  </p>
                 </div>
               </div>
 
-              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>3</div>
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📄 Share Targeted Catalogues</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                      Create custom pricing overrides, set volume discount thresholds, and hide specific products to target individual procurement partners. Share private catalog links (e.g. <code>/?store=your-store-id</code>) with your clients.
-                    </p>
-                  </div>
+              <div className="glassmorphism hover:scale-[1.02] transition-all duration-300" style={{ padding: '32px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: 'rgba(245, 158, 11, 0.08)', color: 'var(--accent-gold)', borderRadius: '16px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>📄</div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Targeted Catalogs</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                    Set customized pricing structures, volume discounts, and hide specific products to target procurement partners. Share secure links with clients.
+                  </p>
                 </div>
               </div>
 
-              <div className="glassmorphism" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', background: 'rgba(255,255,255,0.01)' }}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>4</div>
-                  <div>
-                    <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>🙋 Receive Enquiries & Orders</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                      Your clients can browse your catalog, place wholesale orders, or submit custom volume sourcing requests. Receive instant logistics logs and track pending orders inside your unified Seller Dashboard.
-                    </p>
-                  </div>
+              <div className="glassmorphism hover:scale-[1.02] transition-all duration-300" style={{ padding: '32px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', borderRadius: '16px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>🙋</div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Direct Orders</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
+                    Enable clients to browse, place reservation orders, or submit bulk volume requests. Track orders, logistics logs, and client billing from one location.
+                  </p>
                 </div>
               </div>
-
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="btn-gold"
-                style={{ height: '52px', padding: '0 36px', fontSize: '1rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}
-              >
-                Go to Store Manager Dashboard 🚀
-              </button>
             </div>
           </section>
+
+          {/* Bottom CTA */}
+          <section className="glassmorphism" style={{ width: '100%', padding: '64px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.05)', background: 'linear-gradient(135deg, rgba(15,28,48,0.6) 0%, rgba(3,8,18,0.9) 100%)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center', marginBottom: '80px' }}>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-outfit), sans-serif' }}>
+              Launch your catalog business today
+            </h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '1.15rem', maxWidth: '600px', lineHeight: '1.6' }}>
+              Join wholesale sellers and distributors scaling their catalog outreach with Bluefine. Setup takes less than 2 minutes.
+            </p>
+            <button
+              onClick={() => router.push(isAuthenticated ? '/dashboard' : '/login')}
+              className="px-8 py-4 rounded-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-cyan-400 text-slate-950 font-bold shadow-[0_0_30px_rgba(99,102,241,0.4)] hover:scale-105 transition-all cursor-pointer border-none flex items-center gap-2"
+            >
+              {isAuthenticated ? 'Go to Store Dashboard' : 'Get Started Now'}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </section>
+
         </main>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)' }}>
+        <span style={{ color: 'var(--text-secondary)', letterSpacing: '2px', fontSize: '0.8rem', textTransform: 'uppercase', fontFamily: 'var(--font-outfit), sans-serif' }}>
+          Redirecting to Authorization...
+        </span>
       </div>
     );
   }
