@@ -19,11 +19,48 @@ export default function LoginPage() {
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('');
   const [googleNameInput, setGoogleNameInput] = useState<string>('');
 
-  // If already logged in, redirect to home page
+  // If already logged in, redirect to home page, and listen for Supabase auth redirects
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
     if (user) {
       router.push('/');
+      return;
+    }
+
+    if (isSupabaseConfigured && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+        if (session?.user) {
+          const userEmail = session.user.email || '';
+          const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || userEmail.split('@')[0];
+          
+          const appUser = {
+            email: userEmail.toLowerCase(),
+            name: userName,
+            role: userEmail.toLowerCase() === 'admin@gmail.com' ? 'admin' : 'user'
+          };
+          
+          localStorage.setItem('bluefine_user', JSON.stringify(appUser));
+          
+          // Add to local accounts directory for consistency
+          let accounts: any[] = [];
+          try {
+            const stored = localStorage.getItem('bluefine_user_accounts');
+            if (stored) accounts = JSON.parse(stored);
+          } catch (e) {}
+          if (!accounts.some(a => a.email.toLowerCase() === appUser.email)) {
+            accounts.push({
+              email: appUser.email,
+              password: 'google-oauth-dummy-password',
+              name: appUser.name,
+              role: appUser.role
+            });
+            localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+          }
+          
+          router.push('/');
+        }
+      });
+      return () => subscription.unsubscribe();
     }
   }, [router]);
 
