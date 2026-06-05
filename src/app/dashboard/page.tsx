@@ -35,6 +35,7 @@ import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
+import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardPage() {
@@ -439,9 +440,16 @@ export default function DashboardPage() {
   }
 
   // Logout handler
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase logout error:', e);
+      }
+    }
     router.push('/login');
   };
 

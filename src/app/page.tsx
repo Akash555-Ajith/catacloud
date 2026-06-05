@@ -6,6 +6,7 @@ import { FishItem } from '@/data/fishData';
 import { getProducts, getStoreConfig } from '@/utils/store';
 import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
+import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import FishCard from '@/components/FishCard';
 import FishModal from '@/components/FishModal';
 import CartDrawer from '@/components/CartDrawer';
@@ -38,9 +39,16 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<string>('featured');
 
   // Logout handler
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase logout error:', e);
+      }
+    }
     router.push('/login');
   };
 
