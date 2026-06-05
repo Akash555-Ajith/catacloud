@@ -441,7 +441,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Logout handler
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
@@ -452,6 +451,7 @@ export default function DashboardPage() {
         console.warn('Supabase logout error:', e);
       }
     }
+    window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
 

@@ -23,7 +23,7 @@ export default function LoginPage() {
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
     if (user) {
-      router.push('/');
+      router.push('/dashboard');
       return;
     }
 
@@ -57,7 +57,7 @@ export default function LoginPage() {
             localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
           }
           
-          router.push('/');
+          router.push('/dashboard');
         }
       });
       return () => subscription.unsubscribe();
@@ -144,7 +144,7 @@ export default function LoginPage() {
           role: newUser.role
         }));
         
-        router.push('/');
+        router.push('/dashboard');
       } else {
         // Login Flow
         const matchedUser = accounts.find(a => a.email.toLowerCase() === cleanEmail && a.password === password);
@@ -161,7 +161,7 @@ export default function LoginPage() {
             name: finalUser.name,
             role: finalUser.role
           }));
-          router.push('/');
+          router.push('/dashboard');
         } else {
           setError('Invalid business email or secure key code.');
         }
@@ -260,7 +260,7 @@ export default function LoginPage() {
         role: matchedUser.role
       }));
 
-      router.push('/');
+      router.push('/dashboard');
     }, 1000);
   };
 

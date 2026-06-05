@@ -39,7 +39,6 @@ export default function HomePage() {
   const [category, setCategory] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('featured');
 
-  // Logout handler
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
@@ -50,6 +49,9 @@ export default function HomePage() {
         console.warn('Supabase logout error:', e);
       }
     }
+    setIsAuthenticated(false);
+    setIsLandingPage(true);
+    window.dispatchEvent(new Event('storage'));
     router.push('/');
   };
 
