@@ -13,6 +13,9 @@ export default function LoginPage() {
 
   const [isSignUp, setIsSignUp] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState<string>('');
+  const [showGoogleModal, setShowGoogleModal] = useState<boolean>(false);
+  const [googleEmailInput, setGoogleEmailInput] = useState<string>('');
+  const [googleNameInput, setGoogleNameInput] = useState<string>('');
 
   // If already logged in, redirect to home page
   useEffect(() => {
@@ -127,16 +130,53 @@ export default function LoginPage() {
     }, 1200);
   };
 
-  const handleGoogleAuth = () => {
-    setLoading(true);
-    setError('');
+  const handleGoogleAuth = async () => {
+    // If Supabase is configured, trigger real Google OAuth
+    const isSupabaseConfiguredVal = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    if (isSupabaseConfiguredVal) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        const supabaseClientInstance = createClient(supabaseUrl, supabaseAnonKey);
+        
+        const { error } = await supabaseClientInstance.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        if (error) {
+          setError(error.message);
+        }
+        return;
+      } catch (err: any) {
+        console.warn('Supabase OAuth fail:', err);
+      }
+    }
 
+    // Fallback: Open premium Google account simulation modal
+    setGoogleEmailInput('');
+    setGoogleNameInput('');
+    setShowGoogleModal(true);
+  };
+
+  const handleGoogleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleEmailInput.trim() || !googleNameInput.trim()) {
+      return;
+    }
+
+    setLoading(true);
+    setShowGoogleModal(false);
+
+    // Simulate Google authentication latency
     setTimeout(() => {
       setLoading(false);
-      
-      const googleEmail = 'partner.google@gmail.com';
-      const googleName = 'Google Partner';
+      const cleanEmail = googleEmailInput.trim().toLowerCase();
+      const cleanName = googleNameInput.trim();
 
+      // Load accounts from LocalStorage
       let accounts: any[] = [];
       try {
         const stored = localStorage.getItem('bluefine_user_accounts');
@@ -145,24 +185,26 @@ export default function LoginPage() {
         // ignore
       }
 
-      let matchedUser = accounts.find(a => a.email.toLowerCase() === googleEmail);
+      // Check if user already exists
+      let matchedUser = accounts.find(a => a.email.toLowerCase() === cleanEmail);
       if (!matchedUser) {
         matchedUser = {
-          email: googleEmail,
+          email: cleanEmail,
           password: 'google-oauth-dummy-password',
-          name: googleName,
+          name: cleanName,
           role: 'user'
         };
         accounts.push(matchedUser);
         localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
       }
 
+      // Log in
       localStorage.setItem('bluefine_user', JSON.stringify({
         email: matchedUser.email,
         name: matchedUser.name,
         role: matchedUser.role
       }));
-      
+
       router.push('/');
     }, 1000);
   };
@@ -344,6 +386,67 @@ export default function LoginPage() {
           </span>
         </div>
       </div>
+
+      {showGoogleModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3, 8, 18, 0.85)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <div className="glassmorphism" style={{ width: '100%', maxWidth: '440px', borderRadius: '16px', border: '1px solid var(--glass-border)', padding: '32px', boxShadow: 'var(--shadow-glass)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 600, fontFamily: 'var(--font-outfit), sans-serif', color: 'var(--text-primary)' }}>Sign in with Google</h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>to continue to Bluefine Sourcing Platform</p>
+            </div>
+
+            <form onSubmit={handleGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Google Account Email</label>
+                <input
+                  type="email"
+                  value={googleEmailInput}
+                  onChange={(e) => setGoogleEmailInput(e.target.value)}
+                  className="luxury-input"
+                  placeholder="yourname@gmail.com"
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Display / Partner Name</label>
+                <input
+                  type="text"
+                  value={googleNameInput}
+                  onChange={(e) => setGoogleNameInput(e.target.value)}
+                  className="luxury-input"
+                  placeholder="e.g. Chef Oliver"
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowGoogleModal(false)}
+                  className="btn-gold"
+                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-cyan"
+                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
+                >
+                  Sign In
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
