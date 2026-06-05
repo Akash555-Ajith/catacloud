@@ -262,24 +262,6 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
               Dashboard
             </Link>
           </li>
-          <li>
-            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
-              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M2 22c1.25-6.7 5.25-12 12-12m0 0c-3-3-8.25-3-11 0m11 0c2.5-3 7-3 9.5 0m-9.5 0v12"></path></svg>
-              Sustainability
-            </span>
-          </li>
-          <li>
-            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
-              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              Direct Source
-            </span>
-          </li>
-          <li>
-            <span className="text-base font-semibold text-slate-400 cursor-pointer hover:text-indigo-300 relative pb-1.5 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300 transition-colors flex items-center">
-              <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 8h1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-1M6 2v6a4 4 0 0 0 4 4v10M10 2v6M14 2v6a4 4 0 0 1-4 4"></path></svg>
-              Chef Portal
-            </span>
-          </li>
         </ul>
       </nav>
 
