@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
+import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -132,15 +133,9 @@ export default function LoginPage() {
 
   const handleGoogleAuth = async () => {
     // If Supabase is configured, trigger real Google OAuth
-    const isSupabaseConfiguredVal = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    if (isSupabaseConfiguredVal) {
+    if (isSupabaseConfigured && supabase) {
       try {
-        const { createClient } = await import('@supabase/supabase-js');
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        const supabaseClientInstance = createClient(supabaseUrl, supabaseAnonKey);
-        
-        const { error } = await supabaseClientInstance.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             redirectTo: window.location.origin

@@ -1,6 +1,6 @@
 import { fishData, FishItem } from '@/data/fishData';
 import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData } from '@/data/storeConfig';
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { supabase, isSupabaseConfigured, disableSupabase } from './supabaseClient';
 
 export interface OrderItem {
   fishId: string;
@@ -62,11 +62,34 @@ const isBrowser = () => typeof window !== 'undefined';
 
 let columnsCache: Record<string, string[]> = {};
 
+function handleSupabaseError(error: any) {
+  if (!error) return;
+  console.warn('Supabase operation error encountered:', error.message || error);
+  const isAuthOrConnectionError = 
+    error.status === 401 ||
+    error.status === 403 ||
+    (error.message && (
+      error.message.includes('API key') ||
+      error.message.includes('apikey') ||
+      error.message.includes('JWT') ||
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('authorization') ||
+      error.message.includes('No API key') ||
+      error.message.includes('invalid')
+    ));
+  if (isAuthOrConnectionError) {
+    disableSupabase();
+  }
+}
+
 async function getTableColumns(tableName: string): Promise<string[]> {
   if (!isSupabaseConfigured) return [];
   if (columnsCache[tableName]) return columnsCache[tableName];
   try {
     const { data, error } = await supabase.from(tableName).select('*').limit(1);
+    if (error) {
+      handleSupabaseError(error);
+    }
     if (!error && data) {
       const columns = data.length > 0 ? Object.keys(data[0]) : [];
       columnsCache[tableName] = columns;
@@ -74,6 +97,9 @@ async function getTableColumns(tableName: string): Promise<string[]> {
     }
     // Check if table exists even if empty
     const { error: idError } = await supabase.from(tableName).select('id').limit(1);
+    if (idError) {
+      handleSupabaseError(idError);
+    }
     if (!idError) {
       if (tableName === 'products') {
         columnsCache[tableName] = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty'];
@@ -89,7 +115,7 @@ async function getTableColumns(tableName: string): Promise<string[]> {
       return columnsCache[tableName];
     }
   } catch (e) {
-    // ignore
+    handleSupabaseError(e);
   }
   columnsCache[tableName] = [];
   return [];
