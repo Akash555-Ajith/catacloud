@@ -24,7 +24,6 @@ import {
   saveStoreConfig,
   reseedProducts,
   getStoresOwnedByUser,
-  getAllStores,
   getOrdersForBuyer,
   ProductReview,
   getReviews,

@@ -265,35 +265,7 @@ export async function getStoresOwnedByUser(email: string): Promise<StoreConfig[]
   return stores;
 }
 
-export async function getAllStores(): Promise<StoreConfig[]> {
-  if (isSupabaseConfigured && await isTableSupported('store_config')) {
-    try {
-      const { data, error } = await supabase.from('store_config').select('*');
-      if (!error && data) {
-        return normalizeStoreConfigs(data);
-      }
-    } catch (e) {
-      // fallback
-    }
-  }
-  if (!isBrowser()) return [];
-  const stores: StoreConfig[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith('bluefine_store_config_')) {
-      try {
-        const val = localStorage.getItem(key);
-        if (val) {
-          const config = JSON.parse(val) as StoreConfig;
-          stores.push(config);
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-  }
-  return stores;
-}
+
 
 export async function getProducts(storeId: string = 'bluefine'): Promise<FishItem[]> {
   const config = await getStoreConfig(storeId);
