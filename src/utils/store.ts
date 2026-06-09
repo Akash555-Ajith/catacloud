@@ -1095,14 +1095,15 @@ export async function dbSaveUser(user: DBUser): Promise<void> {
       const sanitized = await sanitizePayload('users', cleanUser);
       const { error } = await supabase.from('users').upsert(sanitized);
       if (error) throw error;
-    } catch (err: any) {
-      console.warn('Error saving user to Supabase:', err.message || err);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn('Error saving user to Supabase:', errMsg);
     }
   }
   
   if (!isBrowser()) return;
   const stored = localStorage.getItem('bluefine_user_accounts');
-  let accounts: DBUser[] = stored ? JSON.parse(stored) : [];
+  const accounts: DBUser[] = stored ? JSON.parse(stored) : [];
   const index = accounts.findIndex(a => a.email.toLowerCase() === cleanUser.email);
   if (index >= 0) {
     accounts[index] = { ...accounts[index], ...cleanUser };

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Badge } from '@/components/ui/badge';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
@@ -131,7 +131,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         const parsed = JSON.parse(storedUser);
         email = parsed.email || userEmail;
         role = parsed.role || userRole;
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
