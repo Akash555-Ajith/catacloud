@@ -2026,14 +2026,33 @@ export default function DashboardPage() {
                 </div>
               )}
               
-              <button type="button" onClick={() => setShowStoreCreator(true)} className={styles.topHeaderBtn} title="New Store">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setDashboardMode('seller');
+                  setShowStoreCreator(true);
+                  toast.info('Opening Store Creation Wizard...');
+                }} 
+                className={styles.topHeaderBtn} 
+                title="New Store"
+              >
                 <Plus size={18} />
               </button>
               
-              <button type="button" className={styles.topHeaderBtn} title="Notifications">
+              <button 
+                type="button" 
+                onClick={() => toast.success('System Status', { description: 'All systems are fully operational. 4 new sourcing enquiries require attention.' })}
+                className={styles.topHeaderBtn} 
+                title="Notifications"
+              >
                 <Bell size={18} />
               </button>
-              <button type="button" className={styles.topHeaderBtn} title="Help">
+              <button 
+                type="button" 
+                onClick={() => toast.info('Maritime Support Desk', { description: 'Tsukiji Sourcing support line: +1 (555) 019-2834. Port license: LIC-928374-B.' })}
+                className={styles.topHeaderBtn} 
+                title="Help"
+              >
                 <HelpCircle size={18} />
               </button>
               <div className={styles.topHeaderDivider} />
