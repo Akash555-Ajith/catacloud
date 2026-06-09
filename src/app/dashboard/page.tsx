@@ -1874,7 +1874,7 @@ export default function DashboardPage() {
       </div>
     );
   };
-  if (!showStoreCreator) {
+  if (dashboardMode === 'buyer' || !showStoreCreator) {
     return (
       <div className={styles.portalContainer}>
         {/* Left Sidebar */}
@@ -2180,8 +2180,8 @@ export default function DashboardPage() {
             <button
               onClick={() => setDashboardMode('buyer')}
               style={{
-                background: dashboardMode === 'buyer' ? 'var(--gradient-gold)' : 'transparent',
-                color: dashboardMode === 'buyer' ? '#030812' : 'var(--text-secondary)',
+                background: (dashboardMode as string) === 'buyer' ? 'var(--gradient-gold)' : 'transparent',
+                color: (dashboardMode as string) === 'buyer' ? '#030812' : 'var(--text-secondary)',
                 border: 'none',
                 padding: '8px 20px',
                 borderRadius: '9999px',
@@ -2189,7 +2189,7 @@ export default function DashboardPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all var(--transition-smooth)',
-                boxShadow: dashboardMode === 'buyer' ? '0 2px 10px rgba(226, 183, 68, 0.2)' : 'none'
+                boxShadow: (dashboardMode as string) === 'buyer' ? '0 2px 10px rgba(226, 183, 68, 0.2)' : 'none'
               }}
             >
               🛒 Buyer Panel
@@ -2197,8 +2197,8 @@ export default function DashboardPage() {
             <button
               onClick={() => setDashboardMode('seller')}
               style={{
-                background: dashboardMode === 'seller' ? 'var(--gradient-premium)' : 'transparent',
-                color: dashboardMode === 'seller' ? '#030812' : 'var(--text-secondary)',
+                background: (dashboardMode as string) === 'seller' ? 'var(--gradient-premium)' : 'transparent',
+                color: (dashboardMode as string) === 'seller' ? '#030812' : 'var(--text-secondary)',
                 border: 'none',
                 padding: '8px 20px',
                 borderRadius: '9999px',
@@ -2206,7 +2206,7 @@ export default function DashboardPage() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all var(--transition-smooth)',
-                boxShadow: dashboardMode === 'seller' ? '0 2px 10px rgba(0, 242, 254, 0.2)' : 'none'
+                boxShadow: (dashboardMode as string) === 'seller' ? '0 2px 10px rgba(0, 242, 254, 0.2)' : 'none'
               }}
             >
               💼 Store Manager
@@ -2215,7 +2215,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Display Seller Dashboard or Onboarding Form */}
-        {dashboardMode === 'seller' ? (
+        {(dashboardMode as string) === 'seller' ? (
           showStoreCreator ? (
             /* Onboarding Store Creator Wizard */
             <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0', width: '100%' }}>
