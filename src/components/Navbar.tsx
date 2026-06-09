@@ -257,19 +257,6 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
           <ul className="flex items-center gap-12 list-none m-0 p-0">
             <li>
               <Link 
-                href="/" 
-                className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-indigo-300 flex items-center ${
-                  pathname === '/' 
-                    ? 'text-indigo-300 drop-shadow-[0_0_12px_rgba(99,102,241,0.4)] after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-indigo-500 after:rounded' 
-                    : 'text-slate-400 after:content-[""] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-indigo-500 hover:after:w-full after:transition-all after:duration-300'
-                }`}
-              >
-                <svg className="w-4.5 h-4.5 mr-2 opacity-70" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
-                How it Works
-              </Link>
-            </li>
-            <li>
-              <Link 
                 href="/dashboard" 
                 className={`text-base font-semibold transition-all duration-300 relative pb-1.5 hover:text-indigo-300 flex items-center ${
                   pathname === '/dashboard' 

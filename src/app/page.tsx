@@ -127,7 +127,7 @@ export default function HomePage() {
         }
         
         if (!storeId) {
-          setIsLandingPage(true);
+          router.push('/dashboard');
           return;
         } else {
           setIsLandingPage(false);
