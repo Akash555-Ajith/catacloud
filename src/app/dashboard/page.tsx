@@ -1874,7 +1874,7 @@ export default function DashboardPage() {
       </div>
     );
   };
-  if (dashboardMode === 'buyer' || !showStoreCreator) {
+  if (mounted && isAuthenticated && user) {
     return (
       <div className={styles.portalContainer}>
         {/* Left Sidebar */}
@@ -2070,8 +2070,111 @@ export default function DashboardPage() {
 
           {/* Main Tab Renderings */}
           {dashboardMode === 'seller' ? (
-            <>
-              {adminTab === 'dashboard' && renderMerchantDashboard()}
+            showStoreCreator ? (
+              /* Onboarding Store Creator Wizard in Light Theme */
+              <div className={styles.merchantContainer}>
+                <h2 className={styles.merchantTitle}>Create Your Custom Store & Catalogues</h2>
+                <p className={styles.merchantSubtitle}>Welcome! This platform allows you to build custom storefronts, manage inventories, and share private pricing lists.</p>
+                
+                <div className={styles.lightPanelCard} style={{ maxWidth: '640px', margin: '24px auto 0 auto' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+                    <div>
+                      <h4 style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>🏪 1. Establish Your Store</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>Create storefronts with custom measurement units.</p>
+                    </div>
+                    <div>
+                      <h4 style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>📦 2. Add Your Products</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>Add products, track stock levels, and log offline sales.</p>
+                    </div>
+                    <div>
+                      <h4 style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>📄 3. Share Custom Catalogues</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>Build targeted proposals for specific buyers.</p>
+                    </div>
+                    <div>
+                      <h4 style={{ color: '#0f172a', fontSize: '0.875rem', fontWeight: 700, marginBottom: '4px' }}>🙋 4. Receive Client Orders</h4>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>Buyers place orders or request custom volume quotes.</p>
+                    </div>
+                  </div>
+                  
+                  <form onSubmit={handleCreateStore}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }} htmlFor="onboard-name">Business Store Name</label>
+                      <input
+                        type="text"
+                        id="onboard-name"
+                        value={onboardName}
+                        onChange={(e) => setOnboardName(e.target.value)}
+                        placeholder="e.g. Sunrise Organic Eggs, Tsukiji Fresh Catch"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem', marginTop: '6px' }}
+                        required
+                      />
+                    </div>
+                    
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }} htmlFor="onboard-tagline">Tagline / Slogan</label>
+                      <input
+                        type="text"
+                        id="onboard-tagline"
+                        value={onboardTagline}
+                        onChange={(e) => setOnboardTagline(e.target.value)}
+                        placeholder="e.g. Fresh Pasture-Raised Farm Goods"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem', marginTop: '6px' }}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }} htmlFor="onboard-niche">Store Niche / Category Type</label>
+                      <input
+                        type="text"
+                        id="onboard-niche"
+                        value={onboardNiche}
+                        onChange={(e) => setOnboardNiche(e.target.value)}
+                        placeholder="e.g. Seafood, Eggs, Bakery, General"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem', marginTop: '6px' }}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }} htmlFor="onboard-unit">Primary Unit of Measurement</label>
+                      <input
+                        type="text"
+                        id="onboard-unit"
+                        value={onboardUnit}
+                        onChange={(e) => setOnboardUnit(e.target.value)}
+                        placeholder="e.g. pcs, kg, box, dozen"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem', marginTop: '6px' }}
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      {userStores.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowStoreCreator(false)}
+                          className={styles.btnMerchantSecondary}
+                          style={{ flex: 1, height: '42px', fontSize: '0.9rem' }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={onboardSubmitting}
+                        className={styles.btnMerchantSecondary}
+                        style={{ flex: 2, height: '42px', fontSize: '0.9rem', background: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }}
+                      >
+                        {onboardSubmitting ? 'Establishing Hub...' : 'Establish Sourcing Hub'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <>
+                {adminTab === 'dashboard' && renderMerchantDashboard()}
               {adminTab === 'products' && renderMerchantCatalog()}
               {adminTab === 'enquiries' && renderMerchantEnquiries()}
               {adminTab === 'pos' && renderMerchantPOS()}
@@ -2136,6 +2239,7 @@ export default function DashboardPage() {
                 </div>
               )}
             </>
+            )
           ) : (
             <>
               {adminTab === 'dashboard' && renderBuyerDashboard()}
