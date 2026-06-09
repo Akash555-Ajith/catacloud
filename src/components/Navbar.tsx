@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { StoreConfig, SEAFOOD_PRESET } from '@/data/storeConfig';
-import { getStoreConfig } from '@/utils/store';
+import { getStoreConfig, dbGetUser, dbSaveUser } from '@/utils/store';
 
 const PRESET_AVATARS = [
   { name: 'Bluefin Tuna', url: '/images/bluefin_tuna.png' },
@@ -117,7 +117,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
     setIsProfileOpen(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!tempName.trim()) {
       toast.error('Display Name cannot be empty');
       return;
@@ -139,9 +139,19 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
     const updatedUser = {
       email,
       name: tempName.trim(),
-      role,
+      role: role as 'admin' | 'user',
       avatar: tempAvatar
     };
+
+    try {
+      const existingUser = await dbGetUser(email);
+      await dbSaveUser({
+        ...existingUser,
+        ...updatedUser
+      });
+    } catch (err) {
+      console.warn('Failed to save user in db', err);
+    }
 
     localStorage.setItem('bluefine_user', JSON.stringify(updatedUser));
     

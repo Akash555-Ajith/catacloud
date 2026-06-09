@@ -96,7 +96,8 @@ async function getTableColumns(tableName: string): Promise<string[]> {
       return columns;
     }
     // Check if table exists even if empty
-    const { error: idError } = await supabase.from(tableName).select('id').limit(1);
+    const queryKey = tableName === 'users' ? 'email' : 'id';
+    const { error: idError } = await supabase.from(tableName).select(queryKey).limit(1);
     if (idError) {
       handleSupabaseError(idError);
     }
@@ -109,6 +110,8 @@ async function getTableColumns(tableName: string): Promise<string[]> {
         columnsCache[tableName] = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides'];
       } else if (tableName === 'proposals') {
         columnsCache[tableName] = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount'];
+      } else if (tableName === 'users') {
+        columnsCache[tableName] = ['email', 'name', 'password', 'role', 'avatar'];
       } else {
         columnsCache[tableName] = ['id'];
       }
@@ -1044,6 +1047,69 @@ export async function addSourcingRequest(request: CustomSourcingRequest, storeId
     localStorage.setItem(`bluefine_sourcing_requests_${storeId}`, JSON.stringify(requests));
     window.dispatchEvent(new CustomEvent('sourcing-requests-updated', { detail: { storeId } }));
   }
+}
+
+export interface DBUser {
+  email: string;
+  name: string;
+  password?: string;
+  role: 'admin' | 'user';
+  avatar?: string;
+}
+
+export async function dbGetUsers(): Promise<DBUser[]> {
+  if (isSupabaseConfigured && await isTableSupported('users')) {
+    try {
+      const { data, error } = await supabase.from('users').select('*');
+      if (!error && data) return data as DBUser[];
+    } catch (e) {
+      console.warn('Failed to fetch users from DB:', e);
+    }
+  }
+  if (!isBrowser()) return [];
+  const stored = localStorage.getItem('bluefine_user_accounts');
+  return stored ? JSON.parse(stored) : [];
+}
+
+export async function dbGetUser(email: string): Promise<DBUser | null> {
+  const cleanEmail = email.toLowerCase().trim();
+  if (isSupabaseConfigured && await isTableSupported('users')) {
+    try {
+      const { data, error } = await supabase.from('users').select('*').eq('email', cleanEmail).maybeSingle();
+      if (!error && data) return data as DBUser;
+    } catch (e) {
+      console.warn('Failed to fetch user from DB:', e);
+    }
+  }
+  const users = await dbGetUsers();
+  return users.find(u => u.email.toLowerCase() === cleanEmail) || null;
+}
+
+export async function dbSaveUser(user: DBUser): Promise<void> {
+  const cleanUser = {
+    ...user,
+    email: user.email.toLowerCase().trim()
+  };
+  if (isSupabaseConfigured && await isTableSupported('users')) {
+    try {
+      const sanitized = await sanitizePayload('users', cleanUser);
+      const { error } = await supabase.from('users').upsert(sanitized);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Error saving user to Supabase:', err.message || err);
+    }
+  }
+  
+  if (!isBrowser()) return;
+  const stored = localStorage.getItem('bluefine_user_accounts');
+  let accounts: DBUser[] = stored ? JSON.parse(stored) : [];
+  const index = accounts.findIndex(a => a.email.toLowerCase() === cleanUser.email);
+  if (index >= 0) {
+    accounts[index] = { ...accounts[index], ...cleanUser };
+  } else {
+    accounts.push(cleanUser);
+  }
+  localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
 }
 
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import styles from './login.module.css';
 import { supabase, isSupabaseConfigured, cleanedSupabaseUrl } from '@/utils/supabaseClient';
 import { toast } from 'sonner';
+import { dbGetUser, dbSaveUser } from '@/utils/store';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -95,77 +96,75 @@ export default function LoginPage() {
       setLoading(false);
       
       const isSystemAdmin = email.toLowerCase() === 'admin@gmail.com' && password === '12345678';
-      
-      // Load accounts from LocalStorage
-      let accounts: any[] = [];
-      try {
-        const stored = localStorage.getItem('bluefine_user_accounts');
-        if (stored) accounts = JSON.parse(stored);
-      } catch (err) {
-        // ignore
-      }
-
-      // Ensure system admin is always registered
-      const hasAdmin = accounts.some(a => a.email.toLowerCase() === 'admin@gmail.com');
-      if (!hasAdmin) {
-        accounts.push({
-          email: 'admin@gmail.com',
-          password: '12345678',
-          name: 'Admin Manager',
-          role: 'admin'
-        });
-        localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
-      }
-
       const cleanEmail = email.trim().toLowerCase();
 
-      if (isSignUp) {
-        // Sign Up Flow
-        const exists = accounts.some(a => a.email.toLowerCase() === cleanEmail);
-        if (exists) {
-          setError('This email address is already registered. Please login.');
-          return;
-        }
+      const runAuth = async () => {
+        if (isSignUp) {
+          // Sign Up Flow
+          const exists = await dbGetUser(cleanEmail);
+          if (exists) {
+            setError('This email address is already registered. Please login.');
+            setLoading(false);
+            return;
+          }
 
-        const newUser = {
-          email: cleanEmail,
-          password: password,
-          name: displayName.trim(),
-          role: cleanEmail === 'admin@gmail.com' ? 'admin' : 'user'
-        };
-
-        accounts.push(newUser);
-        localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
-
-        // Auto-login
-        localStorage.setItem('bluefine_user', JSON.stringify({
-          email: cleanEmail,
-          name: newUser.name,
-          role: newUser.role
-        }));
-        
-        router.push('/dashboard');
-      } else {
-        // Login Flow
-        const matchedUser = accounts.find(a => a.email.toLowerCase() === cleanEmail && a.password === password);
-        
-        if (isSystemAdmin || matchedUser) {
-          const finalUser = matchedUser || {
-            email: 'admin@gmail.com',
-            name: 'Admin Manager',
-            role: 'admin'
+          const newUser = {
+            email: cleanEmail,
+            password: password,
+            name: displayName.trim(),
+            role: (cleanEmail === 'admin@gmail.com' ? 'admin' : 'user') as 'admin' | 'user'
           };
 
+          await dbSaveUser(newUser);
+
+          // Auto-login
           localStorage.setItem('bluefine_user', JSON.stringify({
-            email: finalUser.email,
-            name: finalUser.name,
-            role: finalUser.role
+            email: cleanEmail,
+            name: newUser.name,
+            role: newUser.role
           }));
+          
           router.push('/dashboard');
         } else {
-          setError('Invalid business email or secure key code.');
+          // Login Flow
+          const matchedUser = await dbGetUser(cleanEmail);
+          
+          if (isSystemAdmin || (matchedUser && matchedUser.password === password)) {
+            const finalUser = matchedUser || {
+              email: 'admin@gmail.com',
+              name: 'Admin Manager',
+              role: 'admin' as 'admin' | 'user'
+            };
+
+            // Seed system admin to db if not exists
+            if (isSystemAdmin && !matchedUser) {
+              await dbSaveUser({
+                email: 'admin@gmail.com',
+                name: 'Admin Manager',
+                password: '12345678',
+                role: 'admin'
+              });
+            }
+
+            localStorage.setItem('bluefine_user', JSON.stringify({
+              email: finalUser.email,
+              name: finalUser.name,
+              role: finalUser.role,
+              avatar: finalUser.avatar
+            }));
+            router.push('/dashboard');
+          } else {
+            setError('Invalid business email or secure key code.');
+          }
+          setLoading(false);
         }
-      }
+      };
+
+      runAuth().catch((err) => {
+        console.error(err);
+        setError('An unexpected error occurred during authentication.');
+        setLoading(false);
+      });
     }, 1200);
   };
 
@@ -227,40 +226,38 @@ export default function LoginPage() {
 
     // Simulate Google authentication latency
     setTimeout(() => {
-      setLoading(false);
       const cleanEmail = googleEmailInput.trim().toLowerCase();
       const cleanName = googleNameInput.trim();
 
-      // Load accounts from LocalStorage
-      let accounts: any[] = [];
-      try {
-        const stored = localStorage.getItem('bluefine_user_accounts');
-        if (stored) accounts = JSON.parse(stored);
-      } catch (err) {
-        // ignore
-      }
+      const runGoogleAuth = async () => {
+        let matchedUser = await dbGetUser(cleanEmail);
+        if (!matchedUser) {
+          matchedUser = {
+            email: cleanEmail,
+            password: 'google-oauth-dummy-password',
+            name: cleanName,
+            role: 'user'
+          };
+          await dbSaveUser(matchedUser);
+        }
 
-      // Check if user already exists
-      let matchedUser = accounts.find(a => a.email.toLowerCase() === cleanEmail);
-      if (!matchedUser) {
-        matchedUser = {
-          email: cleanEmail,
-          password: 'google-oauth-dummy-password',
-          name: cleanName,
-          role: 'user'
-        };
-        accounts.push(matchedUser);
-        localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
-      }
+        // Log in
+        localStorage.setItem('bluefine_user', JSON.stringify({
+          email: matchedUser.email,
+          name: matchedUser.name,
+          role: matchedUser.role,
+          avatar: matchedUser.avatar
+        }));
 
-      // Log in
-      localStorage.setItem('bluefine_user', JSON.stringify({
-        email: matchedUser.email,
-        name: matchedUser.name,
-        role: matchedUser.role
-      }));
+        setLoading(false);
+        router.push('/dashboard');
+      };
 
-      router.push('/dashboard');
+      runGoogleAuth().catch((err) => {
+        console.error(err);
+        setLoading(false);
+        setError('Google authentication failed.');
+      });
     }, 1000);
   };
 
