@@ -827,6 +827,218 @@ export default function DashboardPage() {
 
 
 
+  const renderBuyerDashboard = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>Buyer Sourcing Dashboard</h2>
+        <p className={styles.merchantSubtitle}>Welcome back. Sourcing hub status is operational.</p>
+        
+        <div className={styles.lightMetricGrid}>
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>SOURCED QUANTITY</span>
+              <Package size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue}>{totalWeightSourced} <span style={{ fontSize: '1rem', fontWeight: 500 }}>{storeConfig.unit}</span></h3>
+            <span className={styles.lightCardFooter} style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Premium {storeConfig.storeType === 'seafood' ? 'marine species' : 'products'}
+            </span>
+          </div>
+
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>SOURCING INVESTMENT</span>
+              <DollarSign size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue}>${totalSourcingValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <span className={styles.lightCardFooter} style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Total catalog investment
+            </span>
+          </div>
+
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>SUSTAINABILITY PROFILE</span>
+              <Activity size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue}>{sustainabilityScore}</h3>
+            <span className={styles.lightCardFooter} style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Ethical sourcing commitment
+            </span>
+          </div>
+
+          <div className={styles.lightCard} style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>ACCOUNT TIER</span>
+              <ShieldCheck size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue} style={{ fontSize: '1.4rem', marginTop: '8px', fontWeight: 700, color: '#0f172a' }}>
+              {totalSourcingValue > 1000 ? 'Elite Member' : totalSourcingValue > 500 ? 'Preferred Partner' : 'General Partner'}
+            </h3>
+            <span className={styles.lightCardFooter} style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Active partner tier
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.splitLayout} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', marginTop: '24px' }}>
+          <div className={styles.lightPanelCard}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Sourcing Trends</h4>
+            <div style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0 }}>You are actively sourcing from Tsukiji and North Atlantic hubs. Keep up your sustainability commitment to unlock tier upgrades.</p>
+              <button 
+                onClick={() => router.push('/')} 
+                className={styles.btnMerchantSecondary} 
+                style={{ alignSelf: 'flex-start', marginTop: '8px' }}
+              >
+                Go to Public Catalog
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.lightPanelCard}>
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Quick Support</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.85rem', color: '#64748b' }}>
+              <div><strong>Port Duty Officer:</strong> +1 (555) 019-2834</div>
+              <div><strong>License Plate:</strong> LIC-928374-B</div>
+              <div><strong>Fulfillment Agent:</strong> Tsukiji Sourcing Hub</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBuyerOrders = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>Sourcing & Delivery History</h2>
+        <p className={styles.merchantSubtitle}>Reservations and direct deliveries requested under your buyer account.</p>
+        
+        {chefOrders.length === 0 ? (
+          <div className={styles.lightPanelCard} style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '16px' }}>📦</span>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px' }}>No Sourced Items Yet</h3>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>Submit a procurement reservation in our public catalog.</p>
+            <button onClick={() => router.push('/')} className={styles.btnMerchantSecondary}>
+              Explore Sourcing Catalog
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {chefOrders.map((order) => (
+              <div key={order.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', background: '#ffffff', overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{order.id}</span>
+                    <span style={{ color: '#94a3b8', margin: '0 8px' }}>&bull;</span>
+                    <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.date}</span>
+                  </div>
+                  <span style={{ 
+                    padding: '4px 10px', 
+                    borderRadius: '9999px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600,
+                    background: order.status === 'Pending' ? '#fffbeb' : order.status === 'Dispatched' ? '#eff6ff' : '#f0fdf4',
+                    color: order.status === 'Pending' ? '#d97706' : order.status === 'Dispatched' ? '#2563eb' : '#16a34a'
+                  }}>
+                    {order.status}
+                  </span>
+                </div>
+                <div style={{ padding: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>
+                    <div><strong>ETA Delivery:</strong> {order.deliveryDate}</div>
+                    <div><strong>Delivery Address:</strong> {order.address}</div>
+                  </div>
+
+                  <table className={styles.productsTable} style={{ border: 'none', background: 'transparent' }}>
+                    <thead>
+                      <tr style={{ background: 'transparent', borderBottom: '1px solid #e2e8f0' }}>
+                        <th style={{ color: '#64748b', paddingBottom: '8px' }}>Product Item</th>
+                        <th style={{ textAlign: 'right', color: '#64748b', paddingBottom: '8px' }}>Quantity</th>
+                        <th style={{ textAlign: 'right', color: '#64748b', paddingBottom: '8px' }}>Unit Price</th>
+                        <th style={{ textAlign: 'right', color: '#64748b', paddingBottom: '8px' }}>Sourced Price</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {order.items.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0' }}>
+                            <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{item.name}</span>
+                          </td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{item.quantity} {storeConfig.unit}</td>
+                          <td style={{ textAlign: 'right', color: '#475569' }}>${item.price.toFixed(2)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>
+                            ${(item.quantity * item.price).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                    Reservation Amount: ${order.totalPrice.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderBuyerProfile = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>My Buyer Profile</h2>
+        <p className={styles.merchantSubtitle}>Manage license verification and sustainable sourcing configurations.</p>
+        
+        <div className={styles.lightPanelCard} style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '30px' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            fontSize: '2.2rem',
+            fontWeight: 700,
+            margin: '0 auto 20px',
+            boxShadow: '0 4px 14px rgba(56, 189, 248, 0.3)'
+          }}>
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>{user.name}</h3>
+          <span style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '24px' }}>{user.email}</span>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ color: '#64748b' }}>Sourcing Authorization</span>
+              <span style={{ fontWeight: 600, color: '#16a34a' }}>Active</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ color: '#64748b' }}>Port License No</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>LIC-928374-B</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ color: '#64748b' }}>Establishment Tier</span>
+              <span style={{ fontWeight: 600, color: '#0f172a' }}>Fine Dining / Michelin</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0' }}>
+              <span style={{ color: '#64748b' }}>Sustainability Commits</span>
+              <span style={{ fontWeight: 600, color: '#16a34a' }}>100% Sourced</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderMerchantDashboard = () => {
     const totalRevenue = orders.reduce((sum, o) => sum + o.totalPrice, 0);
     const activeEnquiriesCount = sourcingRequests.length;
@@ -1662,7 +1874,7 @@ export default function DashboardPage() {
       </div>
     );
   };
-  if (dashboardMode === 'seller' && !showStoreCreator) {
+  if (!showStoreCreator) {
     return (
       <div className={styles.portalContainer}>
         {/* Left Sidebar */}
@@ -1670,50 +1882,83 @@ export default function DashboardPage() {
           <div>
             <div className={styles.sidebarHeader}>
               <h1 className={styles.sidebarBrand}>Bluefine</h1>
-              <p className={styles.sidebarSubtitle}>Premium B2B Merchant</p>
+              <p className={styles.sidebarSubtitle}>
+                {dashboardMode === 'buyer' ? 'Premium B2B Buyer Hub' : 'Premium B2B Merchant'}
+              </p>
             </div>
             
             <nav className={styles.sidebarMenu}>
-              <button 
-                type="button"
-                onClick={() => setAdminTab('dashboard')} 
-                className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
-              >
-                <LayoutDashboard size={18} />
-                Dashboard
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAdminTab('products')} 
-                className={`${styles.sidebarItem} ${adminTab === 'products' ? styles.sidebarItemActive : ''}`}
-              >
-                <Package size={18} />
-                Catalog
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAdminTab('enquiries')} 
-                className={`${styles.sidebarItem} ${adminTab === 'enquiries' ? styles.sidebarItemActive : ''}`}
-              >
-                <MessageSquare size={18} />
-                Enquiries
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAdminTab('pos')} 
-                className={`${styles.sidebarItem} ${adminTab === 'pos' ? styles.sidebarItemActive : ''}`}
-              >
-                <CreditCard size={18} />
-                POS
-              </button>
-              <button 
-                type="button"
-                onClick={() => setAdminTab('settings')} 
-                className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
-              >
-                <Settings size={18} />
-                Settings
-              </button>
+              {dashboardMode === 'buyer' ? (
+                <>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('dashboard')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <LayoutDashboard size={18} />
+                    Dashboard
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('orders')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'orders' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <Package size={18} />
+                    Order History
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('settings')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <Users size={18} />
+                    My Profile
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('dashboard')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <LayoutDashboard size={18} />
+                    Dashboard
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('products')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'products' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <Package size={18} />
+                    Catalog
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('enquiries')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'enquiries' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <MessageSquare size={18} />
+                    Enquiries
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('pos')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'pos' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <CreditCard size={18} />
+                    POS
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setAdminTab('settings')} 
+                    className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <Settings size={18} />
+                    Settings
+                  </button>
+                </>
+              )}
             </nav>
           </div>
 
@@ -1727,7 +1972,11 @@ export default function DashboardPage() {
             )}
             <div className={styles.sidebarUserInfo}>
               <p className={styles.sidebarUserName}>{user ? user.name : 'Admin User'}</p>
-              <p className={styles.sidebarUserRole}>{user && user.role === 'admin' ? 'Bluefine Ops' : 'Verified Merchant'}</p>
+              <p className={styles.sidebarUserRole}>
+                {dashboardMode === 'buyer' 
+                  ? 'Bluefine Buyer' 
+                  : (user && user.role === 'admin' ? 'Bluefine Ops' : 'Verified Merchant')}
+              </p>
             </div>
           </div>
         </aside>
@@ -1790,82 +2039,109 @@ export default function DashboardPage() {
               <div className={styles.topHeaderDivider} />
               <span className={styles.topHeaderPortalTitle}>Bluefine Portal</span>
               
-              {/* Back to Buyer Panel button */}
-              <button 
-                type="button"
-                onClick={() => setDashboardMode('buyer')}
-                className={styles.btnMerchantSecondary}
-                style={{ height: '34px', fontSize: '0.75rem', padding: '0 12px' }}
-              >
-                🛒 Buyer Panel
-              </button>
+              {/* Toggle dashboard mode */}
+              {dashboardMode === 'buyer' ? (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setDashboardMode('seller');
+                    setAdminTab('dashboard');
+                  }}
+                  className={styles.btnMerchantSecondary}
+                  style={{ height: '34px', fontSize: '0.75rem', padding: '0 12px' }}
+                >
+                  💼 Store Manager
+                </button>
+              ) : (
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setDashboardMode('buyer');
+                    setAdminTab('dashboard');
+                  }}
+                  className={styles.btnMerchantSecondary}
+                  style={{ height: '34px', fontSize: '0.75rem', padding: '0 12px' }}
+                >
+                  🛒 Buyer Panel
+                </button>
+              )}
             </div>
           </header>
 
           {/* Main Tab Renderings */}
-          {adminTab === 'dashboard' && renderMerchantDashboard()}
-          {adminTab === 'products' && renderMerchantCatalog()}
-          {adminTab === 'enquiries' && renderMerchantEnquiries()}
-          {adminTab === 'pos' && renderMerchantPOS()}
-          {adminTab === 'settings' && renderMerchantSettings()}
-          {adminTab === 'catalogs' && (
-            <div className={styles.merchantContainer}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h2 className={styles.merchantTitle}>Custom Proposal Deals</h2>
-                  <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
-                </div>
-                <button type="button" className={styles.btnMerchantSecondary} onClick={() => setAdminTab('settings')}>
-                  Back to Settings
-                </button>
-              </div>
-              
-              <div className={styles.lightPanelCard}>
-                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
-                  Choose a proposal deal from your active proposals below to view or copy sharing links:
-                </p>
-                
-                {customCatalogs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
-                    No proposals configured yet. Go back to Customizer Settings to create your first deal.
+          {dashboardMode === 'seller' ? (
+            <>
+              {adminTab === 'dashboard' && renderMerchantDashboard()}
+              {adminTab === 'products' && renderMerchantCatalog()}
+              {adminTab === 'enquiries' && renderMerchantEnquiries()}
+              {adminTab === 'pos' && renderMerchantPOS()}
+              {adminTab === 'settings' && renderMerchantSettings()}
+              {adminTab === 'catalogs' && (
+                <div className={styles.merchantContainer}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div>
+                      <h2 className={styles.merchantTitle}>Custom Proposal Deals</h2>
+                      <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
+                    </div>
+                    <button type="button" className={styles.btnMerchantSecondary} onClick={() => setAdminTab('settings')}>
+                      Back to Settings
+                    </button>
                   </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {customCatalogs.map(cat => (
-                      <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                        <div>
-                          <strong style={{ display: 'block', color: '#0f172a' }}>{cat.marketName}</strong>
-                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Discount: {cat.globalDiscount}% &bull; Delivery: ${cat.globalDelivery}</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button 
-                            type="button"
-                            onClick={() => {
-                              const path = `/catalogue/${cat.id}?store=${activeStoreId}`;
-                              const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
-                              navigator.clipboard.writeText(url);
-                              toast.success('Proposal link copied!');
-                            }}
-                            className={styles.btnMerchantSecondary}
-                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                          >
-                            Copy Link
-                          </button>
-                          <button 
-                            type="button"
-                            onClick={() => handleDeleteCustomCatalog(cat.id)}
-                            className={styles.btnMerchantSecondary}
-                            style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: '#fee2e2', color: '#ef4444' }}
-                          >
-                            Delete
-                          </button>
-                        </div>
+                  
+                  <div className={styles.lightPanelCard}>
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
+                      Choose a proposal deal from your active proposals below to view or copy sharing links:
+                    </p>
+                    
+                    {customCatalogs.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                        No proposals configured yet. Go back to Customizer Settings to create your first deal.
                       </div>
-                    ))}
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {customCatalogs.map(cat => (
+                          <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                            <div>
+                              <strong style={{ display: 'block', color: '#0f172a' }}>{cat.marketName}</strong>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Discount: {cat.globalDiscount}% &bull; Delivery: ${cat.globalDelivery}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  const path = `/catalogue/${cat.id}?store=${activeStoreId}`;
+                                  const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+                                  navigator.clipboard.writeText(url);
+                                  toast.success('Proposal link copied!');
+                                }}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                              >
+                                Copy Link
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => handleDeleteCustomCatalog(cat.id)}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: '#fee2e2', color: '#ef4444' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {adminTab === 'dashboard' && renderBuyerDashboard()}
+              {adminTab === 'orders' && renderBuyerOrders()}
+              {adminTab === 'settings' && renderBuyerProfile()}
+            </>
           )}
 
           {/* Footer */}
