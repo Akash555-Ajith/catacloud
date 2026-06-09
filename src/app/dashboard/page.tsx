@@ -35,7 +35,7 @@ import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
-import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart, LayoutDashboard, Bell, HelpCircle, Search, CreditCard, MessageSquare, Star } from 'lucide-react';
+import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart, LayoutDashboard, Bell, HelpCircle, Search, CreditCard, MessageSquare, Star, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardPage() {
@@ -1978,6 +1978,27 @@ export default function DashboardPage() {
                   : (user && user.role === 'admin' ? 'Bluefine Ops' : 'Verified Merchant')}
               </p>
             </div>
+            <button 
+              type="button" 
+              onClick={handleLogout} 
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'transparent'; }}
+              title="Log Out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </aside>
 
