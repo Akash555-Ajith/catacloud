@@ -23,14 +23,18 @@ import {
   getStoreConfig,
   saveStoreConfig,
   reseedProducts,
+  deleteStore,
   getStoresOwnedByUser,
   getOrdersForBuyer,
   ProductReview,
   getReviews,
   getSourcingRequests,
-  CustomSourcingRequest
+  CustomSourcingRequest,
+  saveProducts,
+  saveProposals,
+  saveCustomCatalogs
 } from '@/utils/store';
-import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET } from '@/data/storeConfig';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, CLOTHING_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
@@ -73,7 +77,7 @@ export default function DashboardPage() {
   // Store Config Form States
   const [cfgStoreName, setCfgStoreName] = useState('');
   const [cfgStoreTagline, setCfgStoreTagline] = useState('');
-  const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic'>('seafood');
+  const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic' | 'clothing'>('seafood');
   const [cfgUnit, setCfgUnit] = useState('kg');
   const [cfgCategories, setCfgCategories] = useState<string[]>([]);
   const [cfgStorePhone, setCfgStorePhone] = useState('');
@@ -224,6 +228,7 @@ export default function DashboardPage() {
   const [formDifficulty, setFormDifficulty] = useState<string>('Easy');
 
   const [isUploading, setIsUploading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -286,26 +291,12 @@ export default function DashboardPage() {
   // 2. Load owned stores once user is authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      getStoresOwnedByUser(user.email).then(async (stores) => {
-        let finalStores = [...stores];
-        if (user.role === 'admin') {
-          const hasBluefine = finalStores.some(s => s.id === 'bluefine');
-          if (!hasBluefine) {
-            const defaultAdminStore: StoreConfig = {
-              ...SEAFOOD_PRESET,
-              id: 'bluefine',
-              ownerEmail: user.email.toLowerCase()
-            };
-            await saveStoreConfig('bluefine', defaultAdminStore);
-            finalStores.unshift(defaultAdminStore);
-          }
-        }
-
-        setUserStores(finalStores);
-        if (finalStores.length > 0) {
+      getStoresOwnedByUser(user.email).then((stores) => {
+        setUserStores(stores);
+        if (stores.length > 0) {
           const savedActive = localStorage.getItem(`bluefine_active_store_id_${user.email}`);
-          const exists = finalStores.some(s => s.id === savedActive);
-          const initialStoreId = exists && savedActive ? savedActive : finalStores[0].id || 'bluefine';
+          const exists = stores.some(s => s.id === savedActive);
+          const initialStoreId = exists && savedActive ? savedActive : stores[0].id || '';
           setActiveStoreId(initialStoreId);
           localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
           setShowStoreCreator(false);
@@ -450,13 +441,17 @@ export default function DashboardPage() {
       ? 'seafood'
       : cleanNiche.includes('egg')
         ? 'egg'
-        : 'generic';
+        : (cleanNiche.includes('clothing') || cleanNiche.includes('apparel') || cleanNiche.includes('wear') || cleanNiche.includes('fashion') || cleanNiche.includes('threads') || cleanNiche.includes('garment') || cleanNiche.includes('boutique'))
+          ? 'clothing'
+          : 'generic';
 
     const basePreset = resolvedType === 'egg' 
       ? EGG_PRESET 
       : resolvedType === 'seafood' 
         ? SEAFOOD_PRESET 
-        : GENERIC_PRESET;
+        : resolvedType === 'clothing'
+          ? CLOTHING_PRESET
+          : GENERIC_PRESET;
 
     const newConfig: StoreConfig = {
       ...basePreset,
@@ -473,23 +468,11 @@ export default function DashboardPage() {
 
     try {
       await saveStoreConfig(finalStoreId, newConfig);
+      await reseedProducts(resolvedType, finalStoreId);
       toast.success(`Store "${onboardName}" created successfully!`);
 
-      // Reload owned stores
       const stores = await getStoresOwnedByUser(user.email);
-      let finalStores = [...stores];
-      if (user.role === 'admin') {
-        const hasBluefine = finalStores.some(s => s.id === 'bluefine');
-        if (!hasBluefine) {
-          const defaultAdminStore: StoreConfig = {
-            ...SEAFOOD_PRESET,
-            id: 'bluefine',
-            ownerEmail: user.email.toLowerCase()
-          };
-          finalStores.unshift(defaultAdminStore);
-        }
-      }
-      setUserStores(finalStores);
+      setUserStores(stores);
       
       // Set as active store
       setActiveStoreId(finalStoreId);
@@ -587,10 +570,11 @@ export default function DashboardPage() {
     });
   };
 
-  const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic') => {
+  const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic' | 'clothing') => {
     let preset: StoreConfig;
     if (presetType === 'seafood') preset = SEAFOOD_PRESET;
     else if (presetType === 'egg') preset = EGG_PRESET;
+    else if (presetType === 'clothing') preset = CLOTHING_PRESET;
     else preset = GENERIC_PRESET;
 
     setCfgStoreName(preset.storeName);
@@ -616,6 +600,114 @@ export default function DashboardPage() {
         description: `Catalog has been reseeded with default ${cfgStoreType} items.`
       });
     }
+  };
+
+  const handleDeleteStore = async () => {
+    if (!activeStoreId) return;
+    const storeName = storeConfig.storeName;
+    const storeIdToDelete = activeStoreId;
+    const configToDelete = { ...storeConfig };
+    const productsToDelete = [...products];
+    const proposalsToDelete = [...proposals];
+    const catalogsToDelete = [...customCatalogs];
+
+    if (confirm(`Warning: Are you sure you want to delete the store "${storeName}"? This will temporarily remove all its data, but you can Undo this action.`)) {
+      setLoading(true);
+      try {
+        await deleteStore(storeIdToDelete);
+        
+        // Reload owned stores
+        const stores = await getStoresOwnedByUser(user!.email);
+        setUserStores(stores);
+        
+        // Pick new active store
+        if (stores.length > 0) {
+          const newActive = stores[0].id || '';
+          setActiveStoreId(newActive);
+          localStorage.setItem(`bluefine_active_store_id_${user!.email}`, newActive);
+          setShowStoreCreator(false);
+        } else {
+          setActiveStoreId('');
+          localStorage.removeItem(`bluefine_active_store_id_${user!.email}`);
+          setShowStoreCreator(true);
+        }
+
+        toast(`Store "${storeName}" has been deleted`, {
+          description: `Removed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString()}`,
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              // Restore store configuration
+              await saveStoreConfig(storeIdToDelete, configToDelete);
+              // Restore products
+              if (productsToDelete.length > 0) {
+                await saveProducts(productsToDelete, storeIdToDelete);
+              }
+              // Restore proposals
+              if (proposalsToDelete.length > 0) {
+                await saveProposals(proposalsToDelete, storeIdToDelete);
+              }
+              // Restore catalogs
+              if (catalogsToDelete.length > 0) {
+                await saveCustomCatalogs(catalogsToDelete, storeIdToDelete);
+              }
+              
+              // Reload
+              const restoredStores = await getStoresOwnedByUser(user!.email);
+              setUserStores(restoredStores);
+              setActiveStoreId(storeIdToDelete);
+              localStorage.setItem(`bluefine_active_store_id_${user!.email}`, storeIdToDelete);
+              setShowStoreCreator(false);
+              
+              toast.success(`Restored store "${storeName}" successfully!`);
+            }
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to delete store.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const exportCatalogToCSV = () => {
+    if (products.length === 0) {
+      toast.error('No products in the catalog to export.');
+      return;
+    }
+    
+    // Header Row
+    const headers = ['ID', 'Name', 'Scientific Name', 'Category', 'Price Per Unit', 'Unit', 'Stock', 'Origin', 'Sustainability', 'Description'];
+    
+    // Product Rows
+    const rows = products.map(p => [
+      p.id,
+      `"${p.name.replace(/"/g, '""')}"`,
+      `"${(p.scientificName || '').replace(/"/g, '""')}"`,
+      p.category,
+      p.pricePerKg,
+      p.unit || storeConfig.unit,
+      p.stock,
+      `"${(p.origin || '').replace(/"/g, '""')}"`,
+      p.sustainability || '',
+      `"${(p.description || '').replace(/"/g, '""')}"`
+    ]);
+    
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${storeConfig.id || 'store'}_catalog_export.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast.success('Inventory exported as CSV successfully!');
   };
 
   // Submit product add or edit
@@ -658,10 +750,51 @@ export default function DashboardPage() {
 
   // Delete product
   const handleDeleteProduct = async (id: string) => {
-    if (confirm('Are you sure you want to delete this product from the inventory catalogue?')) {
+    console.log("handleDeleteProduct triggered for product ID:", id);
+    try {
+      const productToDelete = products.find(p => p.id === id);
+      if (!productToDelete) {
+        console.warn("Product not found in products state array. Performing backend database fallback lookup for ID:", id);
+        const backendProducts = await getProducts(activeStoreId);
+        const fallbackProduct = backendProducts.find(p => p.id === id);
+        if (!fallbackProduct) {
+          console.error("Product could not be resolved in backend inventory either.");
+          toast.error("Deletion Failed", { description: "The product could not be found." });
+          return;
+        }
+        await deleteProduct(id, activeStoreId);
+        const updated = await getProducts(activeStoreId);
+        setProducts(updated);
+        toast(`Product "${fallbackProduct.name}" has been deleted`);
+        return;
+      }
+
       await deleteProduct(id, activeStoreId);
       const prods = await getProducts(activeStoreId);
       setProducts(prods);
+      console.log("Successfully deleted product and updated state.");
+
+      toast(`Product "${productToDelete.name}" has been deleted`, {
+        description: `Removed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString()}`,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            console.log("Undo triggered for product restore:", productToDelete.name);
+            try {
+              await addProduct(productToDelete, activeStoreId);
+              const restoredProds = await getProducts(activeStoreId);
+              setProducts(restoredProds);
+              toast.success(`Restored product "${productToDelete.name}" successfully!`);
+            } catch (restoreErr) {
+              console.error("Failed to restore product on Undo action:", restoreErr);
+              toast.error("Failed to restore product");
+            }
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Error encountered in handleDeleteProduct:", err);
+      toast.error("An error occurred while deleting the product.");
     }
   };
 
@@ -773,10 +906,51 @@ export default function DashboardPage() {
   };
 
   const handleDeleteCustomCatalog = async (id: string) => {
-    if (confirm('Are you sure you want to delete this custom catalogue proposal link?')) {
+    console.log("handleDeleteCustomCatalog triggered for proposal ID:", id);
+    try {
+      const catalogToDelete = customCatalogs.find(c => c.id === id);
+      if (!catalogToDelete) {
+        console.warn("Proposal catalog not found in customCatalogs state. Performing backend database fallback lookup for ID:", id);
+        const backendCatalogs = await getCustomCatalogs(activeStoreId);
+        const fallbackCatalog = backendCatalogs.find(c => c.id === id);
+        if (!fallbackCatalog) {
+          console.error("Catalogue proposal could not be resolved in backend records.");
+          toast.error("Deletion Failed", { description: "The proposal could not be found." });
+          return;
+        }
+        await deleteCustomCatalog(id, activeStoreId);
+        const updated = await getCustomCatalogs(activeStoreId);
+        setCustomCatalogs(updated);
+        toast(`Catalogue proposal for "${fallbackCatalog.marketName}" has been deleted`);
+        return;
+      }
+
       await deleteCustomCatalog(id, activeStoreId);
       const cats = await getCustomCatalogs(activeStoreId);
       setCustomCatalogs(cats);
+      console.log("Successfully deleted catalogue proposal and updated state.");
+
+      toast(`Catalogue proposal for "${catalogToDelete.marketName}" has been deleted`, {
+        description: `Removed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString()}`,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            console.log("Undo triggered for custom catalog restore:", catalogToDelete.marketName);
+            try {
+              await addCustomCatalog(catalogToDelete, activeStoreId);
+              const restoredCats = await getCustomCatalogs(activeStoreId);
+              setCustomCatalogs(restoredCats);
+              toast.success(`Restored custom catalogue proposal for "${catalogToDelete.marketName}" successfully!`);
+            } catch (restoreErr) {
+              console.error("Failed to restore catalogue proposal on Undo action:", restoreErr);
+              toast.error("Failed to restore catalogue proposal");
+            }
+          },
+        },
+      });
+    } catch (err) {
+      console.error("Error encountered in handleDeleteCustomCatalog:", err);
+      toast.error("An error occurred while deleting the proposal.");
     }
   };
 
@@ -1085,25 +1259,6 @@ export default function DashboardPage() {
               14 units sold this week
             </span>
           </div>
-
-          <div className={styles.healthCard}>
-            <h4 className={styles.healthCardTitle}>System Health</h4>
-            <span className={styles.healthCardSubtitle}>Multi-tenant Storefront Nodes</span>
-            <div className={styles.healthNodeList}>
-              <div className={styles.healthNodeRow}>
-                <span className={styles.healthNodeName}>Asia-Pacific Hub</span>
-                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
-              </div>
-              <div className={styles.healthNodeRow}>
-                <span className={styles.healthNodeName}>North Atlantic Node</span>
-                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
-              </div>
-              <div className={styles.healthNodeRow}>
-                <span className={styles.healthNodeName}>Eurozone Gateway</span>
-                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className={styles.splitLayout}>
@@ -1162,32 +1317,9 @@ export default function DashboardPage() {
               </div>
               
               {sourcingRequests.length === 0 ? (
-                <>
-                  <div className={styles.enquiryRow}>
-                    <div>
-                      <div className={styles.enquiryClient}>Maersk Logistics</div>
-                      <div className={styles.enquiryTime}>2 hours ago</div>
-                    </div>
-                    <span className={styles.enquiryProduct}>X1 Turbine Seal</span>
-                    <span className={`${styles.enquiryStatusBadge} ${styles.badgeNew}`}>New</span>
-                  </div>
-                  <div className={styles.enquiryRow}>
-                    <div>
-                      <div className={styles.enquiryClient}>Viking Cruises</div>
-                      <div className={styles.enquiryTime}>5 hours ago</div>
-                    </div>
-                    <span className={styles.enquiryProduct}>Deck Coating P9</span>
-                    <span className={`${styles.enquiryStatusBadge} ${styles.badgePending}`}>Pending</span>
-                  </div>
-                  <div className={styles.enquiryRow}>
-                    <div>
-                      <div className={styles.enquiryClient}>Atlantic Fishing Co</div>
-                      <div className={styles.enquiryTime}>Yesterday</div>
-                    </div>
-                    <span className={styles.enquiryProduct}>Winch Assembly B</span>
-                    <span className={`${styles.enquiryStatusBadge} ${styles.badgeResponded}`}>Responded</span>
-                  </div>
-                </>
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                  No recent enquiries.
+                </div>
               ) : (
                 sourcingRequests.slice(0, 4).map((req) => (
                   <div key={req.id} className={styles.enquiryRow}>
@@ -1219,9 +1351,7 @@ export default function DashboardPage() {
           </div>
           
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button type="button" className={styles.btnMerchantSecondary} onClick={() => {
-              toast.success('Inventory exported as CSV successfully!');
-            }}>Export CSV</button>
+            <button type="button" className={styles.btnMerchantSecondary} onClick={exportCatalogToCSV}>Export CSV</button>
             <button type="button" className={styles.btnMerchantPrimary} onClick={() => handleOpenProductModal(null)}>
               <Plus size={16} /> Add New Product
             </button>
@@ -1739,11 +1869,12 @@ export default function DashboardPage() {
                   <label className={styles.label}>Niche Preset Type</label>
                   <select
                     value={cfgStoreType}
-                    onChange={(e) => handlePresetChange(e.target.value as 'seafood' | 'egg' | 'generic')}
+                    onChange={(e) => handlePresetChange(e.target.value as 'seafood' | 'egg' | 'generic' | 'clothing')}
                     className={styles.lightSelect}
                   >
                     <option value="seafood">Seafood Catch Niche</option>
                     <option value="egg">Poultry Egg Farm Niche</option>
+                    <option value="clothing">Menswear Clothing Niche</option>
                     <option value="generic">General Bakery / Retail Niche</option>
                   </select>
                 </div>
@@ -1843,15 +1974,15 @@ export default function DashboardPage() {
             <div className={styles.lightPanelCard}>
               <h3 className={styles.lightPanelTitle} style={{ color: '#ef4444' }}>Danger Zone</h3>
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 16px 0', lineHeight: '1.4' }}>
-                Reseeding will clear the entire product inventory in your catalog and replace it with default niche-appropriate items for the selected preset.
+                Deleting the store is permanent. This will erase the store configuration, all products inside the catalog, quote proposals, custom catalogs, customer orders, reviews, and enquiries.
               </p>
               <button 
                 type="button" 
-                onClick={handleReseed} 
+                onClick={handleDeleteStore} 
                 className={styles.btnMerchantPrimary}
                 style={{ backgroundColor: '#ef4444', color: '#ffffff', width: '100%', justifyContent: 'center' }}
               >
-                Reseed Catalog Database
+                Delete Store
               </button>
             </div>
 
@@ -4020,6 +4151,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+
     </div>
   );
 }

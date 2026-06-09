@@ -38,6 +38,8 @@ export default function HomePage() {
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('featured');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
 
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
@@ -103,7 +105,7 @@ export default function HomePage() {
       if (!user) {
         setIsAuthenticated(false);
         if (storeId) {
-          router.push('/login');
+          router.push(`/login?store=${storeId}`);
         } else {
           setIsLandingPage(true);
         }
@@ -138,24 +140,7 @@ export default function HomePage() {
 
         // Load dynamic products & config scoped to storeId
         getStoreConfig(storeId).then((cfg) => {
-          let loggedInEmail = '';
-          let loggedInRole = '';
-          try {
-            const parsed = JSON.parse(user || '{}');
-            loggedInEmail = parsed.email?.toLowerCase() || '';
-            loggedInRole = parsed.role || '';
-          } catch {}
-
-          if (
-            loggedInEmail && 
-            cfg.ownerEmail && 
-            cfg.ownerEmail.toLowerCase() !== loggedInEmail && 
-            loggedInRole !== 'admin'
-          ) {
-            router.push('/dashboard');
-          } else {
-            setStoreConfig(cfg);
-          }
+          setStoreConfig(cfg);
         });
         getProducts(storeId).then((p) => {
           setProducts(p);
@@ -263,7 +248,7 @@ export default function HomePage() {
           </defs>
         </svg>
         <span style={{ marginTop: '16px', color: 'var(--text-secondary)', letterSpacing: '2px', fontSize: '0.8rem', textTransform: 'uppercase', fontFamily: 'var(--font-outfit), sans-serif' }}>
-          Verifying Sourcing Authorization...
+          Loading...
         </span>
       </div>
     );
@@ -384,7 +369,7 @@ export default function HomePage() {
                   <div>
                     <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Launch Store</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
-                      Establish your custom B2B storefront. Choose your industry preset (Seafood, Bakery, Egg Farm, or general retail) with bespoke attributes and product units.
+                      Establish your custom B2B storefront. Choose your industry preset (Seafood, Bakery, Clothing, Egg Farm, or general retail) with bespoke attributes and product units.
                     </p>
                   </div>
                 </div>
@@ -477,7 +462,7 @@ export default function HomePage() {
                     <div>
                       <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>🏪 Launch Business Store</h3>
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                        Register your account and launch a custom storefront. Choose your niche (Seafood, Bakery, Egg Farm, or general retail) with custom labels and specific units of measurement (e.g. kg, box, dozen).
+                        Register your account and launch a custom storefront. Choose your niche (Seafood, Bakery, Clothing, Egg Farm, or general retail) with custom labels and specific units of measurement (e.g. kg, box, dozen, pcs).
                       </p>
                     </div>
                   </div>
@@ -590,7 +575,11 @@ export default function HomePage() {
       
       const matchesCategory = category === 'All' || fish.category === category;
 
-      return matchesSearch && matchesCategory;
+      const price = fish.pricePerKg;
+      const matchesMinPrice = minPrice === '' || price >= parseFloat(minPrice);
+      const matchesMaxPrice = maxPrice === '' || price <= parseFloat(maxPrice);
+
+      return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice;
     })
     .sort((a, b) => {
       if (sortBy === 'price-asc') return a.pricePerKg - b.pricePerKg;
@@ -600,8 +589,10 @@ export default function HomePage() {
     });
 
 
+  const isClothing = storeConfig.storeType === 'clothing';
+
   return (
-    <div className={styles.main}>
+    <div className={styles.main} data-store-theme={storeConfig.storeType}>
       <Navbar
         cartCount={cart.length}
         onCartToggle={() => setIsCartOpen(!isCartOpen)}
@@ -609,29 +600,145 @@ export default function HomePage() {
         storeId={currentStoreId}
       />
 
-      <section className={styles.hero}>
-        <div className={styles.ambientGlow} />
-        <div className={styles.heroContent}>
-          <h1 className={styles.title}>
-            {storeConfig.storeType === 'seafood' ? (
-              <>Oceanic Delicacies <br /><span className={styles.titleHighlight}>Sourced For Master Chefs</span></>
-            ) : storeConfig.storeType === 'egg' ? (
-              <>Premium Organic Eggs <br /><span className={styles.titleHighlight}>Sourced Fresh Daily</span></>
-            ) : (
-              <>{storeConfig.storeName} <br /><span className={styles.titleHighlight}>{storeConfig.storeTagline}</span></>
-            )}
-          </h1>
-          <p className={styles.subtitle}>
-            {storeConfig.storeType === 'seafood' ? (
-              "Explore our curated selection of pristine, sashimi-grade seafood. Hand-picked from sustainable fisheries and flown direct to your kitchen."
-            ) : storeConfig.storeType === 'egg' ? (
-              "Explore our collection of fresh, farm-gathered organic eggs. Rich in nutrients, pasture-raised, and delivered straight to your establishment."
-            ) : (
-              `Explore our curated selection of high-quality products. Sourced directly from trusted providers and crafted with pride.`
-            )}
-          </p>
-        </div>
-      </section>
+      {isClothing ? (
+        /* ─── CLOTHING HERO ─── */
+        <section
+          style={{
+            position: 'relative',
+            padding: '72px 40px 40px 40px',
+            textAlign: 'center',
+            overflow: 'hidden',
+            background: 'transparent',
+          }}
+        >
+          {/* Warm ambient glow orbs */}
+          <div style={{
+            position: 'absolute', top: '-180px', left: '50%', transform: 'translateX(-50%)',
+            width: '700px', height: '400px',
+            background: 'radial-gradient(ellipse, rgba(212,169,106,0.12) 0%, rgba(180,120,60,0.06) 45%, transparent 70%)',
+            filter: 'blur(60px)', pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', top: '0', left: '8%',
+            width: '260px', height: '260px',
+            background: 'radial-gradient(circle, rgba(232,196,122,0.06) 0%, transparent 70%)',
+            filter: 'blur(50px)', pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', top: '0', right: '5%',
+            width: '220px', height: '220px',
+            background: 'radial-gradient(circle, rgba(180,100,50,0.07) 0%, transparent 70%)',
+            filter: 'blur(45px)', pointerEvents: 'none',
+          }} />
+          <div style={{ position: 'relative', zIndex: 10, maxWidth: '860px', margin: '0 auto' }}>
+            {/* Editorial eyebrow */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '10px',
+              marginBottom: '20px',
+              padding: '5px 18px 5px 8px',
+              borderRadius: '999px',
+              border: '1px solid rgba(212,169,106,0.25)',
+              background: 'rgba(212,169,106,0.06)',
+              backdropFilter: 'blur(10px)',
+            }}>
+              <span style={{
+                display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%',
+                background: 'linear-gradient(135deg,#d4a96a,#e8c47a)',
+                boxShadow: '0 0 8px rgba(212,169,106,0.8)',
+                animation: 'pulseNeon 2.5s ease-in-out infinite',
+              }} />
+              <span style={{
+                fontSize: '0.72rem', fontWeight: 700, letterSpacing: '3px',
+                textTransform: 'uppercase', color: '#d4a96a',
+              }}>SS-25 Collection — Premium Menswear</span>
+            </div>
+
+            {/* Main heading */}
+            <h1 style={{
+              fontFamily: 'var(--font-playfair), Georgia, serif',
+              fontSize: 'clamp(2.4rem, 5vw, 3.8rem)',
+              fontWeight: 800,
+              lineHeight: 1.2,
+              marginBottom: '16px',
+              color: '#f5f0eb',
+              textTransform: 'capitalize',
+              letterSpacing: '-0.5px',
+            }}>
+              {storeConfig.storeName}<br />
+              <span style={{
+                background: 'linear-gradient(120deg, #d4a96a 0%, #e8c47a 50%, #c08040 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: 'none',
+              }}>Elevated Everyday Essentials</span>
+            </h1>
+
+            {/* Subtitle */}
+            <p style={{
+              fontSize: '1rem', color: '#a09484', maxWidth: '560px',
+              margin: '0 auto 24px auto', lineHeight: 1.6,
+            }}>
+              Thoughtfully crafted menswear — premium shirts, tailored trousers, rugged cargos &amp; cozy hoodies. Built for the modern man who demands both quality and style.
+            </p>
+
+            {/* Category pills row */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', marginTop: '4px' }}>
+              {storeConfig.categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat === category ? 'All' : cat)}
+                  style={{
+                    padding: '6px 18px',
+                    borderRadius: '999px',
+                    border: `1px solid ${cat === category ? 'rgba(212,169,106,0.6)' : 'rgba(180,140,100,0.18)'}`,
+                    background: cat === category ? 'rgba(212,169,106,0.14)' : 'rgba(255,255,255,0.02)',
+                    color: cat === category ? '#d4a96a' : '#a09484',
+                    fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.5px',
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                >{cat}</button>
+              ))}
+              {category !== 'All' && (
+                <button
+                  onClick={() => setCategory('All')}
+                  style={{
+                    padding: '6px 18px', borderRadius: '999px',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    background: 'transparent', color: '#5a5048',
+                    fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >✕ Clear</button>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : (
+        /* ─── DEFAULT HERO ─── */
+        <section className={styles.hero}>
+          <div className={styles.ambientGlow} />
+          <div className={styles.heroContent}>
+            <h1 className={styles.title}>
+              {storeConfig.storeType === 'seafood' ? (
+                <>Oceanic Delicacies <br /><span className={styles.titleHighlight}>Sourced For Master Chefs</span></>
+              ) : storeConfig.storeType === 'egg' ? (
+                <>Premium Organic Eggs <br /><span className={styles.titleHighlight}>Sourced Fresh Daily</span></>
+              ) : (
+                <>{storeConfig.storeName} <br /><span className={styles.titleHighlight}>{storeConfig.storeTagline}</span></>
+              )}
+            </h1>
+            <p className={styles.subtitle}>
+              {storeConfig.storeType === 'seafood' ? (
+                "Explore our curated selection of pristine, sashimi-grade seafood. Hand-picked from sustainable fisheries and flown direct to your kitchen."
+              ) : storeConfig.storeType === 'egg' ? (
+                "Explore our collection of fresh, farm-gathered organic eggs. Rich in nutrients, pasture-raised, and delivered straight to your establishment."
+              ) : (
+                `Explore our curated selection of high-quality products. Sourced directly from trusted providers and crafted with pride.`
+              )}
+            </p>
+          </div>
+        </section>
+      )}
 
       <main className={styles.container}>
         {/* Filter / Search Toolbar */}
@@ -658,7 +765,7 @@ export default function HomePage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="luxury-input"
                 style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
-                placeholder={`Search by variety, ${storeConfig.attributes.scientificNameLabel.toLowerCase()}, or origin...`}
+                placeholder={isClothing ? `Search by style, fit, or category...` : `Search by variety, ${storeConfig.attributes.scientificNameLabel.toLowerCase()}, or origin...`}
                 id="search-input-field"
               />
             </div>
@@ -684,7 +791,7 @@ export default function HomePage() {
                 }}
                 id="sort-select-dropdown"
               >
-                <option value="featured">Featured Sourcing</option>
+                <option value="featured">{isClothing ? 'Featured Picks' : 'Featured Sourcing'}</option>
                 <option value="price-asc">Price: Low to High</option>
                 <option value="price-desc">Price: High to Low</option>
                 <option value="name-asc">Alphabetical (A-Z)</option>
@@ -693,40 +800,61 @@ export default function HomePage() {
           </div>
 
           <div className={styles.filterRow}>
-            <div style={{ minWidth: '180px' }}>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="luxury-input"
-                style={{
-                  height: '34px',
-                  padding: '0 30px 0 12px',
-                  fontSize: '0.8rem',
-                  appearance: 'none',
-                  cursor: 'pointer',
-                  backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 12px center',
-                  backgroundSize: '16px',
-                  border: '1px solid var(--glass-border)',
-                  borderRadius: '8px',
-                  background: 'rgba(5, 12, 26, 0.6)',
-                  color: 'var(--text-primary)',
-                  outline: 'none'
-                }}
-                id="category-select-dropdown"
-              >
-                <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
-                {storeConfig.categories.map((cat) => (
-                  <option key={cat} value={cat} style={{ background: '#050c1a', color: 'var(--text-primary)' }}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ minWidth: '180px' }}>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="luxury-input"
+                  style={{
+                    height: '34px',
+                    padding: '0 30px 0 12px',
+                    fontSize: '0.8rem',
+                    appearance: 'none',
+                    cursor: 'pointer',
+                    backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    backgroundSize: '16px',
+                    outline: 'none'
+                  }}
+                  id="category-select-dropdown"
+                >
+                  <option value="All">All Categories</option>
+                  {storeConfig.categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Price Range Filters */}
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  placeholder="Min Price"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="luxury-input"
+                  style={{ width: '90px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
+                  id="min-price-filter"
+                />
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>to</span>
+                <input
+                  type="number"
+                  placeholder="Max Price"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="luxury-input"
+                  style={{ width: '90px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
+                  id="max-price-filter"
+                />
+              </div>
             </div>
 
             <div className={styles.resultsCount} id="search-results-count">
-              Showing {filteredFish.length} of {products.length} varieties
+              Showing {filteredFish.length} of {products.length} {isClothing ? 'pieces' : 'varieties'}
             </div>
           </div>
         </section>
