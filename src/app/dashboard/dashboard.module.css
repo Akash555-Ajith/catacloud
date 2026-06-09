@@ -615,3 +615,846 @@
 .table tr:last-child td {
   border-bottom: none;
 }
+
+/* --- Redesigned Light Portal Layout & Sidebar --- */
+.portalContainer {
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  color: #0f172a;
+  width: 100%;
+}
+
+.sidebar {
+  width: 260px;
+  background-color: #07162c;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-shrink: 0;
+  border-right: 1px solid #112847;
+}
+
+.sidebarHeader {
+  padding: 24px;
+  border-bottom: 1px solid #112847;
+}
+
+.sidebarBrand {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.sidebarSubtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 4px 0 0 0;
+  font-weight: 500;
+}
+
+.sidebarMenu {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebarItem:hover {
+  background-color: #0d2647;
+  color: #ffffff;
+}
+
+.sidebarItemActive {
+  background-color: #0f3057;
+  color: #ffffff !important;
+}
+
+.sidebarFooter {
+  padding: 16px;
+  border-top: 1px solid #112847;
+  background-color: #041022;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebarAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #00f2fe;
+}
+
+.sidebarUserInfo {
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebarUserName {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebarUserRole {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: #f8fafc;
+}
+
+.topHeader {
+  height: 64px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topHeaderSearch {
+  position: relative;
+  width: 340px;
+}
+
+.topHeaderSearchIcon {
+  position: absolute;
+  left: 12px;
+  top: 9px;
+  color: #94a3b8;
+}
+
+.topHeaderInput {
+  width: 100%;
+  height: 36px;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0 16px 0 38px;
+  font-size: 0.85rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.topHeaderInput:focus {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+}
+
+.topHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topHeaderBtn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.topHeaderBtn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.topHeaderDivider {
+  width: 1px;
+  height: 20px;
+  background-color: #e2e8f0;
+}
+
+.topHeaderPortalTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.merchantContainer {
+  padding: 32px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.merchantTitle {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.8px;
+}
+
+.merchantSubtitle {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 6px 0 28px 0;
+}
+
+/* Light Metric Cards */
+.lightMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.lightCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 148px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.lightCard:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04);
+}
+
+.lightCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lightCardLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 1px;
+}
+
+.lightCardValue {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 8px 0 0 0;
+  letter-spacing: -0.5px;
+}
+
+.lightCardFooter {
+  font-size: 0.8rem;
+  margin-top: auto;
+  font-weight: 600;
+}
+
+.healthCard {
+  background-color: #07162c;
+  color: #ffffff;
+  border: 1px solid #112847;
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 148px;
+}
+
+.healthCardTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.healthCardSubtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 2px 0 12px 0;
+}
+
+.healthNodeList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.healthNodeRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.healthNodeName {
+  color: #cbd5e1;
+}
+
+.healthNodeStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.healthDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+}
+
+/* Light Card Panels */
+.lightPanelCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.lightPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 16px;
+}
+
+.lightPanelTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.lightPanelLink {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f3057;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lightPanelLink:hover {
+  text-decoration: underline;
+}
+
+/* Trends Chart */
+.trendsBarChart {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 220px;
+  padding: 10px 10px 0 10px;
+  gap: 16px;
+}
+
+.trendsBarCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.trendsBarFill {
+  width: 100%;
+  max-width: 36px;
+  border-radius: 4px 4px 0 0;
+  background-color: #cbd5e1;
+  transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s ease;
+}
+
+.trendsBarFillActive {
+  background-color: #07162c;
+}
+
+.trendsBarLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 12px;
+}
+
+/* Recent Enquiries List */
+.enquiryList {
+  display: flex;
+  flex-direction: column;
+}
+
+.enquiryListHeader {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr;
+  padding: 8px 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+  letter-spacing: 0.5px;
+}
+
+.enquiryRow {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr;
+  padding: 16px 12px;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.enquiryRow:last-child {
+  border-bottom: none;
+}
+
+.enquiryClient {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.enquiryTime {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.enquiryProduct {
+  font-size: 0.825rem;
+  color: #334155;
+  font-weight: 500;
+}
+
+.enquiryStatusBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-align: center;
+  display: inline-block;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.badgeNew {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.badgePending {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.badgeResponded {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+/* Portal Footer */
+.portalFooter {
+  height: 48px;
+  border-top: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: auto;
+}
+
+.portalFooterLinks {
+  display: flex;
+  gap: 16px;
+}
+
+.portalFooterLinks a {
+  color: #64748b;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.portalFooterLinks a:hover {
+  color: #0f172a;
+}
+
+/* Catalog Columns Grid */
+.catalogSplitLayout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+.catalogFilterPanel {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.filterSection {
+  margin-bottom: 24px;
+}
+
+.filterSection:last-child {
+  margin-bottom: 0;
+}
+
+.filterTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.checkboxList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+.checkboxLabelGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxCount {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.radioList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.radioItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+/* Horizontal Product Cards */
+.horizontalProductList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.horizontalCard {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.01);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.horizontalCard:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.02);
+}
+
+.horizontalCardImg {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: #f1f5f9;
+}
+
+.horizontalCardContent {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.horizontalCardDetails {
+  min-width: 0;
+}
+
+.horizontalCardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.horizontalCardSub {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.horizontalSku {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.horizontalPriceGroup {
+  font-size: 0.85rem;
+}
+
+.horizontalPrice {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.horizontalStockGroup {
+  font-size: 0.85rem;
+}
+
+.horizontalStock {
+  font-weight: 700;
+}
+
+.stockStatusLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.stockInStock {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.stockLowStock {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.stockOutStock {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.quickAddCard {
+  border: 2px dashed #cbd5e1;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 134px;
+}
+
+.quickAddCard:hover {
+  border-color: #0f3057;
+  background-color: #ffffff;
+  color: #0f3057;
+}
+
+.quickAddIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
+}
+
+.quickAddCard:hover .quickAddIcon {
+  background-color: #0f3057;
+  color: #ffffff;
+}
+
+.quickAddTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+  margin: 0;
+}
+
+.quickAddSub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+/* Light forms & inputs */
+.lightInput {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  color: #0f172a;
+  outline: none;
+  background-color: #ffffff;
+}
+
+.lightInput:focus {
+  border-color: #0f3057;
+  box-shadow: 0 0 0 2px rgba(15, 48, 87, 0.08);
+}
+
+.lightSelect {
+  width: 100%;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  color: #0f172a;
+  outline: none;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.lightSelect:focus {
+  border-color: #0f3057;
+}
+
+.lightTextArea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #0f172a;
+  outline: none;
+  background-color: #ffffff;
+  resize: vertical;
+}
+
+.lightTextArea:focus {
+  border-color: #0f3057;
+}
+
+.btnMerchantPrimary {
+  background-color: #07162c;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnMerchantPrimary:hover {
+  background-color: #0f3057;
+}
+
+.btnMerchantSecondary {
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btnMerchantSecondary:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+

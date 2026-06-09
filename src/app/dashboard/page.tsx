@@ -35,7 +35,7 @@ import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
-import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart, LayoutDashboard, Bell, HelpCircle, Search, CreditCard, MessageSquare, Star } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function DashboardPage() {
@@ -64,7 +64,7 @@ export default function DashboardPage() {
   const [showStoreCreator, setShowStoreCreator] = useState(false);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'orders' | 'products' | 'catalogs' | 'pos' | 'enquiries'>('orders');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'products' | 'enquiries' | 'pos' | 'settings' | 'catalogs' | 'orders'>('dashboard');
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [sourcingRequests, setSourcingRequests] = useState<CustomSourcingRequest[]>([]);
 
@@ -108,6 +108,7 @@ export default function DashboardPage() {
   const [posCustomerName, setPosCustomerName] = useState('Walk-in Customer');
   const [posPaymentMethod, setPosPaymentMethod] = useState<'Cash' | 'Card' | 'Tap'>('Cash');
   const [posReceipt, setPosReceipt] = useState<Order | null>(null);
+  const [posTab, setPosTab] = useState<'all' | 'custom'>('all');
 
   const handleAddToPosCart = (fish: FishItem) => {
     if (fish.stock <= 0) {
@@ -823,6 +824,1063 @@ export default function DashboardPage() {
   const adminTotalRevenue = orders.reduce((acc, o) => acc + o.totalPrice, 0);
 
 
+
+
+
+  const renderMerchantDashboard = () => {
+    const totalRevenue = orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const activeEnquiriesCount = sourcingRequests.length;
+    const topProduct = products.length > 0 ? products[0].name : "N/A";
+    
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>Merchant Dashboard</h2>
+        <p className={styles.merchantSubtitle}>System status is operational. {activeEnquiriesCount} new enquiries require attention.</p>
+        
+        <div className={styles.lightMetricGrid}>
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>TOTAL REVENUE</span>
+              <DollarSign size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue}>${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <span className={styles.lightCardFooter} style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <TrendingUp size={14} />
+              +12.5% from last month
+            </span>
+          </div>
+
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>ACTIVE ENQUIRIES</span>
+              <MessageSquare size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue}>{activeEnquiriesCount}</h3>
+            <span className={styles.lightCardFooter} style={{ color: '#f97316' }}>
+              4 high-priority tasks
+            </span>
+          </div>
+
+          <div className={styles.lightCard}>
+            <div className={styles.lightCardHeader}>
+              <span className={styles.lightCardLabel}>TOP PRODUCT</span>
+              <Star size={18} style={{ color: '#64748b' }} />
+            </div>
+            <h3 className={styles.lightCardValue} style={{ fontSize: '1.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '14px' }}>
+              {topProduct}
+            </h3>
+            <span className={styles.lightCardFooter} style={{ color: '#64748b' }}>
+              14 units sold this week
+            </span>
+          </div>
+
+          <div className={styles.healthCard}>
+            <h4 className={styles.healthCardTitle}>System Health</h4>
+            <span className={styles.healthCardSubtitle}>Multi-tenant Storefront Nodes</span>
+            <div className={styles.healthNodeList}>
+              <div className={styles.healthNodeRow}>
+                <span className={styles.healthNodeName}>Asia-Pacific Hub</span>
+                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
+              </div>
+              <div className={styles.healthNodeRow}>
+                <span className={styles.healthNodeName}>North Atlantic Node</span>
+                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
+              </div>
+              <div className={styles.healthNodeRow}>
+                <span className={styles.healthNodeName}>Eurozone Gateway</span>
+                <span className={styles.healthNodeStatus}><span className={styles.healthDot} /> Online</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.splitLayout}>
+          <div className={styles.lightPanelCard}>
+            <div className={styles.lightPanelHeader}>
+              <h3 className={styles.lightPanelTitle}>Sales Volume Trends</h3>
+              <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '3px', borderRadius: '6px' }}>
+                <button type="button" style={{ border: 'none', background: 'none', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', cursor: 'pointer' }}>Daily</button>
+                <button type="button" style={{ border: 'none', background: '#ffffff', padding: '4px 10px', fontSize: '0.75rem', fontWeight: 700, color: '#07162c', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: 'pointer' }}>Weekly</button>
+              </div>
+            </div>
+            
+            <div className={styles.trendsBarChart}>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '30%' }} />
+                <span className={styles.trendsBarLabel}>Mon</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '55%' }} />
+                <span className={styles.trendsBarLabel}>Tue</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '48%' }} />
+                <span className={styles.trendsBarLabel}>Wed</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '75%' }} />
+                <span className={styles.trendsBarLabel}>Thu</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '68%' }} />
+                <span className={styles.trendsBarLabel}>Fri</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={styles.trendsBarFill} style={{ height: '72%' }} />
+                <span className={styles.trendsBarLabel}>Sat</span>
+              </div>
+              <div className={styles.trendsBarCol}>
+                <div className={`${styles.trendsBarFill} ${styles.trendsBarFillActive}`} style={{ height: '85%' }} />
+                <span className={styles.trendsBarLabel}>Sun</span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.lightPanelCard}>
+            <div className={styles.lightPanelHeader}>
+              <h3 className={styles.lightPanelTitle}>Recent Enquiries</h3>
+              <span onClick={() => setAdminTab('enquiries')} className={styles.lightPanelLink}>View All</span>
+            </div>
+            
+            <div className={styles.enquiryList}>
+              <div className={styles.enquiryListHeader}>
+                <span>Client</span>
+                <span>Product</span>
+                <span>Status</span>
+              </div>
+              
+              {sourcingRequests.length === 0 ? (
+                <>
+                  <div className={styles.enquiryRow}>
+                    <div>
+                      <div className={styles.enquiryClient}>Maersk Logistics</div>
+                      <div className={styles.enquiryTime}>2 hours ago</div>
+                    </div>
+                    <span className={styles.enquiryProduct}>X1 Turbine Seal</span>
+                    <span className={`${styles.enquiryStatusBadge} ${styles.badgeNew}`}>New</span>
+                  </div>
+                  <div className={styles.enquiryRow}>
+                    <div>
+                      <div className={styles.enquiryClient}>Viking Cruises</div>
+                      <div className={styles.enquiryTime}>5 hours ago</div>
+                    </div>
+                    <span className={styles.enquiryProduct}>Deck Coating P9</span>
+                    <span className={`${styles.enquiryStatusBadge} ${styles.badgePending}`}>Pending</span>
+                  </div>
+                  <div className={styles.enquiryRow}>
+                    <div>
+                      <div className={styles.enquiryClient}>Atlantic Fishing Co</div>
+                      <div className={styles.enquiryTime}>Yesterday</div>
+                    </div>
+                    <span className={styles.enquiryProduct}>Winch Assembly B</span>
+                    <span className={`${styles.enquiryStatusBadge} ${styles.badgeResponded}`}>Responded</span>
+                  </div>
+                </>
+              ) : (
+                sourcingRequests.slice(0, 4).map((req) => (
+                  <div key={req.id} className={styles.enquiryRow}>
+                    <div>
+                      <div className={styles.enquiryClient}>{req.clientName}</div>
+                      <div className={styles.enquiryTime}>
+                        {req.date}
+                      </div>
+                    </div>
+                    <span className={styles.enquiryProduct}>{req.productName}</span>
+                    <span className={`${styles.enquiryStatusBadge} ${styles.badgeNew}`}>New</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMerchantCatalog = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <h2 className={styles.merchantTitle}>Inventory & Catalog</h2>
+            <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Manage your supply inventory and pricing.</p>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="button" className={styles.btnMerchantSecondary} onClick={() => {
+              toast.success('Inventory exported as CSV successfully!');
+            }}>Export CSV</button>
+            <button type="button" className={styles.btnMerchantPrimary} onClick={() => handleOpenProductModal(null)}>
+              <Plus size={16} /> Add New Product
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.catalogSplitLayout}>
+          {/* Left Sidebar Filters */}
+          <div className={styles.catalogFilterPanel}>
+            <div className={styles.filterSection}>
+              <h4 className={styles.filterTitle}>Categories</h4>
+              <div className={styles.checkboxList}>
+                <label className={styles.checkboxItem} onClick={() => setCatSelectedCategory('All')} style={{ cursor: 'pointer' }}>
+                  <div className={styles.checkboxLabelGroup}>
+                    <input type="checkbox" checked={catSelectedCategory === 'All'} readOnly style={{ cursor: 'pointer' }} />
+                    <span>All Items</span>
+                  </div>
+                  <span className={styles.checkboxCount}>{products.length}</span>
+                </label>
+                {storeConfig.categories.map((cat) => (
+                  <label key={cat} className={styles.checkboxItem} onClick={() => setCatSelectedCategory(cat)} style={{ cursor: 'pointer' }}>
+                    <div className={styles.checkboxLabelGroup}>
+                      <input type="checkbox" checked={catSelectedCategory === cat} readOnly style={{ cursor: 'pointer' }} />
+                      <span>{cat}</span>
+                    </div>
+                    <span className={styles.checkboxCount}>{products.filter(p => p.category === cat).length}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.filterSection}>
+              <h4 className={styles.filterTitle}>Stock Status</h4>
+              <div className={styles.radioList}>
+                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
+                  <input type="radio" name="stock-status" defaultChecked style={{ cursor: 'pointer' }} />
+                  <span>All Stock</span>
+                </label>
+                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
+                  <input type="radio" name="stock-status" style={{ cursor: 'pointer' }} />
+                  <span>In Stock</span>
+                </label>
+                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
+                  <input type="radio" name="stock-status" style={{ cursor: 'pointer' }} />
+                  <span>Low Stock</span>
+                </label>
+              </div>
+            </div>
+
+            <div className={styles.filterSection}>
+              <h4 className={styles.filterTitle}>Price Range</h4>
+              <input type="range" min="0" max="5000" defaultValue="2500" style={{ width: '100%', cursor: 'pointer' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>
+                <span>$0</span>
+                <span>$5000+</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Product Grid */}
+          <div className={styles.horizontalProductList}>
+            {products
+              .filter((p) => catSelectedCategory === 'All' || p.category === catSelectedCategory)
+              .map((prod) => {
+                const isLow = prod.stock < 10;
+                const isOut = prod.stock <= 0;
+                return (
+                  <div key={prod.id} className={styles.horizontalCard}>
+                    <img src={prod.image} alt={prod.name} className={styles.horizontalCardImg} />
+                    <div className={styles.horizontalCardContent}>
+                      <div className={styles.horizontalCardDetails}>
+                        <div className={styles.horizontalSku}>SKU: {prod.id.slice(0, 10).toUpperCase()}</div>
+                        <h4 className={styles.horizontalCardTitle}>{prod.name}</h4>
+                        <p className={styles.horizontalCardSub}>{prod.category} &bull; Per {prod.unit || storeConfig.unit}</p>
+                      </div>
+                      
+                      <div className={styles.horizontalPriceGroup}>
+                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Wholesale Price</div>
+                        <div className={styles.horizontalPrice}>${prod.pricePerKg.toFixed(2)}</div>
+                      </div>
+
+                      <div className={styles.horizontalStockGroup}>
+                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Available Stock</div>
+                        <div className={styles.horizontalStock} style={{ color: isOut ? '#ef4444' : isLow ? '#f97316' : '#0f172a' }}>
+                          {prod.stock} {prod.unit || storeConfig.unit}
+                        </div>
+                        <span className={`${styles.stockStatusLabel} ${isOut ? styles.stockOutStock : isLow ? styles.stockLowStock : styles.stockInStock}`}>
+                          {isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+                      <button 
+                        type="button"
+                        onClick={() => handleOpenProductModal(prod)}
+                        className={styles.btnMerchantSecondary}
+                        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => handleDeleteProduct(prod.id)}
+                        className={styles.btnMerchantSecondary}
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', borderColor: '#fee2e2', color: '#ef4444' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            
+            <div className={styles.quickAddCard} onClick={() => handleOpenProductModal(null)}>
+              <div className={styles.quickAddIcon}>
+                <Plus size={20} />
+              </div>
+              <h5 className={styles.quickAddTitle}>Quick Add Product</h5>
+              <p className={styles.quickAddSub}>Add a single item to the current category</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMerchantEnquiries = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>🙋 Custom Sourcing Enquiries</h2>
+        <p className={styles.merchantSubtitle}>Track partner sourcing requests, volume inquiries, and custom negotiations.</p>
+        
+        <div className={styles.lightPanelCard}>
+          {sourcingRequests.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+              No custom sourcing requests recorded.
+            </div>
+          ) : (
+            <div className={styles.tableResponsive} style={{ border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: 'none' }}>
+              <table className={styles.table}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Client</th>
+                    <th style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Product Required</th>
+                    <th style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Target Quantity</th>
+                    <th style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Notes / Requirements</th>
+                    <th style={{ color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Date Received</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourcingRequests.map((req) => (
+                    <tr key={req.id}>
+                      <td style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ fontWeight: 'bold', color: '#0f172a' }}>{req.clientName}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{req.clientEmail}</div>
+                      </td>
+                      <td style={{ borderBottom: '1px solid #f1f5f9', fontWeight: 600, color: '#334155' }}>{req.productName}</td>
+                      <td style={{ borderBottom: '1px solid #f1f5f9', fontWeight: 'bold', color: '#0f172a' }}>{req.requestedQuantity} {storeConfig.unit}</td>
+                      <td style={{ borderBottom: '1px solid #f1f5f9', color: '#475569', fontSize: '0.85rem' }}>{req.notes || 'No special requirements.'}</td>
+                      <td style={{ borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
+                        {req.date}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMerchantPOS = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>⚡ Point of Sale (POS) & Billing</h2>
+        <p className={styles.merchantSubtitle}>Register direct in-store sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.</p>
+
+        {posReceipt && (
+          <div className="glassmorphism" style={{ border: '2px solid var(--accent-gold)', borderRadius: '16px', padding: '24px', marginBottom: '32px', background: 'rgba(226, 183, 68, 0.03)', position: 'relative' }}>
+            <button 
+              type="button"
+              onClick={() => setPosReceipt(null)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              &times;
+            </button>
+            <div style={{ textAlign: 'center', borderBottom: '1px dashed rgba(255,255,255,0.1)', paddingBottom: '16px', marginBottom: '16px' }}>
+              <h3 style={{ color: 'var(--accent-gold)', fontSize: '1.4rem', fontFamily: 'var(--font-playfair), serif', margin: '0 0 4px 0' }}>{storeConfig.storeName}</h3>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Official Billing Invoice</span>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
+              <div>
+                <span style={{ color: '#64748b' }}>Invoice ID:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.id}</strong>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ color: '#64748b' }}>Date:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.date}</strong>
+              </div>
+              <div>
+                <span style={{ color: '#64748b' }}>Client:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.userName}</strong>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ color: '#64748b' }}>Method:</span> <strong style={{ color: '#0f3057' }}>{posReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
+              </div>
+            </div>
+
+            <table className={styles.orderItemsTable} style={{ margin: '16px 0' }}>
+              <thead>
+                <tr>
+                  <th style={{ color: '#64748b' }}>Item</th>
+                  <th style={{ textAlign: 'right', color: '#64748b' }}>Qty</th>
+                  <th style={{ textAlign: 'right', color: '#64748b' }}>Price</th>
+                  <th style={{ textAlign: 'right', color: '#64748b' }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posReceipt.items.map((item, idx) => (
+                  <tr key={idx}>
+                    <td style={{ color: '#334155' }}>{item.name}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{item.quantity} {storeConfig.unit}</td>
+                    <td style={{ textAlign: 'right', color: '#334155' }}>${item.price.toFixed(2)}</td>
+                    <td style={{ textAlign: 'right', color: '#0f3057', fontWeight: 'bold' }}>${(item.quantity * item.price).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '16px', marginTop: '16px' }}>
+              <div style={{ fontSize: '0.9rem' }}>
+                <span style={{ color: '#64748b' }}>Subtotal:</span>{' '}
+                <span style={{ color: '#0f172a', fontWeight: 600 }}>${posReceipt.totalPrice.toFixed(2)}</span>
+              </div>
+              <div style={{ fontSize: '0.9rem' }}>
+                <span style={{ color: '#64748b' }}>Taxes & Levies:</span>{' '}
+                <span style={{ color: '#22c55e', fontWeight: 600 }}>Included</span>
+              </div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#07162c', marginTop: '8px' }}>
+                <span>Total Bill Amount:</span>{' '}
+                <span>${posReceipt.totalPrice.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+              <button 
+                type="button"
+                onClick={() => window.print()}
+                className={styles.btnMerchantPrimary}
+                style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+              >
+                🖨️ Print Bill Invoice
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPosReceipt(null)}
+                className={styles.btnMerchantSecondary}
+                style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem', justifyContent: 'center' }}
+              >
+                Create New POS Sale
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className={styles.catalogSplitLayout} style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
+          {/* Left Column: POS Catalog List */}
+          <div className={styles.lightPanelCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+              <input 
+                type="text"
+                value={posSearch}
+                onChange={(e) => setPosSearch(e.target.value)}
+                placeholder="Search POS items..."
+                className={styles.lightInput}
+                style={{ flex: 1, height: '36px', fontSize: '0.85rem' }}
+              />
+              <select 
+                value={posCategory}
+                onChange={(e) => setPosCategory(e.target.value)}
+                className={styles.lightSelect}
+                style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
+              >
+                <option value="All">All Categories</option>
+                {storeConfig.categories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {products.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                No inventory available to sell. Go to <strong>Catalogue Inventory</strong> to add items.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
+                {products
+                  .filter((p) => {
+                    const matchCat = posCategory === 'All' || p.category === posCategory;
+                    const matchSearch = p.name.toLowerCase().includes(posSearch.toLowerCase()) ||
+                      p.scientificName.toLowerCase().includes(posSearch.toLowerCase());
+                    return matchCat && matchSearch;
+                  })
+                  .map((p) => (
+                    <div 
+                      key={p.id} 
+                      className={styles.lightPanelCard}
+                      style={{ 
+                        padding: '12px', 
+                        border: '1px solid #e2e8f0', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        justifyContent: 'space-between',
+                        opacity: p.stock <= 0 ? 0.5 : 1
+                      }}
+                    >
+                      <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {p.stock <= 0 && (
+                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                            Out of Stock
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', margin: '0 0 2px 0', lineBreak: 'anywhere' }}>{p.name}</h4>
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: '6px', fontStyle: 'italic' }}>{p.scientificName}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f3057' }}>
+                          ${p.pricePerKg.toFixed(2)}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: p.stock < 10 ? '#ef4444' : '#64748b' }}>
+                          Stock: <strong>{p.stock}</strong>
+                        </div>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => handleAddToPosCart(p)}
+                        disabled={p.stock <= 0}
+                        className={styles.btnMerchantPrimary}
+                        style={{ width: '100%', marginTop: '10px', height: '28px', fontSize: '0.75rem', padding: '0', justifyContent: 'center' }}
+                      >
+                        + Add to Sale
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column: POS Cart Drawer Panel */}
+          <div className={styles.lightPanelCard} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <h3 style={{ fontSize: '1.2rem', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', fontWeight: 'bold' }}>
+              Cart Bill Breakdown
+            </h3>
+
+            {posCart.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                <span>🛒 POS Cart is Empty</span>
+                <span style={{ fontSize: '0.75rem' }}>Select products on the left to start a billing session.</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
+                {posCart.map((item) => (
+                  <div key={item.fish.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <strong style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a' }}>{item.fish.name}</strong>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>${item.fish.pricePerKg.toFixed(2)} / {item.fish.unit || storeConfig.unit}</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
+                      <button 
+                        type="button"
+                        onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity - 1)}
+                        style={{ width: '22px', height: '22px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', cursor: 'pointer' }}
+                      >
+                        -
+                      </button>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
+                      <button 
+                        type="button"
+                        onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity + 1)}
+                        style={{ width: '22px', height: '22px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', cursor: 'pointer' }}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div style={{ textAlign: 'right', minWidth: '70px' }}>
+                      <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a' }}>${(item.fish.pricePerKg * item.quantity).toFixed(2)}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => handleRemoveFromPosCart(item.fish.id)}
+                        style={{ fontSize: '0.7rem', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className={styles.formGroup} style={{ marginBottom: '4px' }}>
+                <label className={styles.label} style={{ fontSize: '0.75rem' }}>Billing Client Name</label>
+                <input 
+                  type="text" 
+                  value={posCustomerName}
+                  onChange={(e) => setPosCustomerName(e.target.value)}
+                  className={styles.lightInput}
+                  style={{ height: '32px', fontSize: '0.85rem' }}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup} style={{ marginBottom: '12px' }}>
+                <label className={styles.label} style={{ fontSize: '0.75rem' }}>Payment Method</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {(['Cash', 'Card', 'Tap'] as const).map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setPosPaymentMethod(method)}
+                      style={{
+                        height: '32px',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        borderRadius: '6px',
+                        border: '1px solid',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        borderColor: posPaymentMethod === method ? '#07162c' : '#cbd5e1',
+                        color: posPaymentMethod === method ? '#ffffff' : '#64748b',
+                        background: posPaymentMethod === method ? '#07162c' : '#ffffff'
+                      }}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Total Bill Amount:</span>
+                <strong style={{ fontSize: '1.4rem', color: '#07162c' }}>
+                  ${posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
+                </strong>
+              </div>
+
+              <button 
+                type="button"
+                onClick={(e) => handleCompletePosSale(e)}
+                disabled={posCart.length === 0}
+                className={styles.btnMerchantPrimary} 
+                style={{ width: '100%', height: '40px', fontSize: '0.9rem', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer', justifyContent: 'center' }}
+              >
+                🧾 Complete POS Sale & Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMerchantSettings = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <h2 className={styles.merchantTitle}>Store Customizer Settings</h2>
+        <p className={styles.merchantSubtitle}>Configure your branding, categories, units, and custom spec labels.</p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '32px', alignItems: 'start' }}>
+          {/* Left Panel: Form Settings */}
+          <div className={styles.lightPanelCard}>
+            <h3 className={styles.lightPanelTitle} style={{ marginBottom: '20px' }}>Customizer Configuration</h3>
+            <form onSubmit={handleApplyConfig}>
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Business Store Name</label>
+                  <input
+                    type="text"
+                    value={cfgStoreName}
+                    onChange={(e) => setCfgStoreName(e.target.value)}
+                    className={styles.lightInput}
+                    required
+                  />
+                </div>
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Tagline / Slogan</label>
+                  <input
+                    type="text"
+                    value={cfgStoreTagline}
+                    onChange={(e) => setCfgStoreTagline(e.target.value)}
+                    className={styles.lightInput}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Primary Unit of Measurement</label>
+                  <input
+                    type="text"
+                    value={cfgUnit}
+                    onChange={(e) => setCfgUnit(e.target.value)}
+                    className={styles.lightInput}
+                    required
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Niche Preset Type</label>
+                  <select
+                    value={cfgStoreType}
+                    onChange={(e) => handlePresetChange(e.target.value as 'seafood' | 'egg' | 'generic')}
+                    className={styles.lightSelect}
+                  >
+                    <option value="seafood">Seafood Catch Niche</option>
+                    <option value="egg">Poultry Egg Farm Niche</option>
+                    <option value="generic">General Bakery / Retail Niche</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Contact Phone Number</label>
+                  <input
+                    type="text"
+                    value={cfgStorePhone}
+                    onChange={(e) => setCfgStorePhone(e.target.value)}
+                    className={styles.lightInput}
+                    placeholder="e.g. +1 555-0199"
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Business Address</label>
+                  <input
+                    type="text"
+                    value={cfgStoreAddress}
+                    onChange={(e) => setCfgStoreAddress(e.target.value)}
+                    className={styles.lightInput}
+                    placeholder="e.g. Pier 17, Seattle, WA"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Labels customizer */}
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '24px 0 12px 0', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>Catalog Field Label Overrides</h4>
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Specimen/Item Name Label</label>
+                  <input
+                    type="text"
+                    value={cfgSpecimenLabel}
+                    onChange={(e) => setCfgSpecimenLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Scientific/Secondary Name Label</label>
+                  <input
+                    type="text"
+                    value={cfgScientificNameLabel}
+                    onChange={(e) => setCfgScientificNameLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Taste Profile/Spec 1 Label</label>
+                  <input
+                    type="text"
+                    value={cfgTasteProfileLabel}
+                    onChange={(e) => setCfgTasteProfileLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Texture/Spec 2 Label</label>
+                  <input
+                    type="text"
+                    value={cfgTextureLabel}
+                    onChange={(e) => setCfgTextureLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Sustainability/Spec 3 Label</label>
+                  <input
+                    type="text"
+                    value={cfgSustainabilityLabel}
+                    onChange={(e) => setCfgSustainabilityLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Skill Level/Care Label</label>
+                  <input
+                    type="text"
+                    value={cfgDifficultyLabel}
+                    onChange={(e) => setCfgDifficultyLabel(e.target.value)}
+                    className={styles.lightInput}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className={styles.btnMerchantPrimary}>
+                  Save Settings & Update Layout
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Right Panel: Reseed & Proposals */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className={styles.lightPanelCard}>
+              <h3 className={styles.lightPanelTitle} style={{ color: '#ef4444' }}>Danger Zone</h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 16px 0', lineHeight: '1.4' }}>
+                Reseeding will clear the entire product inventory in your catalog and replace it with default niche-appropriate items for the selected preset.
+              </p>
+              <button 
+                type="button" 
+                onClick={handleReseed} 
+                className={styles.btnMerchantPrimary}
+                style={{ backgroundColor: '#ef4444', color: '#ffffff', width: '100%', justifyContent: 'center' }}
+              >
+                Reseed Catalog Database
+              </button>
+            </div>
+
+            <div className={styles.lightPanelCard}>
+              <h3 className={styles.lightPanelTitle}>Custom Proposals ({customCatalogs.length})</h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 16px 0', lineHeight: '1.4' }}>
+                Configure specific quotes, discounts, and shareable catalog deals directly with your buyers.
+              </p>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('catalogs')} 
+                className={styles.btnMerchantSecondary}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                Manage Proposal Deals
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  if (dashboardMode === 'seller' && !showStoreCreator) {
+    return (
+      <div className={styles.portalContainer}>
+        {/* Left Sidebar */}
+        <aside className={styles.sidebar}>
+          <div>
+            <div className={styles.sidebarHeader}>
+              <h1 className={styles.sidebarBrand}>Bluefine</h1>
+              <p className={styles.sidebarSubtitle}>Premium B2B Merchant</p>
+            </div>
+            
+            <nav className={styles.sidebarMenu}>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('dashboard')} 
+                className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
+              >
+                <LayoutDashboard size={18} />
+                Dashboard
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('products')} 
+                className={`${styles.sidebarItem} ${adminTab === 'products' ? styles.sidebarItemActive : ''}`}
+              >
+                <Package size={18} />
+                Catalog
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('enquiries')} 
+                className={`${styles.sidebarItem} ${adminTab === 'enquiries' ? styles.sidebarItemActive : ''}`}
+              >
+                <MessageSquare size={18} />
+                Enquiries
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('pos')} 
+                className={`${styles.sidebarItem} ${adminTab === 'pos' ? styles.sidebarItemActive : ''}`}
+              >
+                <CreditCard size={18} />
+                POS
+              </button>
+              <button 
+                type="button"
+                onClick={() => setAdminTab('settings')} 
+                className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
+              >
+                <Settings size={18} />
+                Settings
+              </button>
+            </nav>
+          </div>
+
+          <div className={styles.sidebarFooter}>
+            {user && user.avatar ? (
+              <img src={user.avatar} alt={user.name} className={styles.sidebarAvatar} />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-sky-500 text-white font-bold flex items-center justify-center shrink-0 border border-slate-600">
+                {user && user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            <div className={styles.sidebarUserInfo}>
+              <p className={styles.sidebarUserName}>{user ? user.name : 'Admin User'}</p>
+              <p className={styles.sidebarUserRole}>{user && user.role === 'admin' ? 'Bluefine Ops' : 'Verified Merchant'}</p>
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Content Panel */}
+        <div className={styles.mainContent}>
+          {/* Top Header */}
+          <header className={styles.topHeader}>
+            <div className={styles.topHeaderSearch}>
+              <Search size={18} className={styles.topHeaderSearchIcon} />
+              <input 
+                type="text" 
+                placeholder="Search transactions, products, or clients..." 
+                className={styles.topHeaderInput}
+              />
+            </div>
+            
+            <div className={styles.topHeaderRight}>
+              {/* Store Switcher Dropdown */}
+              {userStores.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <select
+                    id="store-select-portal"
+                    value={activeStoreId}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setActiveStoreId(newId);
+                      localStorage.setItem(`bluefine_active_store_id_${user?.email || 'admin'}`, newId);
+                      toast.info(`Switched active store context to "${userStores.find(s => s.id === newId)?.storeName}"`);
+                    }}
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      color: '#0f172a',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    {userStores.map(store => (
+                      <option key={store.id} value={store.id}>{store.storeName}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              <button type="button" onClick={() => setShowStoreCreator(true)} className={styles.topHeaderBtn} title="New Store">
+                <Plus size={18} />
+              </button>
+              
+              <button type="button" className={styles.topHeaderBtn} title="Notifications">
+                <Bell size={18} />
+              </button>
+              <button type="button" className={styles.topHeaderBtn} title="Help">
+                <HelpCircle size={18} />
+              </button>
+              <div className={styles.topHeaderDivider} />
+              <span className={styles.topHeaderPortalTitle}>Bluefine Portal</span>
+              
+              {/* Back to Buyer Panel button */}
+              <button 
+                type="button"
+                onClick={() => setDashboardMode('buyer')}
+                className={styles.btnMerchantSecondary}
+                style={{ height: '34px', fontSize: '0.75rem', padding: '0 12px' }}
+              >
+                🛒 Buyer Panel
+              </button>
+            </div>
+          </header>
+
+          {/* Main Tab Renderings */}
+          {adminTab === 'dashboard' && renderMerchantDashboard()}
+          {adminTab === 'products' && renderMerchantCatalog()}
+          {adminTab === 'enquiries' && renderMerchantEnquiries()}
+          {adminTab === 'pos' && renderMerchantPOS()}
+          {adminTab === 'settings' && renderMerchantSettings()}
+          {adminTab === 'catalogs' && (
+            <div className={styles.merchantContainer}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <div>
+                  <h2 className={styles.merchantTitle}>Custom Proposal Deals</h2>
+                  <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
+                </div>
+                <button type="button" className={styles.btnMerchantSecondary} onClick={() => setAdminTab('settings')}>
+                  Back to Settings
+                </button>
+              </div>
+              
+              <div className={styles.lightPanelCard}>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
+                  Choose a proposal deal from your active proposals below to view or copy sharing links:
+                </p>
+                
+                {customCatalogs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                    No proposals configured yet. Go back to Customizer Settings to create your first deal.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {customCatalogs.map(cat => (
+                      <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                        <div>
+                          <strong style={{ display: 'block', color: '#0f172a' }}>{cat.marketName}</strong>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Discount: {cat.globalDiscount}% &bull; Delivery: ${cat.globalDelivery}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const path = `/catalogue/${cat.id}?store=${activeStoreId}`;
+                              const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+                              navigator.clipboard.writeText(url);
+                              toast.success('Proposal link copied!');
+                            }}
+                            className={styles.btnMerchantSecondary}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                          >
+                            Copy Link
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => handleDeleteCustomCatalog(cat.id)}
+                            className={styles.btnMerchantSecondary}
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: '#fee2e2', color: '#ef4444' }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <footer className={styles.portalFooter}>
+            <div>© 2026 Bluefine Maritime Systems. System Status: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Operational</span></div>
+            <div className={styles.portalFooterLinks}>
+              <a href="#support">Support</a>
+              <a href="#privacy">Privacy Policy</a>
+              <a href="#terms">Terms of Service</a>
+            </div>
+          </footer>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.pageContainer}>
