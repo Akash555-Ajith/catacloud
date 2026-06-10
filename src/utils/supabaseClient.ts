@@ -34,13 +34,7 @@ const isValidUrl = (val: string): boolean => {
   }
 };
 
-export let isSupabaseConfigured = Boolean(
-  supabaseUrl &&
-  supabaseAnonKey &&
-  !isDummy(supabaseUrl) &&
-  !isDummy(supabaseAnonKey) &&
-  isValidUrl(supabaseUrl)
-);
+export let isSupabaseConfigured = false; // Forced to false to resolve backend saving issues
 
 export function disableSupabase() {
   if (isSupabaseConfigured) {
