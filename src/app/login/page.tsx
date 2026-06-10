@@ -31,6 +31,7 @@ export default function LoginPage() {
     role: 'admin' | 'user';
     isGoogle?: boolean;
     isSignUp?: boolean;
+    isGoogleOtp?: boolean;
   } | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
 
@@ -75,11 +76,15 @@ export default function LoginPage() {
       setVerificationError('Please enter a verification code.');
       return;
     }
-    if (verificationCode.trim() !== generatedCode) {
-      setVerificationError('Invalid verification code. Please check your email inbox.');
-      return;
-    }
     if (!pendingUser) return;
+
+    // Local validation if Supabase is NOT configured
+    if (!isSupabaseConfigured || !supabase) {
+      if (verificationCode.trim() !== generatedCode) {
+        setVerificationError('Invalid verification code. Please check your email inbox.');
+        return;
+      }
+    }
 
     setLoading(true);
     try {
@@ -90,6 +95,29 @@ export default function LoginPage() {
         name: pendingUser.name,
         role: pendingUser.role
       };
+
+      if (isSupabaseConfigured && supabase) {
+        // Native Supabase verification
+        const verifyType = pendingUser.isGoogleOtp ? 'email' : (isRegistering ? 'signup' : 'signup');
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email: pendingUser.email,
+          token: verificationCode.trim(),
+          type: verifyType
+        });
+
+        if (verifyError) {
+          if (pendingUser.isGoogleOtp && verifyType === 'email') {
+            const { error: retryError } = await supabase.auth.verifyOtp({
+              email: pendingUser.email,
+              token: verificationCode.trim(),
+              type: 'magiclink'
+            });
+            if (retryError) throw retryError;
+          } else {
+            throw verifyError;
+          }
+        }
+      }
 
       if (isRegistering) {
         await dbSaveUser(newUser);
@@ -113,8 +141,8 @@ export default function LoginPage() {
       } else {
         toast.success('Authentication Successful & Verified!');
       }
-    } catch (err) {
-      setVerificationError('Verification failed. Please try again.');
+    } catch (err: any) {
+      setVerificationError(err.message || 'Verification failed. Please try again.');
       setLoading(false);
     }
   };
@@ -146,6 +174,34 @@ export default function LoginPage() {
       if (!isRealEmail) {
         setError('Invalid email address format.');
         setLoading(false);
+        return;
+      }
+
+      if (isSupabaseConfigured && supabase) {
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          email: cleanEmail,
+          options: {
+            shouldCreateUser: true
+          }
+        });
+
+        if (otpError) {
+          setError(otpError.message);
+          setLoading(false);
+          return;
+        }
+
+        setPendingUser({
+          email: cleanEmail,
+          password: 'google-oauth-dummy-password',
+          name: matchedUser?.name || googleName,
+          role: matchedUser?.role || 'user',
+          isSignUp: !matchedUser,
+          isGoogleOtp: true
+        });
+        setLoading(false);
+        setShowVerificationModal(true);
+        toast.info(`Verification email sent by Supabase to ${cleanEmail}`);
         return;
       }
 
@@ -287,6 +343,37 @@ export default function LoginPage() {
             return;
           }
 
+          if (isSupabaseConfigured && supabase) {
+            const { error: signUpError } = await supabase.auth.signUp({
+              email: cleanEmail,
+              password: password,
+              options: {
+                data: {
+                  name: displayName.trim(),
+                  role: 'user'
+                }
+              }
+            });
+
+            if (signUpError) {
+              setError(signUpError.message);
+              setLoading(false);
+              return;
+            }
+
+            setPendingUser({
+              email: cleanEmail,
+              password: password,
+              name: displayName.trim(),
+              role: 'user',
+              isSignUp: true
+            });
+            setLoading(false);
+            setShowVerificationModal(true);
+            toast.info(`Verification email sent by Supabase to ${cleanEmail}`);
+            return;
+          }
+
           const newUser = {
             email: cleanEmail,
             password: password,
@@ -310,6 +397,55 @@ export default function LoginPage() {
             setError('This email account is not registered. Switching to Sign Up mode...');
             setIsSignUp(true); // Automatically toggle to sign up mode
             setLoading(false);
+            return;
+          }
+
+          if (isSupabaseConfigured && supabase) {
+            const { data, error: signInError } = await supabase.auth.signInWithPassword({
+              email: cleanEmail,
+              password: password
+            });
+
+            if (signInError) {
+              if (signInError.message.toLowerCase().includes('confirm') || signInError.message.toLowerCase().includes('verified')) {
+                await supabase.auth.resend({
+                  type: 'signup',
+                  email: cleanEmail
+                });
+                
+                setPendingUser({
+                  email: cleanEmail,
+                  password: password,
+                  name: matchedUser?.name || 'User',
+                  role: matchedUser?.role || 'user',
+                  isSignUp: true
+                });
+                setLoading(false);
+                setShowVerificationModal(true);
+                toast.info(`Verification email resent by Supabase to ${cleanEmail}`);
+                return;
+              }
+
+              setError(signInError.message);
+              setLoading(false);
+              return;
+            }
+
+            const finalUser = matchedUser || {
+              email: cleanEmail,
+              name: data.user?.user_metadata?.name || cleanEmail.split('@')[0],
+              role: (cleanEmail === 'admin@gmail.com' ? 'admin' : 'user') as 'admin' | 'user'
+            };
+
+            localStorage.setItem('bluefine_user', JSON.stringify({
+              email: finalUser.email,
+              name: finalUser.name,
+              role: finalUser.role
+            }));
+
+            setLoading(false);
+            handleRedirect(finalUser.email);
+            toast.success('Authentication Successful!');
             return;
           }
 
