@@ -2973,6 +2973,301 @@ export default function DashboardPage() {
             </div>
           </footer>
         </div>
+
+        {/* Product Add/Edit Modal Form */}
+        {isProductModalOpen && (
+          <div className={styles.modalBackdrop} onClick={() => setIsProductModalOpen(false)}>
+            <div className={`${styles.modalContent} glassmorphism`} onClick={(e) => e.stopPropagation()}>
+              <header className={styles.modalHeader}>
+                <h2 className={styles.modalTitle}>
+                  {editingProduct ? `Edit ${storeConfig.attributes.specimenLabel} Details` : `Add New ${storeConfig.attributes.specimenLabel}`}
+                </h2>
+                <button className={styles.modalCloseBtn} onClick={() => setIsProductModalOpen(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </header>
+
+              <form onSubmit={handleProductSubmit} id="portal-admin-product-form">
+                <div className={styles.formGrid}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-name">Name / Type</label>
+                    <input
+                      type="text"
+                      id="portal-prod-name"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="luxury-input"
+                      placeholder="e.g. Free-Range Large Brown Eggs"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-sci-name">{storeConfig.attributes.scientificNameLabel}</label>
+                    <input
+                      type="text"
+                      id="portal-prod-sci-name"
+                      value={formSciName}
+                      onChange={(e) => setFormSciName(e.target.value)}
+                      className="luxury-input"
+                      placeholder="e.g. Grade AA Large"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-category">Category</label>
+                    <select
+                      id="portal-prod-category"
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      className="luxury-input"
+                      style={{ appearance: 'none', cursor: 'pointer' }}
+                    >
+                      {storeConfig.categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-unit">Unit of Measurement</label>
+                    <input
+                      type="text"
+                      id="portal-prod-unit"
+                      value={formUnit}
+                      onChange={(e) => setFormUnit(e.target.value)}
+                      className="luxury-input"
+                      placeholder="e.g. kg, dozen, pcs"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-price">Price Per Unit ($ / {formUnit})</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      id="portal-prod-price"
+                      value={formPrice}
+                      onChange={(e) => setFormPrice(Number(e.target.value))}
+                      className="luxury-input"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-origin">Origin / Source</label>
+                    <input
+                      type="text"
+                      id="portal-prod-origin"
+                      value={formOrigin}
+                      onChange={(e) => setFormOrigin(e.target.value)}
+                      className="luxury-input"
+                      placeholder="e.g. Sunshine Valley Farms"
+                      required
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label className={styles.label} htmlFor="portal-prod-stock">Current Stock ({formUnit})</label>
+                    <input
+                      type="number"
+                      id="portal-prod-stock"
+                      value={formStock}
+                      onChange={(e) => setFormStock(Number(e.target.value))}
+                      className="luxury-input"
+                      required
+                    />
+                  </div>
+                  <div className={`${styles.formGroup} styles.formGroupFull`}>
+                    <label className={styles.label} htmlFor="portal-prod-image">Image Path or URL</label>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', width: '100%' }}>
+                      <input
+                        type="text"
+                        id="portal-prod-image"
+                        value={formImage}
+                        onChange={(e) => setFormImage(e.target.value)}
+                        className="luxury-input"
+                        style={{ flex: 1 }}
+                        placeholder="https://images.unsplash.com/... or /images/..."
+                        required
+                      />
+                      <div style={{ position: 'relative', overflow: 'hidden' }}>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={isUploading}
+                          style={{ height: '42px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {isUploading ? (
+                            <>
+                              <span className="animate-spin" style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                              Upload File
+                            </>
+                          )}
+                        </button>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          disabled={isUploading}
+                          style={{ position: 'absolute', top: 0, left: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className={`${styles.formGroup} styles.formGroupFull`}>
+                  <label className={styles.label} htmlFor="portal-prod-description">Description</label>
+                  <textarea
+                    id="portal-prod-description"
+                    value={formDesc}
+                    onChange={(e) => setFormDesc(e.target.value)}
+                    className="luxury-input"
+                    style={{ minHeight: '80px', resize: 'vertical' }}
+                    placeholder="Enter detailed description..."
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="portal-prod-taste">{storeConfig.attributes.tasteProfileLabel} (Comma Separated)</label>
+                  <input
+                    type="text"
+                    id="portal-prod-taste"
+                    value={formTaste}
+                    onChange={(e) => setFormTaste(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Pasture Raised, Organic Feed"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="portal-prod-texture">{storeConfig.attributes.textureLabel}</label>
+                  <input
+                    type="text"
+                    id="portal-prod-texture"
+                    value={formTexture}
+                    onChange={(e) => setFormTexture(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Deep orange yolk"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="portal-prod-sustainability">{storeConfig.attributes.sustainabilityLabel}</label>
+                  <input
+                    type="text"
+                    id="portal-prod-sustainability"
+                    value={formSustainability}
+                    onChange={(e) => setFormSustainability(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Free-Range"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="portal-prod-prep">
+                    {storeConfig.storeType === 'seafood' ? 'Prep Time' : 'Handling / Storage'}
+                  </label>
+                  <input
+                    type="text"
+                    id="portal-prod-prep"
+                    value={formPrep}
+                    onChange={(e) => setFormPrep(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Keep refrigerated (3-5°C)"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label} htmlFor="portal-prod-difficulty">
+                    {storeConfig.storeType === 'seafood' ? 'Preparation Skill Level' : 'Care Level'}
+                  </label>
+                  <input
+                    type="text"
+                    id="portal-prod-difficulty"
+                    value={formDifficulty}
+                    onChange={(e) => setFormDifficulty(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Easy"
+                  />
+                </div>
+
+                <div className={styles.formActions}>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsProductModalOpen(false)} 
+                    className="btn-secondary"
+                    style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                    id="portal-admin-product-submit-btn"
+                  >
+                    {editingProduct ? 'Save Changes' : 'Add Item'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {isBulkModalOpen && (
+          <div className={styles.modalBackdrop} onClick={() => setIsBulkModalOpen(false)}>
+            <div className={`${styles.modalContent} glassmorphism`} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+              <header className={styles.modalHeader}>
+                <h2 className={styles.modalTitle}>📥 Bulk Upload Products</h2>
+                <button className={styles.modalCloseBtn} onClick={() => setIsBulkModalOpen(false)}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </header>
+
+              <form onSubmit={handleBulkUpload}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label className={styles.label} style={{ marginBottom: '8px', display: 'block' }}>Paste CSV Data (First row is Header)</label>
+                  <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', marginBottom: '12px' }}>
+                    💡 <strong>Example format:</strong><br />
+                    <code>Name, Price, Category, Stock</code><br />
+                    <code>Premium Atlantic Halibut, 24.50, Seafood, 150</code><br />
+                    <code>Organic Free-Range Dozen Eggs, 8.50, Poultry, 20</code>
+                  </div>
+                  <textarea
+                    value={bulkCSVText}
+                    onChange={(e) => setBulkCSVText(e.target.value)}
+                    className="luxury-input"
+                    style={{ width: '100%', minHeight: '180px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
+                    placeholder="Name, Price, Category, Stock&#10;Product A, 19.99, Seafood, 25&#10;Product B, 45.00, Seafood, 10"
+                    required
+                  />
+                </div>
+
+                <div className={styles.formActions}>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsBulkModalOpen(false)} 
+                    className="btn-secondary"
+                    style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn-primary"
+                    style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                  >
+                    Upload Products
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
