@@ -34,12 +34,21 @@ export default function LoginPage() {
   } | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
 
-  const sendRealEmailCode = async (targetEmail: string, code: string) => {
-    // Show local toast fallback immediately
-    toast.success(`Verification Code: ${code}`, {
-      duration: 16000,
-      description: `Simulated OTP. We are also sending a real email code to ${targetEmail}...`
-    });
+  const sendRealEmailCode = async (targetEmail: string, code: string, showToast: boolean = true) => {
+    // Log code to browser console for development troubleshooting
+    console.log(`[CataCloud Auth] Verification Code for ${targetEmail}: ${code}`);
+
+    // Show local toast fallback immediately if allowed
+    if (showToast) {
+      toast.success(`Verification Code: ${code}`, {
+        duration: 16000,
+        description: `Simulated OTP. We are also sending a real email code to ${targetEmail}...`
+      });
+    } else {
+      toast.info(`Verification email sent to ${targetEmail}`, {
+        description: "Please check your Gmail inbox (and spam folder) for the 6-digit verification code."
+      });
+    }
 
     try {
       const response = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
@@ -132,30 +141,49 @@ export default function LoginPage() {
 
   const handleGoogleCallback = async (googleEmail: string, googleName: string) => {
     setLoading(true);
+    setError('');
     const cleanEmail = googleEmail.trim().toLowerCase();
     
     try {
       const matchedUser = await dbGetUser(cleanEmail);
-      const isNew = !matchedUser;
       
-      const userToVerify = matchedUser || {
-        email: cleanEmail,
-        password: 'google-oauth-dummy-password',
-        name: googleName,
-        role: 'user' as 'admin' | 'user'
-      };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const isRealEmail = emailRegex.test(cleanEmail);
+
+      if (!isRealEmail) {
+        setError('Invalid email address format.');
+        setLoading(false);
+        return;
+      }
 
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedCode(code);
-      setPendingUser({
-        ...userToVerify,
-        isSignUp: isNew
-      });
-      setLoading(false);
-      setShowVerificationModal(true);
 
-      // Send real email code
-      sendRealEmailCode(cleanEmail, code);
+      if (matchedUser) {
+        // Sign In Mode: Check if account exists
+        setPendingUser({
+          email: matchedUser.email,
+          password: matchedUser.password || 'google-oauth-dummy-password',
+          name: matchedUser.name,
+          role: matchedUser.role,
+          isSignUp: false
+        });
+        setLoading(false);
+        setShowVerificationModal(true);
+        sendRealEmailCode(cleanEmail, code, false);
+      } else {
+        // Sign Up Mode: Create new user
+        setPendingUser({
+          email: cleanEmail,
+          password: 'google-oauth-dummy-password',
+          name: googleName,
+          role: 'user',
+          isSignUp: true
+        });
+        setLoading(false);
+        setShowVerificationModal(true);
+        sendRealEmailCode(cleanEmail, code, false);
+      }
     } catch (err) {
       console.error(err);
       setError('Google Sign-In callback failed.');
@@ -262,7 +290,8 @@ export default function LoginPage() {
           // Sign Up Flow
           const exists = await dbGetUser(cleanEmail);
           if (exists) {
-            setError('This email address is already registered. Please login.');
+            setError('This email address is already registered. Switching to Sign In mode...');
+            setIsSignUp(false); // Automatically toggle to sign in mode
             setLoading(false);
             return;
           }
@@ -286,6 +315,13 @@ export default function LoginPage() {
           // Login Flow
           const matchedUser = await dbGetUser(cleanEmail);
           
+          if (!matchedUser && !isSystemAdmin) {
+            setError('This email account is not registered. Switching to Sign Up mode...');
+            setIsSignUp(true); // Automatically toggle to sign up mode
+            setLoading(false);
+            return;
+          }
+
           if (isSystemAdmin || (matchedUser && matchedUser.password === password)) {
             const finalUser = matchedUser || {
               email: 'admin@gmail.com',
@@ -319,7 +355,7 @@ export default function LoginPage() {
             // Send real email code
             sendRealEmailCode(finalUser.email, code);
           } else {
-            setError('Invalid business email or secure key code.');
+            setError('Invalid secure key code.');
             setLoading(false);
           }
         }
