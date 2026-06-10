@@ -3,10 +3,24 @@
 import React, { useState } from 'react';
 
 export default function GoogleOAuthSimulator() {
+  const [view, setView] = useState<'choose-account' | 'enter-email' | 'enter-name'>('choose-account');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [step, setStep] = useState(1);
   const [isInputFocused, setIsInputFocused] = useState(false);
+
+  const handleAccountSelect = (selectedEmail: string, selectedName: string) => {
+    if (window.opener) {
+      window.opener.postMessage(
+        {
+          type: 'GOOGLE_SIGNIN',
+          email: selectedEmail.toLowerCase(),
+          name: selectedName
+        },
+        window.location.origin
+      );
+    }
+    window.close();
+  };
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,7 +28,7 @@ export default function GoogleOAuthSimulator() {
       alert('Please enter a valid Google Account email.');
       return;
     }
-    setStep(2);
+    setView('enter-name');
   };
 
   const handleSignIn = (e: React.FormEvent) => {
@@ -48,6 +62,26 @@ export default function GoogleOAuthSimulator() {
       boxSizing: 'border-box',
       position: 'relative'
     }}>
+      {/* Top Header Label (Google Branding) */}
+      <div style={{
+        padding: '16px 24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        borderBottom: '1px solid rgba(255,255,255,0.03)',
+        fontSize: '14px',
+        color: '#e3e3e3',
+        fontWeight: 500
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '4px' }}>
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        <span>Sign in with Google</span>
+      </div>
+
       {/* Main Container */}
       <div style={{
         flex: 1,
@@ -71,17 +105,28 @@ export default function GoogleOAuthSimulator() {
           
           {/* Left Column (Brand info) */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            {/* Google G Logo */}
-            <div style={{ marginBottom: '20px' }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            {/* Shopify-style CataCloud Store Logo (Green shopping bag) */}
+            <div style={{ marginBottom: '24px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="5" y="8" width="14" height="13" rx="2" fill="#22c55e" />
+                <path d="M9 10V6C9 4.34315 10.3431 3 12 3C13.6569 3 15 4.34315 15 6V10" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
+                {/* Letter C inside the bag */}
+                <path d="M13.5 13.5C13 12.8 12 12.5 11.2 13C10.4 13.5 10.4 14.5 10.4 15C10.4 15.5 10.4 16.5 11.2 17C12 17.5 13 17.2 13.5 16.5" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
               </svg>
             </div>
 
-            {step === 1 ? (
+            {view === 'choose-account' && (
+              <>
+                <h1 style={{ fontSize: '36px', fontWeight: 400, color: '#e3e3e3', margin: '0 0 16px 0', lineHeight: '1.2' }}>
+                  Choose an account
+                </h1>
+                <p style={{ fontSize: '16px', color: '#c4c7c5', margin: 0, lineHeight: '1.5' }}>
+                  to continue to <span style={{ color: '#a8c7fa', fontWeight: 500 }}>CataCloud</span>
+                </p>
+              </>
+            )}
+
+            {view === 'enter-email' && (
               <>
                 <h1 style={{ fontSize: '36px', fontWeight: 400, color: '#e3e3e3', margin: '0 0 16px 0', lineHeight: '1.2' }}>
                   Sign in
@@ -90,7 +135,9 @@ export default function GoogleOAuthSimulator() {
                   with your Google Account. This account will be available to other Google apps in the browser.
                 </p>
               </>
-            ) : (
+            )}
+
+            {view === 'enter-name' && (
               <>
                 <h1 style={{ fontSize: '36px', fontWeight: 400, color: '#e3e3e3', margin: '0 0 16px 0', lineHeight: '1.2' }}>
                   Welcome
@@ -128,9 +175,99 @@ export default function GoogleOAuthSimulator() {
             )}
           </div>
 
-          {/* Right Column (Input & Form actions) */}
+          {/* Right Column (Account Selector or manual login inputs) */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            {step === 1 ? (
+            {view === 'choose-account' && (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                
+                {/* Pre-defined account row: Akash Ajith */}
+                <button
+                  onClick={() => handleAccountSelect('akasheajith2005@gmail.com', 'AKASH AJITH')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '16px 0',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: '#e3e3e3',
+                    borderBottom: '1px solid #3c4043',
+                    outline: 'none',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: '#e65100', // Orange color in avatar
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    fontWeight: 500
+                  }}>
+                    A
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#e3e3e3' }}>AKASH AJITH</div>
+                    <div style={{ fontSize: '12px', color: '#c4c7c5' }}>akasheajith2005@gmail.com</div>
+                  </div>
+                </button>
+
+                {/* Use another account option */}
+                <button
+                  onClick={() => setView('enter-email')}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px',
+                    padding: '16px 0',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: '#e3e3e3',
+                    borderBottom: '1px solid #3c4043',
+                    outline: 'none',
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                >
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#c4c7c5'
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 500, color: '#e3e3e3' }}>Use another account</div>
+                </button>
+
+                <p style={{ fontSize: '12px', color: '#c4c7c5', lineHeight: '1.6', marginTop: '32px', marginBottom: 0 }}>
+                  Before using this app, you can review CataCloud's{' '}
+                  <a href="#privacy" style={{ color: '#a8c7fa', textDecoration: 'none' }}>Privacy Policy</a> and{' '}
+                  <a href="#terms" style={{ color: '#a8c7fa', textDecoration: 'none' }}>Terms of Service</a>.
+                </p>
+              </div>
+            )}
+
+            {view === 'enter-email' && (
               <form onSubmit={handleNext} style={{ display: 'flex', flexDirection: 'column' }}>
                 
                 {/* Floating label style input container */}
@@ -202,14 +339,21 @@ export default function GoogleOAuthSimulator() {
                   alignItems: 'center',
                   marginTop: '12px'
                 }}>
-                  <a href="#create" style={{
-                    color: '#a8c7fa',
-                    fontSize: '14px',
-                    fontWeight: 500,
-                    textDecoration: 'none'
-                  }}>
-                    Create account
-                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setView('choose-account')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#a8c7fa',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '8px 0'
+                    }}
+                  >
+                    Back
+                  </button>
                   
                   <button
                     type="submit"
@@ -231,7 +375,9 @@ export default function GoogleOAuthSimulator() {
                   </button>
                 </div>
               </form>
-            ) : (
+            )}
+
+            {view === 'enter-name' && (
               <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column' }}>
                 
                 {/* Floating label style input container */}
@@ -291,7 +437,7 @@ export default function GoogleOAuthSimulator() {
                 }}>
                   <button
                     type="button"
-                    onClick={() => setStep(1)}
+                    onClick={() => setView('enter-email')}
                     style={{
                       background: 'none',
                       border: 'none',
