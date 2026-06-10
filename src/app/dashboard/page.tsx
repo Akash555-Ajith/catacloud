@@ -741,15 +741,22 @@ export default function DashboardPage() {
       unit: formUnit
     };
 
-    if (editingProduct) {
-      await updateProduct(productData, activeStoreId);
-    } else {
-      await addProduct(productData, activeStoreId);
-    }
+    try {
+      if (editingProduct) {
+        await updateProduct(productData, activeStoreId);
+        toast.success('Product updated successfully!');
+      } else {
+        await addProduct(productData, activeStoreId);
+        toast.success('Product added successfully!');
+      }
 
-    const prods = await getProducts(activeStoreId);
-    setProducts(prods);
-    setIsProductModalOpen(false);
+      const prods = await getProducts(activeStoreId);
+      setProducts(prods);
+      setIsProductModalOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to save product: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleBulkUpload = async (e: React.FormEvent) => {

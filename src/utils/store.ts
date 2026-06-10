@@ -65,25 +65,8 @@ let columnsCache: Record<string, string[]> = {};
 function handleSupabaseError(error: any) {
   if (!error) return;
   console.warn('Supabase operation error encountered:', error.message || error);
-  const isAuthOrConnectionError = 
-    error.status === 401 ||
-    error.status === 403 ||
-    (error.message && (
-      error.message.includes('API key') ||
-      error.message.includes('apikey') ||
-      error.message.includes('JWT') ||
-      error.message.includes('Failed to fetch') ||
-      error.message.includes('authorization') ||
-      error.message.includes('No API key') ||
-      error.message.includes('invalid') ||
-      error.message.includes('row-level security') ||
-      error.message.includes('policy')
-    )) ||
-    error.code === '42501' || // Insufficient Privilege (RLS)
-    error.code === '42P01';   // Undefined Table
-  if (isAuthOrConnectionError) {
-    disableSupabase();
-  }
+  // Force disable Supabase on ANY error to ensure LocalStorage fallback works
+  disableSupabase();
 }
 
 async function getTableColumns(tableName: string): Promise<string[]> {
@@ -320,7 +303,8 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
     return initialProducts;
   }
   try {
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return storeId === 'bluefine' ? seed : [];
   }
