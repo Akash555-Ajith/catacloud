@@ -189,10 +189,8 @@ export default function LoginPage() {
     const targetStore = params.get('store');
     if (targetStore) {
       localStorage.setItem(`bluefine_active_store_id_${userEmail}`, targetStore);
-      router.push(`/?store=${targetStore}`);
-    } else {
-      router.push('/dashboard');
     }
+    router.push('/dashboard');
   };
 
   // If already logged in, redirect to home page, and listen for Supabase auth redirects
