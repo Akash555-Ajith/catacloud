@@ -34,21 +34,14 @@ export default function LoginPage() {
   } | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
 
-  const sendRealEmailCode = async (targetEmail: string, code: string, showToast: boolean = true) => {
+  const sendRealEmailCode = async (targetEmail: string, code: string) => {
     // Log code to browser console for development troubleshooting
     console.log(`[CataCloud Auth] Verification Code for ${targetEmail}: ${code}`);
 
-    // Show local toast fallback immediately if allowed
-    if (showToast) {
-      toast.success(`Verification Code: ${code}`, {
-        duration: 16000,
-        description: `Simulated OTP. We are also sending a real email code to ${targetEmail}...`
-      });
-    } else {
-      toast.info(`Verification email sent to ${targetEmail}`, {
-        description: "Please check your Gmail inbox (and spam folder) for the 6-digit verification code."
-      });
-    }
+    // Show secure dispatch notification
+    toast.info(`Verification email sent to ${targetEmail}`, {
+      description: "Please check your Gmail inbox (and spam folder) for the 6-digit verification code."
+    });
 
     try {
       const response = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
@@ -170,7 +163,7 @@ export default function LoginPage() {
         });
         setLoading(false);
         setShowVerificationModal(true);
-        sendRealEmailCode(cleanEmail, code, false);
+        sendRealEmailCode(cleanEmail, code);
       } else {
         // Sign Up Mode: Create new user
         setPendingUser({
@@ -182,7 +175,7 @@ export default function LoginPage() {
         });
         setLoading(false);
         setShowVerificationModal(true);
-        sendRealEmailCode(cleanEmail, code, false);
+        sendRealEmailCode(cleanEmail, code);
       }
     } catch (err) {
       console.error(err);
@@ -563,10 +556,10 @@ export default function LoginPage() {
               <span style={{ fontSize: '2rem' }}>✉️</span>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 600, fontFamily: 'var(--font-outfit), sans-serif', color: 'var(--text-primary)' }}>Verify Your Email</h2>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                A verification code has been simulated for your Gmail address: <strong style={{ color: 'var(--accent-cyan)' }}>{pendingUser?.email}</strong>.
+                A verification code has been sent to your email address: <strong style={{ color: 'var(--accent-cyan)' }}>{pendingUser?.email}</strong>.
               </p>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                Please enter the <strong>6-digit verification code</strong> shown in the system toast notification.
+                Please check your inbox (including your spam folder) for the <strong>6-digit verification code</strong> and enter it below.
               </p>
             </div>
 
