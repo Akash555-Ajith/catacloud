@@ -42,8 +42,6 @@ export default function CatalogueDetailPage() {
   // Search & Category states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('featured');
 
   // Review states
@@ -253,16 +251,15 @@ export default function CatalogueDetailPage() {
       if (!isIncluded) return false;
 
       const price = override.customPrice;
-      const matchesMinPrice = minPrice === '' || price >= parseFloat(minPrice);
-      const matchesMaxPrice = maxPrice === '' || price <= parseFloat(maxPrice);
 
-      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+
+      const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || p.category === selectedCategory;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.scientificName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category.toLowerCase().includes(searchQuery.toLowerCase());
 
-      return matchesCategory && matchesSearch && matchesMinPrice && matchesMaxPrice;
+      return matchesCategory && matchesSearch;
     })
     .sort((a, b) => {
       const overrideA = catalog.overrides[a.id]!;
@@ -610,11 +607,9 @@ export default function CatalogueDetailPage() {
       </section>
 
       {/* Search & Category Filter Toolbar */}
-      <section className="glassmorphism" style={{ width: '100%', maxWidth: '1200px', padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px', animation: 'slideUp 0.8s ease-out' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          
+      <section className="glassmorphism" style={{ width: '100%', maxWidth: '1200px', padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--glass-border)', display: 'flex', gap: '10px', marginBottom: '16px', animation: 'slideUp 0.8s ease-out', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Text Search Input */}
-          <div style={{ flex: 1, minWidth: '280px', position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
             <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>🔍</span>
             <input
               type="text"
@@ -622,13 +617,13 @@ export default function CatalogueDetailPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="luxury-input"
               style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
-              placeholder="Search catalog products by name, origin port, or category..."
+              placeholder="Search catalog by name, origin or category..."
               id="client-catalogue-search-input"
             />
           </div>
 
           {/* Category Dropdown Filter */}
-          <div style={{ minWidth: '160px' }}>
+          <div style={{ minWidth: '150px' }}>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -650,7 +645,7 @@ export default function CatalogueDetailPage() {
               id="client-catalogue-category-select"
             >
               <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
-              {storeConfig.categories.map((cat) => (
+              {uniqueCategories.filter(c => c !== 'All Items').map((cat) => (
                 <option key={cat} value={cat} style={{ background: '#050c1a', color: 'var(--text-primary)' }}>
                   {cat}
                 </option>
@@ -658,31 +653,8 @@ export default function CatalogueDetailPage() {
             </select>
           </div>
 
-          {/* Price Range Filters */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input
-              type="number"
-              placeholder="Min Price"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              className="luxury-input"
-              style={{ width: '85px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
-              id="min-price-filter"
-            />
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>to</span>
-            <input
-              type="number"
-              placeholder="Max Price"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              className="luxury-input"
-              style={{ width: '85px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
-              id="max-price-filter"
-            />
-          </div>
-
           {/* Sort Selector Dropdown */}
-          <div style={{ minWidth: '160px' }}>
+          <div style={{ minWidth: '150px' }}>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
@@ -709,8 +681,6 @@ export default function CatalogueDetailPage() {
               <option value="name-asc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Alphabetical (A-Z)</option>
             </select>
           </div>
-
-        </div>
       </section>
 
       {/* Main Side-by-Side Sourcing Pane */}

@@ -1971,8 +1971,34 @@ export default function DashboardPage() {
 
           {/* Right Panel: Reseed & Proposals */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Share Your Store Card */}
+            <div className={styles.lightPanelCard}>
+              <h3 className={styles.lightPanelTitle} style={{ color: '#0ea5e9' }}>🔗 Share Your Store</h3>
+              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 12px 0', lineHeight: '1.5' }}>
+                Send this link to your clients so they can browse your full product catalog.
+              </p>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', fontSize: '0.75rem', color: '#334155', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: '12px' }}>
+                {typeof window !== 'undefined' ? `${window.location.origin}/?store=${activeStoreId}` : `https://bluefine.vercel.app/?store=${activeStoreId}`}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const url = typeof window !== 'undefined'
+                    ? `${window.location.origin}/?store=${activeStoreId}`
+                    : `https://bluefine.vercel.app/?store=${activeStoreId}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('Store catalog link copied!', { description: 'Share this with your clients.' });
+                }}
+                className={styles.btnMerchantSecondary}
+                style={{ width: '100%', justifyContent: 'center', borderColor: '#0ea5e9', color: '#0ea5e9' }}
+              >
+                📋 Copy Catalog Link
+              </button>
+            </div>
+
             <div className={styles.lightPanelCard}>
               <h3 className={styles.lightPanelTitle} style={{ color: '#ef4444' }}>Danger Zone</h3>
+
               <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 16px 0', lineHeight: '1.4' }}>
                 Deleting the store is permanent. This will erase the store configuration, all products inside the catalog, quote proposals, custom catalogs, customer orders, reviews, and enquiries.
               </p>
@@ -2023,7 +2049,7 @@ export default function DashboardPage() {
                 <>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('dashboard')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('dashboard'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
                   >
                     <LayoutDashboard size={18} />
@@ -2031,7 +2057,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('orders')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('orders'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'orders' ? styles.sidebarItemActive : ''}`}
                   >
                     <Package size={18} />
@@ -2039,7 +2065,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('settings')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('settings'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
                   >
                     <Users size={18} />
@@ -2050,7 +2076,7 @@ export default function DashboardPage() {
                 <>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('dashboard')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('dashboard'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'dashboard' ? styles.sidebarItemActive : ''}`}
                   >
                     <LayoutDashboard size={18} />
@@ -2058,7 +2084,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('products')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('products'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'products' ? styles.sidebarItemActive : ''}`}
                   >
                     <Package size={18} />
@@ -2066,7 +2092,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('enquiries')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('enquiries'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'enquiries' ? styles.sidebarItemActive : ''}`}
                   >
                     <MessageSquare size={18} />
@@ -2074,7 +2100,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('pos')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('pos'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'pos' ? styles.sidebarItemActive : ''}`}
                   >
                     <CreditCard size={18} />
@@ -2082,7 +2108,7 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => setAdminTab('settings')} 
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('settings'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'settings' ? styles.sidebarItemActive : ''}`}
                   >
                     <Settings size={18} />
