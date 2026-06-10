@@ -87,7 +87,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         if (!activeStore) {
           const hostname = window.location.hostname;
           const parts = hostname.split('.');
-          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
             activeStore = parts[0];
           }
         }
@@ -109,7 +109,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         if (!activeStore) {
           const hostname = window.location.hostname;
           const parts = hostname.split('.');
-          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
             activeStore = parts[0];
           }
         }

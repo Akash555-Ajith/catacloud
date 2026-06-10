@@ -73,7 +73,7 @@ export default function ProposalDetailPage() {
     if (!resolvedStoreId && typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       const parts = hostname.split('.');
-      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
         resolvedStoreId = parts[0];
       }
     }
