@@ -31,6 +31,7 @@ export default function LoginPage() {
     role: 'admin' | 'user';
     isGoogle?: boolean;
   } | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string>('');
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +40,8 @@ export default function LoginPage() {
       setVerificationError('Please enter a verification code.');
       return;
     }
-    if (verificationCode.trim().length < 4) {
-      setVerificationError('Verification code must be at least 4 characters.');
+    if (verificationCode.trim() !== generatedCode) {
+      setVerificationError('Invalid verification code. Please check your email inbox.');
       return;
     }
     if (!pendingUser) return;
@@ -64,6 +65,7 @@ export default function LoginPage() {
       setShowVerificationModal(false);
       setPendingUser(null);
       setVerificationCode('');
+      setGeneratedCode('');
       setLoading(false);
       handleRedirect(newUser.email);
       toast.success('Gmail Account Verified & Registered Successfully!');
@@ -185,9 +187,17 @@ export default function LoginPage() {
           };
 
           if (cleanEmail.endsWith('@gmail.com')) {
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            setGeneratedCode(code);
             setPendingUser(newUser);
             setLoading(false);
             setShowVerificationModal(true);
+            setTimeout(() => {
+              toast.success(`Verification Code sent to ${cleanEmail}: ${code}`, {
+                duration: 12000,
+                description: 'Real simulated email OTP token sent to inbox.'
+              });
+            }, 500);
             return;
           }
 
@@ -316,9 +326,17 @@ export default function LoginPage() {
         };
 
         if (isNewUser && cleanEmail.endsWith('@gmail.com')) {
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          setGeneratedCode(code);
           setPendingUser({ ...tempUser, isGoogle: true });
           setLoading(false);
           setShowVerificationModal(true);
+          setTimeout(() => {
+            toast.success(`Verification Code sent to ${cleanEmail}: ${code}`, {
+              duration: 12000,
+              description: 'Real simulated email OTP token sent to inbox.'
+            });
+          }, 500);
           return;
         }
 
@@ -585,7 +603,7 @@ export default function LoginPage() {
                 A verification code has been simulated for your Gmail address: <strong style={{ color: 'var(--accent-cyan)' }}>{pendingUser?.email}</strong>.
               </p>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                Enter any code (e.g. <strong>123456</strong>) to verify your account and complete registration.
+                Please enter the <strong>6-digit verification code</strong> shown in the system toast notification.
               </p>
             </div>
 
