@@ -106,6 +106,24 @@ export default function HomePage() {
         }
       }
 
+      // Check if this is an auth callback redirect (e.g. from Supabase email verification or OAuth)
+      const isAuthCallback = typeof window !== 'undefined' && (
+        window.location.hash.includes('access_token') ||
+        window.location.hash.includes('type=signup') ||
+        window.location.hash.includes('type=recovery') ||
+        window.location.hash.includes('type=invite') ||
+        window.location.hash.includes('type=magiclink') ||
+        window.location.search.includes('code=')
+      );
+
+      let isAdminUser = false;
+      try {
+        if (user) {
+          const parsed = JSON.parse(user);
+          if (parsed.role === 'admin') isAdminUser = true;
+        }
+      } catch {}
+
       setMounted(true);
       if (!user) {
         setIsAuthenticated(false);
@@ -133,7 +151,8 @@ export default function HomePage() {
           }
         }
         
-        if (!storeId) {
+        // Force redirect to dashboard if no store, if admin user, or if returning from email confirmation callback
+        if (!storeId || isAdminUser || isAuthCallback) {
           router.push('/dashboard');
           return;
         } else {
@@ -372,46 +391,16 @@ export default function HomePage() {
               <div style={{ position: 'absolute', width: '300px', height: '300px', borderRadius: '50%', background: 'rgba(0, 242, 254, 0.08)', filter: 'blur(80px)', animation: 'pulseNeon 4s ease-in-out infinite', pointerEvents: 'none' }} />
               
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', zIndex: 10 }}>
-                <svg
-                  width="160"
-                  height="160"
-                  viewBox="0 0 32 32"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                <img 
+                  src="/logo.svg" 
+                  alt="CataCloud Logo" 
                   style={{ 
-                    filter: 'drop-shadow(0 0 30px rgba(0, 242, 254, 0.5))', 
-                    animation: 'float 4s ease-in-out infinite' 
-                  }}
-                >
-                  <path
-                    d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
-                    fill="url(#mockup-logo-grad)"
-                  />
-                  <path
-                    d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
-                    fill="url(#mockup-logo-grad-accent)"
-                    opacity="0.8"
-                  />
-                  <defs>
-                    <linearGradient id="mockup-logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#00f2fe" />
-                      <stop offset="1" stopColor="#4facfe" />
-                    </linearGradient>
-                    <linearGradient id="mockup-logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
-                      <stop stopColor="#e2b744" />
-                      <stop offset="1" stopColor="#b88e1a" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '2.2rem', fontWeight: 900, fontFamily: 'var(--font-outfit), sans-serif', letterSpacing: '4px', backgroundImage: 'linear-gradient(to right, #00f2fe, #4facfe)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textShadow: '0 0 20px rgba(0, 242, 254, 0.2)' }}>
-                    CATACLOUD
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '3px', textTransform: 'uppercase', opacity: 0.8 }}>
-                    Future of Maritime B2B Commerce
-                  </span>
-                </div>
+                    height: '240px', 
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 0 30px rgba(0, 242, 254, 0.35))',
+                    animation: 'float 4s ease-in-out infinite'
+                  }} 
+                />
               </div>
             </div>
 

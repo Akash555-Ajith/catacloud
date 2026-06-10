@@ -566,80 +566,12 @@ export default function CatalogueDetailPage() {
 
   return (
     <div className={styles.pageContainer}>
-      <header className={styles.brandHeader}>
-        {storeConfig.storeType === 'seafood' ? (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
-          >
-            <path
-              d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
-              fill="url(#logo-grad)"
-            />
-            <path
-              d="M4 16C4 9.37258 9.37258 4 16 4C19 4 21.5 5 22.5 6.5C19 7 16 9 14.5 11C13 13 12 15 10 16.5C8 18 6 18.5 4.5 18C4 17.5 4 17 4 16Z"
-              fill="url(#logo-grad-accent)"
-              opacity="0.7"
-            />
-            <defs>
-              <linearGradient id="logo-grad" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#00f2fe" />
-                <stop offset="1" stopColor="#4facfe" />
-              </linearGradient>
-              <linearGradient id="logo-grad-accent" x1="4" y1="4" x2="22.5" y2="18" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#e2b744" />
-                <stop offset="1" stopColor="#b88e1a" />
-              </linearGradient>
-            </defs>
-          </svg>
-        ) : storeConfig.storeType === 'egg' ? (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="url(#logo-grad)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
-          >
-            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" fill="url(#logo-grad)" opacity="0.15" />
-            <path d="M12 2C7.5 2 4 7 4 12c0 4.5 3.5 10 8 10s8-5.5 8-10c0-5-3.5-10-8-10z" />
-            <defs>
-              <linearGradient id="logo-grad" x1="4" y1="2" x2="20" y2="22" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#00f2fe" />
-                <stop offset="1" stopColor="#4facfe" />
-              </linearGradient>
-            </defs>
-          </svg>
-        ) : (
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="url(#logo-grad)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.4))' }}
-          >
-            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" fill="url(#logo-grad)" opacity="0.1" />
-            <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-            <defs>
-              <linearGradient id="logo-grad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#00f2fe" />
-                <stop offset="1" stopColor="#4facfe" />
-              </linearGradient>
-            </defs>
-          </svg>
-        )}
+      <header className={styles.brandHeader} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <img 
+          src="/logo-icon.svg" 
+          alt="CataCloud Brand Logo" 
+          style={{ height: '28px', width: '28px', objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(0, 242, 254, 0.45))' }}
+        />
         <span className={styles.logoText}>{storeConfig.storeName}</span>
       </header>
 

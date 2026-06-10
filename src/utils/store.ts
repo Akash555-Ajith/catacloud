@@ -269,44 +269,55 @@ export async function getProducts(storeId: string = 'bluefine'): Promise<FishIte
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'bluefine') {
-        const query = supabase.from('products').select('*');
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-          if (storeId === 'bluefine') {
+      const query = supabase.from('products').select('*');
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        if (storeId === 'bluefine' || !hasStoreId) {
+          const seedWithStore = hasStoreId ? seed.map(item => ({ ...item, store_id: storeId })) : seed;
+          const sanitized = await sanitizePayload('products', seedWithStore);
+          const { error: seedError } = await supabase.from('products').insert(sanitized);
+          if (seedError) {
+            console.warn('Failed to seed products in Supabase:', seedError.message);
+          }
+          return seed;
+        }
+        // Seed the custom store products if table is partitioned by store_id
+        if (hasStoreId) {
+          try {
             const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
             const sanitized = await sanitizePayload('products', seedWithStore);
             const { error: seedError } = await supabase.from('products').insert(sanitized);
             if (seedError) {
-              console.warn('Failed to seed products in Supabase:', seedError.message);
+              console.warn(`Failed to seed products for store ${storeId} in Supabase:`, seedError.message);
             }
-            return seed;
+          } catch (e) {
+            // ignore
           }
-          return [];
         }
-        return data as FishItem[];
+        return seed;
       }
+      return data as FishItem[];
     } catch (err: any) {
       console.warn('Error fetching products from Supabase, falling back to LocalStorage:', err.message || err);
     }
   }
 
-  if (!isBrowser()) return storeId === 'bluefine' ? seed : [];
+  if (!isBrowser()) return seed;
   const stored = localStorage.getItem(`bluefine_products_${storeId}`);
   if (!stored) {
-    const initialProducts = storeId === 'bluefine' ? seed : [];
+    const initialProducts = seed;
     localStorage.setItem(`bluefine_products_${storeId}`, JSON.stringify(initialProducts));
     return initialProducts;
   }
   try {
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : [];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : seed;
   } catch {
-    return storeId === 'bluefine' ? seed : [];
+    return seed;
   }
 }
 
