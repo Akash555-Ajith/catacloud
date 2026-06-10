@@ -105,14 +105,9 @@ export default function GoogleOAuthSimulator() {
           
           {/* Left Column (Brand info) */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-            {/* Shopify-style CataCloud Store Logo (Green shopping bag) */}
+            {/* CataCloud Brand Logo */}
             <div style={{ marginBottom: '24px' }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="5" y="8" width="14" height="13" rx="2" fill="#22c55e" />
-                <path d="M9 10V6C9 4.34315 10.3431 3 12 3C13.6569 3 15 4.34315 15 6V10" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
-                {/* Letter C inside the bag */}
-                <path d="M13.5 13.5C13 12.8 12 12.5 11.2 13C10.4 13.5 10.4 14.5 10.4 15C10.4 15.5 10.4 16.5 11.2 17C12 17.5 13 17.2 13.5 16.5" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
+              <img src="/logo-horizontal.svg" alt="CataCloud Logo" style={{ height: '36px', display: 'block' }} />
             </div>
 
             {view === 'choose-account' && (

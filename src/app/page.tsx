@@ -279,7 +279,7 @@ export default function HomePage() {
             width: '100%'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.5rem', fontWeight: 900, color: 'white', letterSpacing: '2px' }}>CATA<span style={{ color: '#00f2fe' }}>CLOUD</span></span>
+              <img src="/logo-horizontal.svg" alt="CataCloud" style={{ height: '36px', display: 'block' }} />
             </div>
             <nav style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
               <a href="#solutions" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>Solutions</a>

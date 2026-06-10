@@ -2636,7 +2636,9 @@ export default function DashboardPage() {
         <aside className={styles.sidebar}>
           <div>
             <div className={styles.sidebarHeader}>
-              <h1 className={styles.sidebarBrand}>CataCloud</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <img src="/logo-horizontal.svg" alt="CataCloud" style={{ height: '36px', display: 'block' }} />
+              </div>
               <p className={styles.sidebarSubtitle}>
                 {dashboardMode === 'buyer' ? 'Premium B2B Buyer Hub' : 'Premium B2B Merchant'}
               </p>

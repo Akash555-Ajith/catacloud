@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Cloud Gradient (cyan/light-blue to royal blue) -->
+    <linearGradient id="cloudGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00beff" />
+      <stop offset="30%" stop-color="#00a3ff" />
+      <stop offset="70%" stop-color="#0066ff" />
+      <stop offset="100%" stop-color="#0044ff" />
+    </linearGradient>
+    
+    <!-- Catalog Pages Gradient -->
+    <linearGradient id="pageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Group for Logo Icon -->
+  <g transform="translate(0, 0)">
+    <!-- 1. Cloud Outline -->
+    <path d="M 170 320 
+             C 125 320, 95 290, 95 245 
+             C 95 200, 130 175, 170 180 
+             C 190 140, 240 120, 290 145 
+             C 330 120, 390 130, 405 175 
+             C 445 175, 475 210, 475 250 
+             C 475 295, 440 320, 390 320 
+             Z" 
+          fill="none" 
+          stroke="url(#cloudGrad)" 
+          stroke-width="20" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+
+    <!-- 2. Solid Navy/White Letter 'C' inside the Cloud -->
+    <!-- We make this white inside the cloud for dark mode high contrast -->
+    <path d="M 270 200
+             A 60 60 0 1 0 270 300" 
+          fill="none" 
+          stroke="#ffffff" 
+          stroke-width="34" 
+          stroke-linecap="round" />
+
+    <!-- 3. Catalog Pages / Sheets on the right inside the cloud -->
+    <g transform="translate(250, 160)">
+      <!-- Page 3 (Back) -->
+      <path d="M 110 35 L 140 45 L 140 135 L 110 125 Z" fill="#0f4c81" opacity="0.3" />
+      <path d="M 110 35 L 140 45 L 140 135 L 110 125 Z" fill="none" stroke="#0066ff" stroke-width="6" stroke-linejoin="round" />
+
+      <!-- Page 2 (Middle) -->
+      <path d="M 85 25 L 120 37 L 120 127 L 85 115 Z" fill="#0f4c81" opacity="0.6" />
+      <path d="M 85 25 L 120 37 L 120 127 L 85 115 Z" fill="none" stroke="#0088ff" stroke-width="7" stroke-linejoin="round" />
+
+      <!-- Page 1 (Front - containing the 4-grid window) -->
+      <path d="M 35 30 L 95 50 L 95 140 L 35 120 Z" fill="url(#pageGrad)" stroke="url(#pageGrad)" stroke-width="4" stroke-linejoin="round" />
+      
+      <!-- 2x2 Grid Squares (Window-pane layout) -->
+      <!-- Left Top Square -->
+      <path d="M 45 48 L 62 54 L 62 78 L 45 72 Z" fill="#ffffff" />
+      <!-- Right Top Square -->
+      <path d="M 68 56 L 85 62 L 85 86 L 68 80 Z" fill="#ffffff" />
+      <!-- Left Bottom Square -->
+      <path d="M 45 78 L 62 84 L 62 108 L 45 102 Z" fill="#ffffff" />
+      <!-- Right Bottom Square -->
+      <path d="M 68 86 L 85 92 L 85 116 L 68 110 Z" fill="#ffffff" />
+    </g>
+  </g>
+
+  <!-- 4. Typography: "catacloud" -->
+  <text x="250" y="415" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="64" 
+        font-weight="700" 
+        text-anchor="middle" 
+        letter-spacing="-1px">
+    <tspan fill="#ffffff">cata</tspan><tspan fill="#00a3ff">cloud</tspan>
+  </text>
+
+  <!-- 5. Tagline: "CREATE. CONNECT. GROW." -->
+  <line x1="60" y1="455" x2="140" y2="455" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+  
+  <text x="250" y="460" 
+        font-family="system-ui, -apple-system, sans-serif" 
+        font-size="16" 
+        font-weight="600" 
+        fill="rgba(255,255,255,0.6)" 
+        text-anchor="middle" 
+        letter-spacing="4px">
+    CREATE. CONNECT. GROW.
+  </text>
+  
+  <line x1="360" y1="455" x2="440" y2="455" stroke="rgba(255,255,255,0.4)" stroke-width="2" />
+</svg>
