@@ -1157,6 +1157,11 @@ export default function DashboardPage() {
       domain = domain.substring(4);
     }
     const cleanStoreId = activeStoreId.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    
+    // Use query parameter format on environments without wildcard subdomain DNS configuration
+    if (domain.includes('localhost') || domain.includes('vercel.app') || domain.includes('gitpod')) {
+      return `${protocol}//${domain}/catalogue/view?store=${cleanStoreId}`;
+    }
     return `${protocol}//${cleanStoreId}.${domain}/catalogue/view`;
   };
 
@@ -1178,6 +1183,11 @@ export default function DashboardPage() {
       overrides: cat.overrides
     };
     const serializedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataObj))));
+    
+    // Use query parameter format on environments without wildcard subdomain DNS configuration
+    if (domain.includes('localhost') || domain.includes('vercel.app') || domain.includes('gitpod')) {
+      return `${protocol}//${domain}/catalogue/${cat.id}?store=${cleanStoreId}&p=${serializedData}`;
+    }
     return `${protocol}//${cleanStoreId}.${domain}/catalogue/${cat.id}?p=${serializedData}`;
   };
 
