@@ -60,8 +60,8 @@ export default function CatalogueDetailPage() {
 
   const getVolumeDiscount = (qty: number) => {
     if (qty > 30) return 20;
-    if (qty > 20) return 15;
-    if (qty > 10) return 10;
+    if (qty >= 20) return 15;
+    if (qty >= 10) return 10;
     return 0;
   };
 
@@ -88,23 +88,97 @@ export default function CatalogueDetailPage() {
     getStoreConfig(resolvedStoreId).then(setStoreConfig);
 
     const proposalId = pathname ? pathname.split('/').pop() || '' : '';
-    if (proposalId) {
+    const pData = params.get('p');
+
+    const initializeCatalog = (catData: CustomCatalog) => {
+      setCatalog(catData);
+      getProducts(resolvedStoreId).then((prods) => {
+        setProducts(prods);
+        // Initialize quantities
+        const initialQties: Record<string, number> = {};
+        prods.forEach((p) => {
+          const override = catData.overrides[p.id];
+          if (override && override.included) {
+            initialQties[p.id] = override.customStock || 1;
+          }
+        });
+        setQuantities(initialQties);
+      });
+    };
+
+    if (pData) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(pData))));
+        initializeCatalog(decoded);
+        return;
+      } catch (err) {
+        console.error('Failed to parse serialized proposal query parameter', err);
+      }
+    }
+
+    if (proposalId && proposalId !== 'view' && proposalId !== 'all') {
       getCustomCatalogById(proposalId, resolvedStoreId).then((catData) => {
         if (catData) {
-          setCatalog(catData);
+          initializeCatalog(catData);
+        } else {
+          // If no custom catalog found by ID, build a default general view fallback
           getProducts(resolvedStoreId).then((prods) => {
-            setProducts(prods);
-            // Initialize quantities
-            const initialQties: Record<string, number> = {};
+            const defaultOverrides: Record<string, any> = {};
             prods.forEach((p) => {
-              const override = catData.overrides[p.id];
-              if (override && override.included) {
-                initialQties[p.id] = override.customStock || 1;
-              }
+              defaultOverrides[p.id] = {
+                price: p.pricePerKg,
+                customPrice: p.pricePerKg,
+                stock: p.stock,
+                customStock: p.stock > 0 ? p.stock : 10,
+                discount: 0,
+                customDiscount: 0,
+                threshold: 0,
+                volumeDiscount: 0,
+                included: true
+              };
             });
-            setQuantities(initialQties);
+            const fallbackCat: CustomCatalog = {
+              id: 'view',
+              store_id: resolvedStoreId,
+              marketName: 'General Catalogue',
+              globalDiscount: 0,
+              globalDelivery: 0,
+              notes: 'General public catalog view.',
+              createdDate: new Date().toLocaleDateString(),
+              overrides: defaultOverrides
+            };
+            initializeCatalog(fallbackCat);
           });
         }
+      });
+    } else {
+      // General view or fallback setup
+      getProducts(resolvedStoreId).then((prods) => {
+        const defaultOverrides: Record<string, any> = {};
+        prods.forEach((p) => {
+          defaultOverrides[p.id] = {
+            price: p.pricePerKg,
+            customPrice: p.pricePerKg,
+            stock: p.stock,
+            customStock: p.stock > 0 ? p.stock : 10,
+            discount: 0,
+            customDiscount: 0,
+            threshold: 0,
+            volumeDiscount: 0,
+            included: true
+          };
+        });
+        const fallbackCat: CustomCatalog = {
+          id: 'view',
+          store_id: resolvedStoreId,
+          marketName: 'General Catalogue',
+          globalDiscount: 0,
+          globalDelivery: 0,
+          notes: 'General public catalog view.',
+          createdDate: new Date().toLocaleDateString(),
+          overrides: defaultOverrides
+        };
+        initializeCatalog(fallbackCat);
       });
     }
   }, [pathname]);
@@ -299,9 +373,9 @@ export default function CatalogueDetailPage() {
     
     const volDiscount = getVolumeDiscount(qty);
 
-    const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
+    const discount = Math.min(100, ((override.customDiscount !== undefined && override.customDiscount > 0)
       ? override.customDiscount
-      : (catalog.globalDiscount || 0)) + volDiscount;
+      : (catalog.globalDiscount || 0)) + volDiscount);
     const finalPrice = price * (1 - discount / 100);
     return acc + (finalPrice * qty);
   }, 0) + (catalog.globalDelivery || 0);
@@ -324,7 +398,7 @@ export default function CatalogueDetailPage() {
   
   const selectedVolumeDiscountPercent = getVolumeDiscount(allocatedStock);
 
-  const activeDiscount = selectedItemDiscount + selectedVolumeDiscountPercent;
+  const activeDiscount = Math.min(100, selectedItemDiscount + selectedVolumeDiscountPercent);
   const finalUnitPrice = selectedCustomPrice * (1 - activeDiscount / 100);
   const sourcingSubtotal = finalUnitPrice * allocatedStock;
   const sourcingTotal = sourcingSubtotal + (catalog.globalDelivery || 0);
@@ -422,9 +496,9 @@ export default function CatalogueDetailPage() {
         
         const volDiscount = getVolumeDiscount(qty);
 
-        const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
+        const discount = Math.min(100, ((override.customDiscount !== undefined && override.customDiscount > 0)
           ? override.customDiscount
-          : (catalog.globalDiscount || 0)) + volDiscount;
+          : (catalog.globalDiscount || 0)) + volDiscount);
         const finalPrice = price * (1 - discount / 100);
         return {
           fishId: p.id,
@@ -580,10 +654,10 @@ export default function CatalogueDetailPage() {
           <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-gold)', marginBottom: '4px', fontWeight: 600 }}>Bulk Volume Sourcing Discounts</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.75rem' }}>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>More than 10 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>10% discount</strong>
+              <span style={{ color: 'var(--text-secondary)' }}>10 to 19 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>10% discount</strong>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>More than 20 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>15% discount</strong>
+              <span style={{ color: 'var(--text-secondary)' }}>20 to 30 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>15% discount</strong>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <span style={{ color: 'var(--text-secondary)' }}>More than 30 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>20% discount</strong>
@@ -714,7 +788,7 @@ export default function CatalogueDetailPage() {
               const baseDiscount = (override.customDiscount !== undefined && override.customDiscount > 0)
                 ? override.customDiscount
                 : (catalog.globalDiscount || 0);
-              const totalDiscount = baseDiscount + volDiscount;
+              const totalDiscount = Math.min(100, baseDiscount + volDiscount);
               const finalUnitPrice = price * (1 - totalDiscount / 100);
               const subtotal = finalUnitPrice * qty;
 

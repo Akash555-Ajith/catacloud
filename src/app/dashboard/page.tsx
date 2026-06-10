@@ -97,6 +97,7 @@ export default function DashboardPage() {
   const [catDiscount, setCatDiscount] = useState<number>(0);
   const [catDelivery, setCatDelivery] = useState<number>(0);
   const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
+  const [showGenerator, setShowGenerator] = useState<boolean>(false);
   const [catOverrides, setCatOverrides] = useState<{
     [id: string]: { price: number; stock: number; discount: number; threshold: number; volumeDiscount: number; included: boolean };
   }>({});
@@ -895,6 +896,7 @@ export default function DashboardPage() {
 
     // Reset form fields
     setEditingCatalogId(null);
+    setShowGenerator(false);
     setCatMarket('');
     setCatNotes('');
     setCatDiscount(0);
@@ -937,6 +939,7 @@ export default function DashboardPage() {
     });
     setCatOverrides(nextOverrides);
     setAdminTab('catalogs');
+    setShowGenerator(true);
     toast.info(`Editing catalogue link for ${catalog.marketName}`);
   };
 
@@ -989,9 +992,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCopyCatalogLink = (id: string) => {
+  const getProposalShareLink = (cat: CustomCatalog) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const link = `${origin}/catalogue/${id}?store=${activeStoreId}`;
+    const dataObj = {
+      id: cat.id,
+      marketName: cat.marketName,
+      notes: cat.notes,
+      globalDiscount: cat.globalDiscount,
+      globalDelivery: cat.globalDelivery,
+      createdDate: cat.createdDate,
+      overrides: cat.overrides
+    };
+    const serializedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataObj))));
+    return `${origin}/catalogue/${cat.id}?store=${activeStoreId}&p=${serializedData}`;
+  };
+
+  const handleCopyCatalogLink = (id: string) => {
+    const catalog = customCatalogs.find((c) => c.id === id);
+    if (!catalog) return;
+    const link = getProposalShareLink(catalog);
     navigator.clipboard.writeText(link).then(() => {
       toast.success('Link Copied to Clipboard', {
         description: `Proposal link copied on ${new Date().toLocaleString()}`,
@@ -1867,6 +1886,378 @@ export default function DashboardPage() {
     );
   };
 
+  const renderMerchantCatalogs = () => {
+    return (
+      <div className={styles.merchantContainer}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <div>
+            <h2 className={styles.merchantTitle}>Custom Proposal Deals</h2>
+            <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
+          </div>
+          {!showGenerator ? (
+            <button
+              type="button"
+              className={styles.btnMerchantPrimary}
+              onClick={() => {
+                setShowGenerator(true);
+                setEditingCatalogId(null);
+                setCatMarket('');
+                setCatNotes('');
+                setCatDiscount(0);
+                setCatDelivery(0);
+                const resetOverrides: typeof catOverrides = {};
+                products.forEach((p) => {
+                  resetOverrides[p.id] = {
+                    price: p.pricePerKg,
+                    stock: p.stock,
+                    discount: 0,
+                    threshold: 0,
+                    volumeDiscount: 0,
+                    included: false
+                  };
+                });
+                setCatOverrides(resetOverrides);
+              }}
+            >
+              + Generate Custom Catalogue
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={styles.btnMerchantSecondary}
+              onClick={() => setShowGenerator(false)}
+            >
+              Back to List
+            </button>
+          )}
+        </div>
+
+        {showGenerator ? (
+          <div className={`${styles.lightPanelCard} glassmorphism`} style={{ marginBottom: '24px' }}>
+            <h3 className={styles.lightPanelTitle} style={{ marginBottom: '20px' }}>
+              {editingCatalogId ? 'Edit Custom Catalogue Proposal' : 'Configure Custom Catalogue Proposal'}
+            </h3>
+            <form onSubmit={handleCatProposalSubmit}>
+              <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Target Market / Client Name</label>
+                  <input
+                    type="text"
+                    value={catMarket}
+                    onChange={(e) => setCatMarket(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. London Gourmet Foods"
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Proposal Notes / Custom Terms</label>
+                  <input
+                    type="text"
+                    value={catNotes}
+                    onChange={(e) => setCatNotes(e.target.value)}
+                    className="luxury-input"
+                    placeholder="e.g. Free shipping, VAT excluded"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Global Sourcing Discount (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={catDiscount}
+                    onChange={(e) => setCatDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                    className="luxury-input"
+                    placeholder="0"
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Global Logistics / Delivery Charge ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={catDelivery}
+                    onChange={(e) => setCatDelivery(Math.max(0, Number(e.target.value)))}
+                    className="luxury-input"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              {/* Overrides Table Header & Search Filter Controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', margin: '24px 0 16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: 0 }}>
+                    Configure Product Overrides
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Selected: <strong style={{ color: 'var(--accent-cyan)' }}>{Object.values(catOverrides).filter(o => o.included).length}</strong> / {products.length} items
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bulk: typeof catOverrides = {};
+                        products.forEach(p => {
+                          bulk[p.id] = {
+                            ...catOverrides[p.id],
+                            included: true
+                          };
+                        });
+                        setCatOverrides(bulk);
+                      }}
+                      className="btn-cyan"
+                      style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(0, 242, 254, 0.05)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Add All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const bulk: typeof catOverrides = {};
+                        products.forEach(p => {
+                          bulk[p.id] = {
+                            ...catOverrides[p.id],
+                            included: false
+                          };
+                        });
+                        setCatOverrides(bulk);
+                      }}
+                      className="btn-gold"
+                      style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(226, 183, 68, 0.05)', color: 'var(--accent-gold)', border: '1px solid rgba(226, 183, 68, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      Remove All
+                    </button>
+                  </div>
+                </div>
+
+                {/* Search & Category Filter Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '8px' }}>
+                  <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+                    <input
+                      type="text"
+                      value={catSearchQuery}
+                      onChange={(e) => setCatSearchQuery(e.target.value)}
+                      className="luxury-input"
+                      style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '36px', fontSize: '0.85rem' }}
+                      placeholder="Search overrides by name..."
+                    />
+                    <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.9rem' }}>🔍</span>
+                  </div>
+                  <div style={{ minWidth: '180px' }}>
+                    <select
+                      value={catSelectedCategory}
+                      onChange={(e) => setCatSelectedCategory(e.target.value)}
+                      className="luxury-input"
+                      style={{ height: '36px', paddingTop: '0px', paddingBottom: '0px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.85rem', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
+                    >
+                      <option value="All">All Categories</option>
+                      {storeConfig.categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
+                <table className={styles.table} style={{ background: '#ffffff', border: '1px solid #e2e8f0' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ width: '80px', textAlign: 'center', color: '#64748b' }}>Include</th>
+                      <th style={{ color: '#64748b' }}>{storeConfig.attributes.specimenLabel} Name</th>
+                      <th style={{ color: '#64748b' }}>Standard Price</th>
+                      <th style={{ color: '#64748b' }}>Custom Proposal Price ($)</th>
+                      <th style={{ color: '#64748b' }}>Proposal Discount (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products
+                      .filter((p) => {
+                        const matchesCategory = catSelectedCategory === 'All' || p.category === catSelectedCategory;
+                        const matchesSearch = p.name.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
+                          p.scientificName.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
+                          p.origin.toLowerCase().includes(catSearchQuery.toLowerCase());
+                        return matchesCategory && matchesSearch;
+                      })
+                      .map((p) => {
+                        const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, threshold: 0, volumeDiscount: 0, included: false };
+                        return (
+                          <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
+                            <td style={{ textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={override.included}
+                                onChange={(e) => handleOverrideIncludedChange(p.id, e.target.checked)}
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                              />
+                            </td>
+                            <td>
+                              <strong style={{ color: '#0f172a' }}>{p.name}</strong>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b' }}>{p.scientificName}</span>
+                            </td>
+                            <td style={{ color: '#334155' }}>${p.pricePerKg.toFixed(2)}/{p.unit || storeConfig.unit}</td>
+                            <td>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={override.price}
+                                onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
+                                className="luxury-input"
+                                style={{ padding: '6px 12px', fontSize: '0.85rem', width: '100px', height: '32px' }}
+                                disabled={!override.included}
+                                required={override.included}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={override.discount || 0}
+                                onChange={(e) => handleOverrideDiscountChange(p.id, Number(e.target.value))}
+                                className="luxury-input"
+                                style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px', height: '32px' }}
+                                disabled={!override.included}
+                                required={override.included}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button type="submit" className={styles.btnMerchantPrimary}>
+                  {editingCatalogId ? 'Save Proposal Deal' : 'Generate Custom Catalogue Proposal'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnMerchantSecondary}
+                  onClick={() => setShowGenerator(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <div className={styles.lightPanelCard}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
+                  🏪 Direct General Catalogue Link (All products at standard rates):
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>No setup or proposal overrides required</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? `${window.location.origin}/catalogue/view?store=${activeStoreId}` : `/catalogue/view?store=${activeStoreId}`}
+                  style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', outline: 'none' }}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <button
+                  type="button"
+                  className={styles.btnMerchantPrimary}
+                  style={{ padding: '0 16px', fontSize: '0.75rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => {
+                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+                    const link = `${origin}/catalogue/view?store=${activeStoreId}`;
+                    navigator.clipboard.writeText(link).then(() => {
+                      toast.success('General Catalogue link copied!');
+                    });
+                  }}
+                >
+                  Copy Link
+                </button>
+              </div>
+            </div>
+            
+            {customCatalogs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '8px' }}>📋</span>
+                <strong>No custom client proposals generated yet.</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>Click "+ Generate Custom Catalogue" at the top to configure custom quotes for target markets or buyers.</p>
+              </div>
+            ) : (
+              <div className={styles.tableResponsive} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ color: '#64748b' }}>Client / Target Market</th>
+                      <th style={{ color: '#64748b' }}>Included Items</th>
+                      <th style={{ color: '#64748b' }}>Global Discount</th>
+                      <th style={{ color: '#64748b' }}>Delivery Fee</th>
+                      <th style={{ color: '#64748b' }}>Notes</th>
+                      <th style={{ color: '#64748b' }}>Created Date</th>
+                      <th style={{ color: '#64748b', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customCatalogs.map(cat => {
+                      const includedCount = Object.values(cat.overrides).filter(o => o.included).length;
+                      return (
+                        <tr key={cat.id}>
+                          <td>
+                            <strong style={{ color: '#0f172a' }}>{cat.marketName}</strong>
+                            <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b' }}>ID: {cat.id}</span>
+                          </td>
+                          <td style={{ color: '#334155' }}>{includedCount} products</td>
+                          <td style={{ color: cat.globalDiscount > 0 ? 'var(--accent-gold)' : '#64748b', fontWeight: 'bold' }}>
+                            {cat.globalDiscount > 0 ? `${cat.globalDiscount}%` : 'Standard'}
+                          </td>
+                          <td style={{ color: '#334155' }}>
+                            {cat.globalDelivery > 0 ? `$${cat.globalDelivery.toFixed(2)}` : 'Free'}
+                          </td>
+                          <td style={{ color: '#475569', fontSize: '0.85rem' }}>{cat.notes || '-'}</td>
+                          <td style={{ color: '#64748b' }}>{cat.createdDate}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleEditCustomCatalog(cat)}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => handleCopyCatalogLink(cat.id)}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                              >
+                                Copy Link
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => handleDeleteCustomCatalog(cat.id)}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '4px 10px', fontSize: '0.75rem', borderColor: '#fee2e2', color: '#ef4444' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderMerchantSettings = () => {
     return (
       <div className={styles.merchantContainer}>
@@ -2408,73 +2799,7 @@ export default function DashboardPage() {
               {adminTab === 'enquiries' && renderMerchantEnquiries()}
               {adminTab === 'pos' && renderMerchantPOS()}
               {adminTab === 'settings' && renderMerchantSettings()}
-              {adminTab === 'catalogs' && (
-                <div className={styles.merchantContainer}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                    <div>
-                      <h2 className={styles.merchantTitle}>Custom Proposal Deals</h2>
-                      <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
-                    </div>
-                    <button type="button" className={styles.btnMerchantSecondary} onClick={() => setAdminTab('settings')}>
-                      Back to Settings
-                    </button>
-                  </div>
-                  
-                  <div className={styles.lightPanelCard}>
-                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
-                      Choose a proposal deal from your active proposals below to view or copy sharing links:
-                    </p>
-                    
-                    {customCatalogs.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
-                        No proposals configured yet. Go back to Customizer Settings to create your first deal.
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {customCatalogs.map(cat => (
-                          <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                            <div>
-                              <strong style={{ display: 'block', color: '#0f172a' }}>{cat.marketName}</strong>
-                              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Discount: {cat.globalDiscount}% &bull; Delivery: ${cat.globalDelivery}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                              <button 
-                                type="button"
-                                onClick={() => handleEditCustomCatalog(cat)}
-                                className={styles.btnMerchantSecondary}
-                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                              >
-                                Edit
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={() => {
-                                  const path = `/catalogue/${cat.id}?store=${activeStoreId}`;
-                                  const url = typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
-                                  navigator.clipboard.writeText(url);
-                                  toast.success('Proposal link copied!');
-                                }}
-                                className={styles.btnMerchantSecondary}
-                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                              >
-                                Copy Link
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={() => handleDeleteCustomCatalog(cat.id)}
-                                className={styles.btnMerchantSecondary}
-                                style={{ padding: '6px 12px', fontSize: '0.75rem', borderColor: '#fee2e2', color: '#ef4444' }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {adminTab === 'catalogs' && renderMerchantCatalogs()}
             </>
             )
           ) : (
@@ -3329,439 +3654,7 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {/* Custom Catalogues Section */}
-            {adminTab === 'catalogs' && (
-              <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>
-                  {editingCatalogId ? 'Edit Custom Catalogue Link' : 'Custom Catalogue Proposal Generator'}
-                </h2>
-
-                {/* Catalogue generator form */}
-                <form onSubmit={handleCatProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
-                  <div className={styles.formGrid}>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Target Market / Client Name</label>
-                      <input
-                        type="text"
-                        value={catMarket}
-                        onChange={(e) => setCatMarket(e.target.value)}
-                        className="luxury-input"
-                        placeholder="e.g. London Gourmet Foods"
-                        required
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Proposal Notes / Custom Terms</label>
-                      <input
-                        type="text"
-                        value={catNotes}
-                        onChange={(e) => setCatNotes(e.target.value)}
-                        className="luxury-input"
-                        placeholder="e.g. Free shipping, VAT excluded"
-                      />
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Global Sourcing Discount (%)</label>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setCatDiscount(prev => Math.max(0, prev - 1))}
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid var(--glass-border)',
-                            borderRight: 'none',
-                            borderRadius: '8px 0 0 8px',
-                            color: 'var(--text-secondary)',
-                            fontSize: '1.2rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={catDiscount}
-                          onChange={(e) => setCatDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
-                          className="luxury-input"
-                          style={{
-                            borderRadius: '0',
-                            textAlign: 'center',
-                            height: '40px',
-                            borderLeft: 'none',
-                            borderRight: 'none',
-                            flex: 1
-                          }}
-                          placeholder="0"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setCatDiscount(prev => Math.min(100, prev + 1))}
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid var(--glass-border)',
-                            borderLeft: 'none',
-                            borderRadius: '0 8px 8px 0',
-                            color: 'var(--text-secondary)',
-                            fontSize: '1.2rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label className={styles.label}>Global Logistics / Delivery Charge ($)</label>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setCatDelivery(prev => Math.max(0, Number((prev - 5).toFixed(2))))}
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid var(--glass-border)',
-                            borderRight: 'none',
-                            borderRadius: '8px 0 0 8px',
-                            color: 'var(--text-secondary)',
-                            fontSize: '1.2rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={catDelivery}
-                          onChange={(e) => setCatDelivery(Math.max(0, Number(e.target.value)))}
-                          className="luxury-input"
-                          style={{
-                            borderRadius: '0',
-                            textAlign: 'center',
-                            height: '40px',
-                            borderLeft: 'none',
-                            borderRight: 'none',
-                            flex: 1
-                          }}
-                          placeholder="0.00"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setCatDelivery(prev => Math.max(0, Number((prev + 5).toFixed(2))))}
-                          style={{
-                            width: '40px',
-                            height: '40px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid var(--glass-border)',
-                            borderLeft: 'none',
-                            borderRadius: '0 8px 8px 0',
-                            color: 'var(--text-secondary)',
-                            fontSize: '1.2rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                   {/* Overrides Table Header & Search Filter Controls */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', margin: '24px 0 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                      <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', margin: 0 }}>
-                        Configure Product Overrides
-                      </h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          Selected: <strong style={{ color: 'var(--accent-cyan)' }}>{Object.values(catOverrides).filter(o => o.included).length}</strong> / {products.length} items
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const bulk: typeof catOverrides = {};
-                            products.forEach(p => {
-                              bulk[p.id] = {
-                                ...catOverrides[p.id],
-                                included: true
-                              };
-                            });
-                            setCatOverrides(bulk);
-                          }}
-                          className="btn-cyan"
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(0, 242, 254, 0.05)', color: 'var(--accent-cyan)', border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Add All
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const bulk: typeof catOverrides = {};
-                            products.forEach(p => {
-                              bulk[p.id] = {
-                                ...catOverrides[p.id],
-                                included: false
-                              };
-                            });
-                            setCatOverrides(bulk);
-                          }}
-                          className="btn-gold"
-                          style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto', background: 'rgba(226, 183, 68, 0.05)', color: 'var(--accent-gold)', border: '1px solid rgba(226, 183, 68, 0.2)', borderRadius: '4px', cursor: 'pointer' }}
-                        >
-                          Remove All
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Search & Category Filter Row */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.03)', padding: '16px', borderRadius: '8px' }}>
-                      <div style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-                        <input
-                          type="text"
-                          value={catSearchQuery}
-                          onChange={(e) => setCatSearchQuery(e.target.value)}
-                          className="luxury-input"
-                          style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '36px', fontSize: '0.85rem' }}
-                          placeholder="Search overrides by name, code, or origin..."
-                          id="cat-override-search-input"
-                        />
-                        <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.9rem' }}>🔍</span>
-                      </div>
-                      <div style={{ minWidth: '180px' }}>
-                        <select
-                          value={catSelectedCategory}
-                          onChange={(e) => setCatSelectedCategory(e.target.value)}
-                          className="luxury-input"
-                          style={{ height: '36px', paddingTop: '0px', paddingBottom: '0px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.85rem', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
-                        >
-                          <option value="All">All Categories</option>
-                          {storeConfig.categories.map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={styles.productsTableWrapper} style={{ marginBottom: '24px', maxHeight: '300px', overflowY: 'auto' }}>
-                    <table className={styles.productsTable}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: '80px', textAlign: 'center' }}>Include</th>
-                          <th>{storeConfig.attributes.specimenLabel} Name</th>
-                          <th>Standard Price</th>
-                          <th>Custom Proposal Price ($)</th>
-                          <th>Proposal Discount (%)</th>
-                          <th>Allocated Stock</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {products
-                          .filter((p) => {
-                            const matchesCategory = catSelectedCategory === 'All' || p.category === catSelectedCategory;
-                            const matchesSearch = p.name.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
-                              p.scientificName.toLowerCase().includes(catSearchQuery.toLowerCase()) ||
-                              p.origin.toLowerCase().includes(catSearchQuery.toLowerCase());
-                            return matchesCategory && matchesSearch;
-                          })
-                          .map((p) => {
-                          const override = catOverrides[p.id] || { price: p.pricePerKg, stock: p.stock, discount: 0, threshold: 0, volumeDiscount: 0, included: false };
-                          return (
-                            <tr key={p.id} style={{ opacity: override.included ? 1 : 0.4 }}>
-                              <td style={{ textAlign: 'center' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={override.included}
-                                  onChange={(e) => handleOverrideIncludedChange(p.id, e.target.checked)}
-                                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                />
-                              </td>
-                              <td>
-                                <strong style={{ color: 'var(--text-primary)' }}>{p.name}</strong>
-                                <span className={styles.productScientificName}>{p.scientificName}</span>
-                              </td>
-                              <td>${p.pricePerKg.toFixed(2)}/{p.unit || storeConfig.unit}</td>
-                              <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <input
-                                    type="number"
-                                    step="0.01"
-                                    value={override.price}
-                                    onChange={(e) => handleOverridePriceChange(p.id, Number(e.target.value))}
-                                    className="luxury-input"
-                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '100px' }}
-                                    disabled={!override.included}
-                                    required={override.included}
-                                  />
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>/{p.unit || storeConfig.unit}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={override.discount || 0}
-                                  onChange={(e) => handleOverrideDiscountChange(p.id, Number(e.target.value))}
-                                  className="luxury-input"
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
-                                  disabled={!override.included}
-                                  required={override.included}
-                                />
-                              </td>
-                              <td>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <input
-                                    type="number"
-                                    value={override.stock}
-                                    onChange={(e) => handleOverrideStockChange(p.id, Number(e.target.value))}
-                                    className="luxury-input"
-                                    style={{ padding: '6px 12px', fontSize: '0.85rem', width: '80px' }}
-                                    disabled={!override.included}
-                                    required={override.included}
-                                  />
-                                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.unit || storeConfig.unit}</span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                    <button type="submit" className="btn-primary" id="generate-cat-proposal-btn">
-                      {editingCatalogId ? 'Save Catalogue Link Changes' : 'Generate Custom Catalogue Proposal Link'}
-                    </button>
-                    {editingCatalogId && (
-                      <button
-                        type="button"
-                        className={styles.btnMerchantSecondary}
-                        onClick={() => {
-                          setEditingCatalogId(null);
-                          setCatMarket('');
-                          setCatNotes('');
-                          setCatDiscount(0);
-                          setCatDelivery(0);
-                        }}
-                      >
-                        Cancel Edit
-                      </button>
-                    )}
-                  </div>
-                </form>
-
-                {/* List of custom catalogs */}
-                <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.3rem', marginBottom: '20px' }}>
-                  Active Catalogue Links
-                </h3>
-                {customCatalogs.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <p>No custom catalogue links generated yet. Use the form above to generate links.</p>
-                  </div>
-                ) : (
-                  <div className={styles.productsTableWrapper}>
-                    <table className={styles.productsTable}>
-                      <thead>
-                        <tr>
-                          <th>Target Market</th>
-                          <th>Included Items</th>
-                          <th>Global Discount</th>
-                          <th>Delivery Charge</th>
-                          <th>Notes</th>
-                          <th>Created</th>
-                          <th style={{ textAlign: 'center' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {customCatalogs.map((cat) => {
-                          const includedCount = Object.values(cat.overrides).filter((o) => o.included).length;
-                          return (
-                            <tr key={cat.id}>
-                              <td>
-                                <strong style={{ color: 'var(--text-primary)' }}>{cat.marketName}</strong>
-                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {cat.id}</span>
-                              </td>
-                              <td>{includedCount} of {products.length} items</td>
-                              <td style={{ color: cat.globalDiscount > 0 ? 'var(--accent-gold)' : 'var(--text-secondary)', fontWeight: 600 }}>
-                                {cat.globalDiscount > 0 ? `${cat.globalDiscount}%` : 'None'}
-                              </td>
-                              <td style={{ fontWeight: 600 }}>
-                                {cat.globalDelivery > 0 ? `$${cat.globalDelivery.toFixed(2)}` : 'Free'}
-                              </td>
-                              <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{cat.notes || '-'}</td>
-                              <td>{cat.createdDate}</td>
-                              <td>
-                                <div className={styles.actionButtons} style={{ justifyContent: 'center' }}>
-                                  <button
-                                    onClick={() => handleEditCustomCatalog(cat)}
-                                    className={styles.btnMerchantSecondary}
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', color: '#0f3057' }}
-                                    title="Edit Catalogue Link"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleCopyCatalogLink(cat.id)}
-                                    className="btn-primary"
-                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}
-                                    title="Copy Catalogue Link"
-                                  >
-                                    Copy Link
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteCustomCatalog(cat.id)}
-                                    className={`${styles.btnIcon} ${styles.btnIconDelete}`}
-                                    title="Delete Catalogue Proposal"
-                                  >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <polyline points="3 6 5 6 21 6" />
-                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2 2v2" />
-                                    </svg>
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
-            )}
+            {/* Custom Catalogues Section removed from here */}
 
 
 
