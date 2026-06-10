@@ -147,6 +147,13 @@ export default function LoginPage() {
     }
   };
 
+  // Diagnostic logs to check environment variables on Vercel
+  useEffect(() => {
+    console.log('[CataCloud Auth System] Initialized.');
+    console.log(' - Supabase Configured:', isSupabaseConfigured);
+    console.log(' - Supabase URL:', cleanedSupabaseUrl);
+  }, []);
+
   // Listen for simulated Google login message
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
