@@ -75,8 +75,12 @@ function handleSupabaseError(error: any) {
       error.message.includes('Failed to fetch') ||
       error.message.includes('authorization') ||
       error.message.includes('No API key') ||
-      error.message.includes('invalid')
-    ));
+      error.message.includes('invalid') ||
+      error.message.includes('row-level security') ||
+      error.message.includes('policy')
+    )) ||
+    error.code === '42501' || // Insufficient Privilege (RLS)
+    error.code === '42P01';   // Undefined Table
   if (isAuthOrConnectionError) {
     disableSupabase();
   }
@@ -227,9 +231,10 @@ export async function saveStoreConfig(storeId: string, config: StoreConfig): Pro
   if (isSupabaseConfigured && await isTableSupported('store_config')) {
     try {
       const sanitized = await sanitizePayload('store_config', configWithId);
-      await supabase.from('store_config').upsert(sanitized);
-    } catch (e) {
-      // fallback
+      const { error } = await supabase.from('store_config').upsert(sanitized);
+      if (error) throw error;
+    } catch (e: any) {
+      handleSupabaseError(e);
     }
   }
   if (!isBrowser()) return;
@@ -334,6 +339,7 @@ export async function saveProducts(products: FishItem[], storeId: string = 'blue
       }
     } catch (err: any) {
       console.warn('Error saving products to Supabase:', err.message || err);
+      handleSupabaseError(err);
     }
   }
 
@@ -354,6 +360,7 @@ export async function addProduct(product: FishItem, storeId: string = 'bluefine'
       }
     } catch (err: any) {
       console.warn('Error adding product to Supabase:', err.message || err);
+      handleSupabaseError(err);
     }
   }
 
@@ -378,6 +385,7 @@ export async function updateProduct(updatedProduct: FishItem, storeId: string = 
       }
     } catch (err: any) {
       console.warn('Error updating product in Supabase:', err.message || err);
+      handleSupabaseError(err);
     }
   }
 
@@ -402,6 +410,7 @@ export async function deleteProduct(id: string, storeId: string = 'bluefine'): P
       }
     } catch (err: any) {
       console.warn('Error deleting product in Supabase:', err.message || err);
+      handleSupabaseError(err);
     }
   }
 
