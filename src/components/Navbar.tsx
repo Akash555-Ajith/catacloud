@@ -80,14 +80,44 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
     };
 
     const loadStoreConfig = () => {
-      const activeStore = storeId || (typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('store') || localStorage.getItem('bluefine_current_store_id') || 'bluefine') : 'bluefine');
+      let activeStore = storeId;
+      if (!activeStore && typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        activeStore = params.get('store') || '';
+        if (!activeStore) {
+          const hostname = window.location.hostname;
+          const parts = hostname.split('.');
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+            activeStore = parts[0];
+          }
+        }
+        if (!activeStore) {
+          activeStore = localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+        }
+      }
+      if (!activeStore) activeStore = 'catacloud';
       getStoreConfig(activeStore).then(setStoreConfig);
     };
 
     const handleConfigUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
       const eventStoreId = customEvent.detail?.storeId;
-      const activeStore = storeId || (typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('store') || localStorage.getItem('bluefine_current_store_id') || 'bluefine') : 'bluefine');
+      let activeStore = storeId;
+      if (!activeStore && typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        activeStore = params.get('store') || '';
+        if (!activeStore) {
+          const hostname = window.location.hostname;
+          const parts = hostname.split('.');
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+            activeStore = parts[0];
+          }
+        }
+        if (!activeStore) {
+          activeStore = localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+        }
+      }
+      if (!activeStore) activeStore = 'catacloud';
       if (!eventStoreId || eventStoreId === activeStore) {
         getStoreConfig(activeStore).then(setStoreConfig);
       }

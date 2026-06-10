@@ -17,7 +17,7 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Bluefine | Premium Catalogue Merchant",
+  title: "CataCloud | Premium Catalogue Merchant",
   description: "Premium catalogue merchant tools for building product catalogs, sharing client links, and managing enquiries.",
 };
 

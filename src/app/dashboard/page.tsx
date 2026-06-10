@@ -992,8 +992,26 @@ export default function DashboardPage() {
     }
   };
 
+  const getGeneralCatalogLink = () => {
+    if (typeof window === 'undefined') return '/catalogue/view';
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    let domain = host;
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    const cleanStoreId = activeStoreId.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    return `${protocol}//${cleanStoreId}.${domain}/catalogue/view`;
+  };
+
   const getProposalShareLink = (cat: CustomCatalog) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:3000';
+    let domain = host;
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    const cleanStoreId = activeStoreId.toLowerCase().replace(/[^a-z0-9-]/g, '');
     const dataObj = {
       id: cat.id,
       marketName: cat.marketName,
@@ -1004,7 +1022,7 @@ export default function DashboardPage() {
       overrides: cat.overrides
     };
     const serializedData = btoa(unescape(encodeURIComponent(JSON.stringify(dataObj))));
-    return `${origin}/catalogue/${cat.id}?store=${activeStoreId}&p=${serializedData}`;
+    return `${protocol}//${cleanStoreId}.${domain}/catalogue/${cat.id}?p=${serializedData}`;
   };
 
   const handleCopyCatalogLink = (id: string) => {
@@ -2158,7 +2176,7 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   readOnly
-                  value={typeof window !== 'undefined' ? `${window.location.origin}/catalogue/view?store=${activeStoreId}` : `/catalogue/view?store=${activeStoreId}`}
+                  value={getGeneralCatalogLink()}
                   style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', outline: 'none' }}
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
@@ -2167,8 +2185,7 @@ export default function DashboardPage() {
                   className={styles.btnMerchantPrimary}
                   style={{ padding: '0 16px', fontSize: '0.75rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   onClick={() => {
-                    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                    const link = `${origin}/catalogue/view?store=${activeStoreId}`;
+                    const link = getGeneralCatalogLink();
                     navigator.clipboard.writeText(link).then(() => {
                       toast.success('General Catalogue link copied!');
                     });
@@ -2453,7 +2470,7 @@ export default function DashboardPage() {
         <aside className={styles.sidebar}>
           <div>
             <div className={styles.sidebarHeader}>
-              <h1 className={styles.sidebarBrand}>Bluefine</h1>
+              <h1 className={styles.sidebarBrand}>CataCloud</h1>
               <p className={styles.sidebarSubtitle}>
                 {dashboardMode === 'buyer' ? 'Premium B2B Buyer Hub' : 'Premium B2B Merchant'}
               </p>
@@ -2554,8 +2571,8 @@ export default function DashboardPage() {
               <p className={styles.sidebarUserName}>{user ? user.name : 'Admin User'}</p>
               <p className={styles.sidebarUserRole}>
                 {dashboardMode === 'buyer' 
-                  ? 'Bluefine Buyer' 
-                  : (user && user.role === 'admin' ? 'Bluefine Ops' : 'Verified Merchant')}
+                  ? 'CataCloud Buyer' 
+                  : (user && user.role === 'admin' ? 'CataCloud Ops' : 'Verified Merchant')}
               </p>
             </div>
             <button 
@@ -2657,7 +2674,7 @@ export default function DashboardPage() {
                 <HelpCircle size={18} />
               </button>
               <div className={styles.topHeaderDivider} />
-              <span className={styles.topHeaderPortalTitle}>Bluefine Portal</span>
+              <span className={styles.topHeaderPortalTitle}>CataCloud Portal</span>
               
               {/* Toggle dashboard mode */}
               {dashboardMode === 'buyer' ? (
@@ -2758,15 +2775,21 @@ export default function DashboardPage() {
 
                     <div style={{ marginBottom: '24px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }} htmlFor="onboard-unit">Primary Unit of Measurement</label>
-                      <input
-                        type="text"
+                      <select
                         id="onboard-unit"
                         value={onboardUnit}
                         onChange={(e) => setOnboardUnit(e.target.value)}
-                        placeholder="e.g. pcs, kg, box, dozen"
                         style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', outline: 'none', fontSize: '0.9rem', marginTop: '6px' }}
                         required
-                      />
+                      >
+                        <option value="pcs">pcs</option>
+                        <option value="kg">kg</option>
+                        <option value="box">box</option>
+                        <option value="dozen">dozen</option>
+                        <option value="pack">pack</option>
+                        <option value="litres">litres</option>
+                        <option value="meters">meters</option>
+                      </select>
                     </div>
 
                     <div style={{ display: 'flex', gap: '16px' }}>
@@ -2812,7 +2835,7 @@ export default function DashboardPage() {
 
           {/* Footer */}
           <footer className={styles.portalFooter}>
-            <div>© 2026 Bluefine Maritime Systems. System Status: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Operational</span></div>
+            <div>© 2026 CataCloud Maritime Systems. System Status: <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Operational</span></div>
             <div className={styles.portalFooterLinks}>
               <a href="#support">Support</a>
               <a href="#privacy">Privacy Policy</a>
@@ -2830,7 +2853,7 @@ export default function DashboardPage() {
         cartCount={0}
         onCartToggle={() => {}}
         onLogout={handleLogout}
-        storeId={activeStoreId || 'bluefine'}
+        storeId={activeStoreId || 'catacloud'}
       />
 
       <main className={styles.container}>
@@ -2954,15 +2977,21 @@ export default function DashboardPage() {
 
                   <div className={styles.formGroup} style={{ marginBottom: '24px' }}>
                     <label className={styles.label} htmlFor="onboard-unit">Primary Unit of Measurement</label>
-                    <input
-                      type="text"
+                    <select
                       id="onboard-unit"
                       value={onboardUnit}
                       onChange={(e) => setOnboardUnit(e.target.value)}
-                      placeholder="e.g. pcs, kg, litre, box, dozen"
                       className="luxury-input"
                       required
-                    />
+                    >
+                      <option value="pcs">pcs</option>
+                      <option value="kg">kg</option>
+                      <option value="box">box</option>
+                      <option value="dozen">dozen</option>
+                      <option value="pack">pack</option>
+                      <option value="litres">litres</option>
+                      <option value="meters">meters</option>
+                    </select>
                   </div>
 
                   <div style={{ display: 'flex', gap: '16px' }}>

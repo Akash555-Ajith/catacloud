@@ -21,7 +21,7 @@ export interface StoreConfig {
 }
 
 export const SEAFOOD_PRESET: StoreConfig = {
-  storeName: 'Bluefine',
+  storeName: 'CataCloud',
   storeTagline: 'Landed Catch & Logistics Hub',
   storeType: 'seafood',
   unit: 'kg',

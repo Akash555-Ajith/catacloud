@@ -20,6 +20,59 @@ export default function LoginPage() {
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('');
   const [googleNameInput, setGoogleNameInput] = useState<string>('');
 
+  // Gmail Verification Modal states
+  const [showVerificationModal, setShowVerificationModal] = useState<boolean>(false);
+  const [verificationCode, setVerificationCode] = useState<string>('');
+  const [verificationError, setVerificationError] = useState<string>('');
+  const [pendingUser, setPendingUser] = useState<{
+    email: string;
+    password?: string;
+    name: string;
+    role: 'admin' | 'user';
+    isGoogle?: boolean;
+  } | null>(null);
+
+  const handleVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerificationError('');
+    if (!verificationCode.trim()) {
+      setVerificationError('Please enter a verification code.');
+      return;
+    }
+    if (verificationCode.trim().length < 4) {
+      setVerificationError('Verification code must be at least 4 characters.');
+      return;
+    }
+    if (!pendingUser) return;
+
+    setLoading(true);
+    try {
+      const newUser = {
+        email: pendingUser.email,
+        password: pendingUser.password || 'google-oauth-dummy-password',
+        name: pendingUser.name,
+        role: pendingUser.role
+      };
+      await dbSaveUser(newUser);
+
+      localStorage.setItem('bluefine_user', JSON.stringify({
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role
+      }));
+
+      setShowVerificationModal(false);
+      setPendingUser(null);
+      setVerificationCode('');
+      setLoading(false);
+      handleRedirect(newUser.email);
+      toast.success('Gmail Account Verified & Registered Successfully!');
+    } catch (err) {
+      setVerificationError('Verification failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
   const handleRedirect = (userEmail: string) => {
     const params = new URLSearchParams(window.location.search);
     const targetStore = params.get('store');
@@ -130,6 +183,13 @@ export default function LoginPage() {
             name: displayName.trim(),
             role: (cleanEmail === 'admin@gmail.com' ? 'admin' : 'user') as 'admin' | 'user'
           };
+
+          if (cleanEmail.endsWith('@gmail.com')) {
+            setPendingUser(newUser);
+            setLoading(false);
+            setShowVerificationModal(true);
+            return;
+          }
 
           await dbSaveUser(newUser);
 
@@ -247,26 +307,35 @@ export default function LoginPage() {
 
       const runGoogleAuth = async () => {
         let matchedUser = await dbGetUser(cleanEmail);
-        if (!matchedUser) {
-          matchedUser = {
-            email: cleanEmail,
-            password: 'google-oauth-dummy-password',
-            name: cleanName,
-            role: 'user'
-          };
-          await dbSaveUser(matchedUser);
+        const isNewUser = !matchedUser;
+        const tempUser = matchedUser || {
+          email: cleanEmail,
+          password: 'google-oauth-dummy-password',
+          name: cleanName,
+          role: 'user' as 'admin' | 'user'
+        };
+
+        if (isNewUser && cleanEmail.endsWith('@gmail.com')) {
+          setPendingUser({ ...tempUser, isGoogle: true });
+          setLoading(false);
+          setShowVerificationModal(true);
+          return;
+        }
+
+        if (isNewUser) {
+          await dbSaveUser(tempUser);
         }
 
         // Log in
         localStorage.setItem('bluefine_user', JSON.stringify({
-          email: matchedUser.email,
-          name: matchedUser.name,
-          role: matchedUser.role,
-          avatar: matchedUser.avatar
+          email: tempUser.email,
+          name: tempUser.name,
+          role: tempUser.role,
+          avatar: tempUser.avatar
         }));
 
         setLoading(false);
-        handleRedirect(matchedUser.email);
+        handleRedirect(tempUser.email);
       };
 
       runGoogleAuth().catch((err) => {
@@ -313,7 +382,7 @@ export default function LoginPage() {
               </linearGradient>
             </defs>
           </svg>
-          <h1 className={styles.logoText}>Bluefine</h1>
+          <h1 className={styles.logoText}>CataCloud</h1>
           <span className={styles.tagline}>{isSignUp ? 'Partner Sourcing Sign-Up' : 'Marine Catalogue'}</span>
         </div>
 
@@ -456,7 +525,7 @@ export default function LoginPage() {
                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
               </svg>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 600, fontFamily: 'var(--font-outfit), sans-serif', color: 'var(--text-primary)' }}>Sign in with Google</h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>to continue to Bluefine Sourcing Platform</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>to continue to CataCloud Sourcing Platform</p>
             </div>
 
             <form onSubmit={handleGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -499,6 +568,60 @@ export default function LoginPage() {
                   style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
                 >
                   Sign In
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showVerificationModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3, 8, 18, 0.85)', backdropFilter: 'blur(10px)', zIndex: 110, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <div className="glassmorphism" style={{ width: '100%', maxWidth: '440px', borderRadius: '16px', border: '1px solid var(--glass-border)', padding: '32px', boxShadow: 'var(--shadow-glass)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
+              <span style={{ fontSize: '2rem' }}>✉️</span>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 600, fontFamily: 'var(--font-outfit), sans-serif', color: 'var(--text-primary)' }}>Verify Your Email</h2>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                A verification code has been simulated for your Gmail address: <strong style={{ color: 'var(--accent-cyan)' }}>{pendingUser?.email}</strong>.
+              </p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.02)', padding: '8px 12px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                Enter any code (e.g. <strong>123456</strong>) to verify your account and complete registration.
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {verificationError && <div className={styles.errorText}>{verificationError}</div>}
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Verification Code</label>
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="luxury-input"
+                  placeholder="e.g. 123456"
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVerificationModal(false);
+                    setPendingUser(null);
+                  }}
+                  className="btn-gold"
+                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-cyan"
+                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
+                  disabled={loading}
+                >
+                  {loading ? 'Verifying...' : 'Verify & Proceed'}
                 </button>
               </div>
             </form>

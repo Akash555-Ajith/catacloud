@@ -28,15 +28,30 @@ export default function CatalogueDetailPage() {
   const [products, setProducts] = useState<FishItem[]>([]);
   const [selectedFish, setSelectedFish] = useState<FishItem | null>(null);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
-  const [storeId, setStoreId] = useState<string>('bluefine');
+  const [storeId, setStoreId] = useState<string>('catacloud');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
   const [checkoutEntireProposal, setCheckoutEntireProposal] = useState<boolean>(false);
+
+  // Sourcing enquiry modal states
+  const [showEnquiryModal, setShowEnquiryModal] = useState(false);
+  const [enquiryFish, setEnquiryFish] = useState<FishItem | null>(null);
+  const [enquiryQty, setEnquiryQty] = useState<number>(50);
+  const [enquiryNotes, setEnquiryNotes] = useState('');
+  const [isSubmittingEnquiry, setIsSubmittingEnquiry] = useState(false);
+
+  // Reviews states
+  const [reviewerName, setReviewerName] = useState('');
+  const [reviewerRating, setReviewerRating] = useState(5);
+  const [reviewerText, setReviewerText] = useState('');
 
   // Search & Category states
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,7 +97,17 @@ export default function CatalogueDetailPage() {
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
-    const resolvedStoreId = params.get('store') || 'bluefine';
+    let resolvedStoreId = params.get('store') || '';
+    if (!resolvedStoreId && typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const parts = hostname.split('.');
+      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+        resolvedStoreId = parts[0];
+      }
+    }
+    if (!resolvedStoreId) {
+      resolvedStoreId = 'catacloud';
+    }
     setStoreId(resolvedStoreId);
 
     getStoreConfig(resolvedStoreId).then(setStoreConfig);

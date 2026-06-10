@@ -25,7 +25,7 @@ export default function ProposalDetailPage() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [fish, setFish] = useState<FishItem | null>(null);
   const [storeConfig, setStoreConfig] = useState<StoreConfig>(SEAFOOD_PRESET);
-  const [storeId, setStoreId] = useState<string>('bluefine');
+  const [storeId, setStoreId] = useState<string>('catacloud');
 
   // Client checkout states
   const [clientName, setClientName] = useState('');
@@ -33,8 +33,14 @@ export default function ProposalDetailPage() {
   const [quantity, setQuantity] = useState<number>(10);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [address, setAddress] = useState('');
+  const [specialInstructions, setSpecialInstructions] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [successOrder, setSuccessOrder] = useState<Order | null>(null);
+
+  // Computed total fields
+  const [basePrice, setBasePrice] = useState<number>(0);
+  const [finalPrice, setFinalPrice] = useState<number>(0);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [etaResult, setEtaResult] = useState<ETAPrediction | null>(null);
 
   // Recalculate ETA automatically when quantity, address, or product changes
@@ -63,7 +69,17 @@ export default function ProposalDetailPage() {
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
-    const resolvedStoreId = params.get('store') || 'bluefine';
+    let resolvedStoreId = params.get('store') || '';
+    if (!resolvedStoreId && typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const parts = hostname.split('.');
+      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && !parts[0].includes('catacloud')) {
+        resolvedStoreId = parts[0];
+      }
+    }
+    if (!resolvedStoreId) {
+      resolvedStoreId = 'catacloud';
+    }
     setStoreId(resolvedStoreId);
 
     getStoreConfig(resolvedStoreId).then(setStoreConfig);
