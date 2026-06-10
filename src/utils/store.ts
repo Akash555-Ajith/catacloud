@@ -1,5 +1,5 @@
 import { fishData, FishItem } from '@/data/fishData';
-import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData } from '@/data/storeConfig';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData, CLOTHING_PRESET, clothingSeedData } from '@/data/storeConfig';
 import { supabase, isSupabaseConfigured, disableSupabase } from './supabaseClient';
 
 export interface OrderItem {
@@ -165,6 +165,9 @@ function getPresetDefault(storeId: string): StoreConfig {
   if (cleanId.includes('egg')) {
     return { ...EGG_PRESET, id: storeId };
   }
+  if (cleanId.includes('clothing') || cleanId.includes('apparel') || cleanId.includes('wear') || cleanId.includes('fashion') || cleanId.includes('threads') || cleanId.includes('garment') || cleanId.includes('boutique')) {
+    return { ...CLOTHING_PRESET, id: storeId };
+  }
   if (cleanId.includes('bakery') || cleanId.includes('bread') || cleanId.includes('shop') || cleanId.includes('niche')) {
     return { ...GENERIC_PRESET, id: storeId };
   }
@@ -187,6 +190,7 @@ function normalizeStoreConfigs(stores: any[]): StoreConfig[] {
 export function getSeedData(type: string): FishItem[] {
   if (type === 'egg') return eggSeedData;
   if (type === 'generic') return genericSeedData;
+  if (type === 'clothing') return clothingSeedData;
   return fishData;
 }
 
@@ -395,7 +399,6 @@ export async function deleteProduct(id: string, storeId: string = 'bluefine'): P
           ? await query.eq('store_id', storeId)
           : await query;
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error deleting product in Supabase:', err.message || err);
@@ -775,7 +778,6 @@ export async function deleteCustomCatalog(id: string, storeId: string = 'bluefin
           ? await query.eq('store_id', storeId)
           : await query;
         if (error) throw error;
-        return;
       }
     } catch (err: any) {
       console.warn('Error deleting custom catalog in Supabase:', err.message || err);
@@ -875,7 +877,7 @@ export function calculateSourcingETA(
   };
 }
 
-export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic', storeId: string = 'bluefine'): Promise<FishItem[]> {
+export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic' | 'clothing', storeId: string = 'bluefine'): Promise<FishItem[]> {
   const seed = getSeedData(storeType);
   
   if (isSupabaseConfigured && await isTableSupported('products')) {
@@ -1112,5 +1114,47 @@ export async function dbSaveUser(user: DBUser): Promise<void> {
   }
   localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
 }
+
+export async function deleteStore(storeId: string): Promise<void> {
+  if (isSupabaseConfigured) {
+    try {
+      if (await isTableSupported('store_config')) {
+        await supabase.from('store_config').delete().eq('id', storeId);
+      }
+      if (await isTableSupported('products') && await isColumnSupported('products', 'store_id')) {
+        await supabase.from('products').delete().eq('store_id', storeId);
+      }
+      if (await isTableSupported('orders') && await isColumnSupported('orders', 'store_id')) {
+        await supabase.from('orders').delete().eq('store_id', storeId);
+      }
+      if (await isTableSupported('custom_catalogs') && await isColumnSupported('custom_catalogs', 'store_id')) {
+        await supabase.from('custom_catalogs').delete().eq('store_id', storeId);
+      }
+      if (await isTableSupported('proposals') && await isColumnSupported('proposals', 'store_id')) {
+        await supabase.from('proposals').delete().eq('store_id', storeId);
+      }
+      if (await isTableSupported('reviews') && await isColumnSupported('reviews', 'store_id')) {
+        await supabase.from('reviews').delete().eq('store_id', storeId);
+      }
+      if (await isTableSupported('sourcing_requests') && await isColumnSupported('sourcing_requests', 'store_id')) {
+        await supabase.from('sourcing_requests').delete().eq('store_id', storeId);
+      }
+    } catch (e) {
+      console.warn('Failed to delete store from Supabase:', e);
+    }
+  }
+
+  if (!isBrowser()) return;
+  localStorage.removeItem(`bluefine_store_config_${storeId}`);
+  localStorage.removeItem(`bluefine_products_${storeId}`);
+  localStorage.removeItem(`bluefine_orders_${storeId}`);
+  localStorage.removeItem(`bluefine_proposals_${storeId}`);
+  localStorage.removeItem(`bluefine_custom_catalogs_${storeId}`);
+  localStorage.removeItem(`bluefine_sourcing_requests_${storeId}`);
+  localStorage.removeItem(`bluefine_reviews_${storeId}`);
+
+  window.dispatchEvent(new CustomEvent('store-deleted', { detail: { storeId } }));
+}
+
 
 

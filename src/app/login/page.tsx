@@ -20,11 +20,27 @@ export default function LoginPage() {
   const [googleEmailInput, setGoogleEmailInput] = useState<string>('');
   const [googleNameInput, setGoogleNameInput] = useState<string>('');
 
+  const handleRedirect = (userEmail: string) => {
+    const params = new URLSearchParams(window.location.search);
+    const targetStore = params.get('store');
+    if (targetStore) {
+      localStorage.setItem(`bluefine_active_store_id_${userEmail}`, targetStore);
+      router.push(`/?store=${targetStore}`);
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
   // If already logged in, redirect to home page, and listen for Supabase auth redirects
   useEffect(() => {
     const user = localStorage.getItem('bluefine_user');
     if (user) {
-      router.push('/dashboard');
+      try {
+        const parsed = JSON.parse(user);
+        handleRedirect(parsed.email);
+      } catch {
+        router.push('/dashboard');
+      }
       return;
     }
 
@@ -58,7 +74,7 @@ export default function LoginPage() {
             localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
           }
           
-          router.push('/dashboard');
+          handleRedirect(appUser.email);
         }
       });
       return () => subscription.unsubscribe();
@@ -124,7 +140,7 @@ export default function LoginPage() {
             role: newUser.role
           }));
           
-          router.push('/dashboard');
+          handleRedirect(cleanEmail);
         } else {
           // Login Flow
           const matchedUser = await dbGetUser(cleanEmail);
@@ -152,7 +168,7 @@ export default function LoginPage() {
               role: finalUser.role,
               avatar: finalUser.avatar
             }));
-            router.push('/dashboard');
+            handleRedirect(finalUser.email);
           } else {
             setError('Invalid business email or secure key code.');
           }
@@ -250,7 +266,7 @@ export default function LoginPage() {
         }));
 
         setLoading(false);
-        router.push('/dashboard');
+        handleRedirect(matchedUser.email);
       };
 
       runGoogleAuth().catch((err) => {

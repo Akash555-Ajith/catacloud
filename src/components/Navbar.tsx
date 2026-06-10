@@ -169,8 +169,23 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full max-w-full flex items-center justify-between px-10 py-5 rounded-b-2xl rounded-t-none bg-[rgba(8,12,24,0.88)] backdrop-blur-2xl shadow-[0_24px_60px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.03)] border-x border-b border-[rgba(255,255,255,0.05)] transition-all duration-300 relative overflow-hidden">
-      <div className="flex items-center gap-4 group cursor-pointer z-10" onClick={() => window.location.href = '/'}>
+    <header
+      className="sticky top-0 z-50 w-full max-w-full flex items-center justify-between px-10 py-5 rounded-b-2xl rounded-t-none backdrop-blur-2xl transition-all duration-300 relative overflow-hidden"
+      style={storeConfig.storeType === 'clothing' ? {
+        background: 'rgba(12, 10, 8, 0.90)',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.02)',
+        borderLeft: '1px solid rgba(180,140,100,0.12)',
+        borderRight: '1px solid rgba(180,140,100,0.12)',
+        borderBottom: '1px solid rgba(180,140,100,0.12)',
+      } : {
+        background: 'rgba(8,12,24,0.88)',
+        boxShadow: '0 24px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.03)',
+        borderLeft: '1px solid rgba(255,255,255,0.05)',
+        borderRight: '1px solid rgba(255,255,255,0.05)',
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+      }}
+    >
+      <div className="flex items-center gap-4 group cursor-pointer z-10" onClick={() => window.location.href = storeId ? `/?store=${storeId}` : '/'}>
         {storeConfig.storeType === 'seafood' ? (
           <svg
             width="42"
@@ -223,6 +238,28 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
               </linearGradient>
             </defs>
           </svg>
+        ) : storeConfig.storeType === 'clothing' ? (
+          <svg
+            width="42"
+            height="42"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="url(#clothing-logo-grad)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ filter: 'drop-shadow(0 0 12px rgba(212, 169, 106, 0.6))' }}
+            className="transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105"
+          >
+            <path d="M20.38 3.46L16 6.14V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3.14L3.62 3.46a1 1 0 0 0-1.42.34L.26 7.42a1 1 0 0 0 .34 1.42L4 11v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9l3.4-2.16a1 1 0 0 0 .34-1.42l-1.94-3.62a1 1 0 0 0-1.42-.34z" fill="url(#clothing-logo-grad)" opacity="0.15" />
+            <path d="M20.38 3.46L16 6.14V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3.14L3.62 3.46a1 1 0 0 0-1.42.34L.26 7.42a1 1 0 0 0 .34 1.42L4 11v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9l3.4-2.16a1 1 0 0 0 .34-1.42l-1.94-3.62a1 1 0 0 0-1.42-.34z" />
+            <defs>
+              <linearGradient id="clothing-logo-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#d4a96a" />
+                <stop offset="1" stopColor="#e8c47a" />
+              </linearGradient>
+            </defs>
+          </svg>
         ) : (
           <svg
             width="42"
@@ -247,7 +284,20 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
             </defs>
           </svg>
         )}
-        <span className="font-heading text-3xl font-extrabold bg-gradient-to-r from-indigo-400 via-indigo-300 to-cyan-300 bg-clip-text text-transparent tracking-widest drop-shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all duration-300 group-hover:brightness-110">
+        <span
+          className="font-heading text-3xl font-extrabold tracking-widest drop-shadow transition-all duration-300 group-hover:brightness-110"
+          style={storeConfig.storeType === 'clothing' ? {
+            backgroundImage: 'linear-gradient(135deg, #d4a96a 0%, #e8c47a 55%, #c08040 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            filter: 'drop-shadow(0 0 10px rgba(212,169,106,0.25))',
+          } : {
+            backgroundImage: 'linear-gradient(to right, #818cf8, #a5b4fc, #22d3ee)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            filter: 'drop-shadow(0 0 15px rgba(99,102,241,0.3))',
+          }}
+        >
           {storeConfig.storeName}
         </span>
       </div>

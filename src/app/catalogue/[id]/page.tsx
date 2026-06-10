@@ -42,6 +42,9 @@ export default function CatalogueDetailPage() {
   // Search & Category states
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('featured');
 
   // Review states
   const [reviewProductId, setReviewProductId] = useState('');
@@ -242,20 +245,33 @@ export default function CatalogueDetailPage() {
     );
   }
 
-  // Filter items based on proposal settings, category selection, and search query
-  const proposalItems = products.filter((p) => {
-    const override = catalog.overrides[p.id];
-    const isIncluded = override && override.included;
-    if (!isIncluded) return false;
+  // Filter items based on proposal settings, category selection, search query, price range, and sort
+  const proposalItems = products
+    .filter((p) => {
+      const override = catalog.overrides[p.id];
+      const isIncluded = override && override.included;
+      if (!isIncluded) return false;
 
-    const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.scientificName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const price = override.customPrice;
+      const matchesMinPrice = minPrice === '' || price >= parseFloat(minPrice);
+      const matchesMaxPrice = maxPrice === '' || price <= parseFloat(maxPrice);
 
-    return matchesCategory && matchesSearch;
-  });
+      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.scientificName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.origin.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+      return matchesCategory && matchesSearch && matchesMinPrice && matchesMaxPrice;
+    })
+    .sort((a, b) => {
+      const overrideA = catalog.overrides[a.id]!;
+      const overrideB = catalog.overrides[b.id]!;
+      if (sortBy === 'price-asc') return overrideA.customPrice - overrideB.customPrice;
+      if (sortBy === 'price-desc') return overrideB.customPrice - overrideA.customPrice;
+      if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
+      return 0; // Default featured order
+    });
 
   // Consolidated Proposal Cart Calculations
   const includedItems = products.filter((p) => {
@@ -459,6 +475,17 @@ export default function CatalogueDetailPage() {
     }
   };
 
+
+  // Derive unique categories from proposal items
+  const allProposalItems = products.filter((p) => {
+    const override = catalog.overrides[p.id];
+    return override && override.included;
+  });
+  const uniqueCategories = ['All Items', ...Array.from(new Set(allProposalItems.map(p => p.category)))];
+
+  // Items for the right order summary (those with qty > 0)
+  const orderItems = allProposalItems.filter(p => (quantities[p.id] || 0) > 0);
+
   return (
     <div className={styles.pageContainer}>
       <header className={styles.brandHeader}>
@@ -601,7 +628,7 @@ export default function CatalogueDetailPage() {
           </div>
 
           {/* Category Dropdown Filter */}
-          <div style={{ minWidth: '200px' }}>
+          <div style={{ minWidth: '160px' }}>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
@@ -628,6 +655,58 @@ export default function CatalogueDetailPage() {
                   {cat}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Price Range Filters */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input
+              type="number"
+              placeholder="Min Price"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              className="luxury-input"
+              style={{ width: '85px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
+              id="min-price-filter"
+            />
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>to</span>
+            <input
+              type="number"
+              placeholder="Max Price"
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(e.target.value)}
+              className="luxury-input"
+              style={{ width: '85px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
+              id="max-price-filter"
+            />
+          </div>
+
+          {/* Sort Selector Dropdown */}
+          <div style={{ minWidth: '160px' }}>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="luxury-input"
+              style={{
+                height: '34px',
+                paddingTop: '0px',
+                paddingBottom: '0px',
+                paddingLeft: '12px',
+                paddingRight: '30px',
+                fontSize: '0.8rem',
+                appearance: 'none',
+                cursor: 'pointer',
+                backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 12px center',
+                backgroundSize: '16px'
+              }}
+              id="client-catalogue-sort-select"
+            >
+              <option value="featured" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Featured Picks</option>
+              <option value="price-asc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Price: Low to High</option>
+              <option value="price-desc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Price: High to Low</option>
+              <option value="name-asc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Alphabetical (A-Z)</option>
             </select>
           </div>
 

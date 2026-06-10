@@ -360,3 +360,98 @@ body {
     @apply font-sans;
   }
 }
+
+/* ======================================================
+   CLOTHING STORE THEME
+   Activated when the root div has data-store-theme="clothing"
+   ====================================================== */
+[data-store-theme="clothing"] {
+  --bg-primary: #0e0e0f;
+  --bg-secondary: #161618;
+  --bg-accent: #1c1c1f;
+  --bg-card: rgba(22, 22, 25, 0.7);
+
+  --glass-bg: rgba(20, 20, 22, 0.65);
+  --glass-border: rgba(180, 140, 100, 0.15);
+  --glass-border-focus: rgba(212, 170, 120, 0.45);
+  --glass-hover-bg: rgba(30, 28, 26, 0.75);
+  --glass-hover-border: rgba(212, 170, 120, 0.3);
+
+  --text-primary: #f5f0eb;
+  --text-secondary: #a09484;
+  --text-muted: #5a5048;
+
+  --accent-cyan: #d4a96a;
+  --accent-blue: #c9986a;
+  --accent-teal: #b8875a;
+  --accent-gold: #e8c47a;
+  --accent-gold-hover: #f0d090;
+  --accent-danger: #e05555;
+  --accent-success: #5bbf8a;
+
+  --gradient-ocean: radial-gradient(ellipse at 30% 0%, #1e1a16 0%, #0e0e0f 55%, #080808 100%);
+  --gradient-premium: linear-gradient(135deg, #d4a96a 0%, #e8c47a 50%, #c08040 100%);
+  --gradient-gold: linear-gradient(135deg, #e8c47a 0%, #c08040 100%);
+  --gradient-dark-glass: linear-gradient(185deg, rgba(30, 26, 22, 0.8) 0%, rgba(10, 10, 12, 0.95) 100%);
+
+  --shadow-glow-cyan: 0 0 20px rgba(212, 169, 106, 0.15);
+  --shadow-glow-cyan-hover: 0 0 30px rgba(212, 169, 106, 0.35);
+  --shadow-glow-gold: 0 0 20px rgba(232, 196, 122, 0.15);
+  --shadow-glow-gold-hover: 0 0 30px rgba(232, 196, 122, 0.35);
+}
+
+[data-store-theme="clothing"] body,
+[data-store-theme="clothing"] .dark body {
+  background: #0e0e0f !important;
+  background-image: radial-gradient(ellipse at 30% 0%, #1e1a16 0%, #0e0e0f 55%, #080808 100%) !important;
+}
+
+[data-store-theme="clothing"] ::-webkit-scrollbar-thumb {
+  background: #2a2520;
+  border-color: rgba(212, 169, 106, 0.1);
+}
+[data-store-theme="clothing"] ::-webkit-scrollbar-thumb:hover {
+  background: #d4a96a;
+}
+
+[data-store-theme="clothing"] .glassmorphism {
+  background: rgba(18, 16, 14, 0.6);
+  border-color: rgba(180, 140, 100, 0.12);
+}
+
+[data-store-theme="clothing"] .luxury-input {
+  background: rgba(14, 12, 10, 0.7);
+  border-color: rgba(180, 140, 100, 0.18);
+  color: #f5f0eb;
+}
+[data-store-theme="clothing"] .luxury-input:focus {
+  border-color: #d4a96a;
+  box-shadow: 0 0 10px rgba(212, 169, 106, 0.25);
+  background: rgba(14, 12, 10, 0.9);
+}
+[data-store-theme="clothing"] .luxury-input::placeholder {
+  color: #5a5048;
+}
+
+[data-store-theme="clothing"] .btn-primary {
+  background: linear-gradient(135deg, #d4a96a 0%, #e8c47a 50%, #c08040 100%);
+  color: #0e0e0f;
+  box-shadow: 0 0 20px rgba(212, 169, 106, 0.2);
+}
+[data-store-theme="clothing"] .btn-primary:hover {
+  box-shadow: 0 0 30px rgba(212, 169, 106, 0.45);
+}
+
+[data-store-theme="clothing"] .btn-secondary {
+  border-color: rgba(180, 140, 100, 0.25);
+  color: #f5f0eb;
+}
+[data-store-theme="clothing"] .btn-secondary:hover {
+  background: rgba(212, 169, 106, 0.06);
+  border-color: rgba(212, 169, 106, 0.4);
+}
+
+[data-store-theme="clothing"] .glow-hover-cyan:hover {
+  box-shadow: 0 0 30px rgba(212, 169, 106, 0.35);
+  border-color: #d4a96a;
+}
