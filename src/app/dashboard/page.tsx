@@ -106,6 +106,8 @@ export default function DashboardPage() {
   // Modal / Form states for product management
   const [isProductModalOpen, setIsProductModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<FishItem | null>(null);
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
+  const [bulkCSVText, setBulkCSVText] = useState<string>('');
   
   // POS System State
   const [posCart, setPosCart] = useState<{ fish: FishItem; quantity: number }[]>([]);
@@ -748,6 +750,116 @@ export default function DashboardPage() {
     const prods = await getProducts(activeStoreId);
     setProducts(prods);
     setIsProductModalOpen(false);
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkCSVText.trim()) {
+      toast.error('Please paste CSV text data.');
+      return;
+    }
+
+    const rows = bulkCSVText.split('\n').map(r => r.trim()).filter(r => r.length > 0);
+    if (rows.length < 2) {
+      toast.error('CSV data must contain at least a header row and one product row.');
+      return;
+    }
+
+    // Parse header row
+    const headers = rows[0].split(',').map(h => h.trim().toLowerCase().replace(/["']/g, ''));
+    const nameIndex = headers.indexOf('name');
+    const priceIndex = headers.indexOf('price');
+    const categoryIndex = headers.indexOf('category');
+    const stockIndex = headers.indexOf('stock');
+
+    if (nameIndex === -1 || priceIndex === -1) {
+      toast.error('CSV headers must include at least "Name" and "Price" columns.');
+      return;
+    }
+
+    let successCount = 0;
+    const errors: string[] = [];
+
+    // Clone the product items array to modify it locally and bulk upsert
+    const currentProducts = [...products];
+
+    for (let i = 1; i < rows.length; i++) {
+      const colValues = [];
+      let currentVal = '';
+      let insideQuotes = false;
+
+      // Handle quotes with commas inside values
+      const line = rows[i];
+      for (let charIdx = 0; charIdx < line.length; charIdx++) {
+        const char = line[charIdx];
+        if (char === '"') {
+          insideQuotes = !insideQuotes;
+        } else if (char === ',' && !insideQuotes) {
+          colValues.push(currentVal.trim().replace(/^"|"$/g, ''));
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      colValues.push(currentVal.trim().replace(/^"|"$/g, ''));
+
+      if (colValues.length < Math.max(nameIndex, priceIndex) + 1) {
+        errors.push(`Row ${i + 1}: Insufficient column values.`);
+        continue;
+      }
+
+      const pName = colValues[nameIndex];
+      const pPrice = Number(colValues[priceIndex]);
+      const pCategory = categoryIndex !== -1 && colValues[categoryIndex] ? colValues[categoryIndex] : (storeConfig.categories[0] || 'Saltwater');
+      const pStock = stockIndex !== -1 && colValues[stockIndex] ? Number(colValues[stockIndex]) : 10;
+
+      if (!pName || isNaN(pPrice)) {
+        errors.push(`Row ${i + 1}: Name cannot be empty and Price must be a valid number.`);
+        continue;
+      }
+
+      const generatedId = pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + `-${Math.floor(100 + Math.random() * 900)}`;
+
+      const newProd: FishItem = {
+        id: generatedId,
+        name: pName,
+        scientificName: 'Imported Specimen',
+        category: pCategory,
+        pricePerKg: pPrice,
+        origin: 'Global Wholesaler',
+        stock: pStock,
+        image: '/images/bluefin_tuna.png',
+        description: 'Bulk imported catalog item.',
+        tasteProfile: ['Fresh', 'Premium'],
+        texture: 'Delicate',
+        sustainability: 'Sourced Sustainably',
+        prepTime: '5 mins',
+        difficulty: 'Easy',
+        unit: storeConfig.unit
+      };
+
+      currentProducts.push(newProd);
+      successCount++;
+    }
+
+    try {
+      await saveProducts(currentProducts, activeStoreId);
+      const updated = await getProducts(activeStoreId);
+      setProducts(updated);
+      setBulkCSVText('');
+      setIsBulkModalOpen(false);
+
+      if (errors.length > 0) {
+        toast.warning(`Uploaded ${successCount} products, with some errors:`, {
+          description: errors.slice(0, 3).join(' | ')
+        });
+      } else {
+        toast.success(`Successfully uploaded ${successCount} products!`);
+      }
+    } catch (saveErr) {
+      console.error(saveErr);
+      toast.error('Failed to save bulk uploaded products.');
+    }
   };
 
   // Delete product
@@ -1414,6 +1526,9 @@ export default function DashboardPage() {
           
           <div style={{ display: 'flex', gap: '12px' }}>
             <button type="button" className={styles.btnMerchantSecondary} onClick={exportCatalogToCSV}>Export CSV</button>
+            <button type="button" className={styles.btnMerchantSecondary} style={{ color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' }} onClick={() => setIsBulkModalOpen(true)}>
+              📥 Bulk Upload
+            </button>
             <button type="button" className={styles.btnMerchantPrimary} onClick={() => handleOpenProductModal(null)}>
               <Plus size={16} /> Add New Product
             </button>
@@ -1913,32 +2028,34 @@ export default function DashboardPage() {
             <p className={styles.merchantSubtitle} style={{ margin: '4px 0 0 0' }}>Configure special quotes and discounts for target clients.</p>
           </div>
           {!showGenerator ? (
-            <button
-              type="button"
-              className={styles.btnMerchantPrimary}
-              onClick={() => {
-                setShowGenerator(true);
-                setEditingCatalogId(null);
-                setCatMarket('');
-                setCatNotes('');
-                setCatDiscount(0);
-                setCatDelivery(0);
-                const resetOverrides: typeof catOverrides = {};
-                products.forEach((p) => {
-                  resetOverrides[p.id] = {
-                    price: p.pricePerKg,
-                    stock: p.stock,
-                    discount: 0,
-                    threshold: 0,
-                    volumeDiscount: 0,
-                    included: false
-                  };
-                });
-                setCatOverrides(resetOverrides);
-              }}
-            >
-              + Generate Custom Catalogue
-            </button>
+            activeStoreId ? (
+              <button
+                type="button"
+                className={styles.btnMerchantPrimary}
+                onClick={() => {
+                  setShowGenerator(true);
+                  setEditingCatalogId(null);
+                  setCatMarket('');
+                  setCatNotes('');
+                  setCatDiscount(0);
+                  setCatDelivery(0);
+                  const resetOverrides: typeof catOverrides = {};
+                  products.forEach((p) => {
+                    resetOverrides[p.id] = {
+                      price: p.pricePerKg,
+                      stock: p.stock,
+                      discount: 0,
+                      threshold: 0,
+                      volumeDiscount: 0,
+                      included: false
+                    };
+                  });
+                  setCatOverrides(resetOverrides);
+                }}
+              >
+                + Generate Custom Catalogue
+              </button>
+            ) : null
           ) : (
             <button
               type="button"
@@ -2165,36 +2282,42 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className={styles.lightPanelCard}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
-                  🏪 Direct General Catalogue Link (All products at standard rates):
-                </span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>No setup or proposal overrides required</span>
+            {activeStoreId ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>
+                    🏪 Direct General Catalogue Link (All products at standard rates):
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>No setup or proposal overrides required</span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={getGeneralCatalogLink()}
+                    style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', outline: 'none' }}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                  />
+                  <button
+                    type="button"
+                    className={styles.btnMerchantPrimary}
+                    style={{ padding: '0 16px', fontSize: '0.75rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => {
+                      const link = getGeneralCatalogLink();
+                      navigator.clipboard.writeText(link).then(() => {
+                        toast.success('General Catalogue link copied!');
+                      });
+                    }}
+                  >
+                    Copy Link
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={getGeneralCatalogLink()}
-                  style={{ flex: 1, padding: '6px 12px', fontSize: '0.8rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#334155', outline: 'none' }}
-                  onClick={(e) => (e.target as HTMLInputElement).select()}
-                />
-                <button
-                  type="button"
-                  className={styles.btnMerchantPrimary}
-                  style={{ padding: '0 16px', fontSize: '0.75rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  onClick={() => {
-                    const link = getGeneralCatalogLink();
-                    navigator.clipboard.writeText(link).then(() => {
-                      toast.success('General Catalogue link copied!');
-                    });
-                  }}
-                >
-                  Copy Link
-                </button>
+            ) : (
+              <div style={{ padding: '16px', background: '#fffbeb', border: '1px solid #fef3c7', color: '#b45309', borderRadius: '8px', marginBottom: '20px', fontSize: '0.85rem' }}>
+                ⚠️ <strong>No active store established yet.</strong> Please establish a sourcing hub store to generate catalog links.
               </div>
-            </div>
+            )}
             
             {customCatalogs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
@@ -4160,6 +4283,58 @@ export default function DashboardPage() {
                   id="admin-product-submit-btn"
                 >
                   {editingProduct ? 'Save Changes' : 'Add Item'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}      {isBulkModalOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setIsBulkModalOpen(false)}>
+          <div className={`${styles.modalContent} glassmorphism`} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <header className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>📥 Bulk Upload Products</h2>
+              <button className={styles.modalCloseBtn} onClick={() => setIsBulkModalOpen(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </header>
+
+            <form onSubmit={handleBulkUpload}>
+              <div style={{ marginBottom: '16px' }}>
+                <label className={styles.label} style={{ marginBottom: '8px', display: 'block' }}>Paste CSV Data (First row is Header)</label>
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', marginBottom: '12px' }}>
+                  💡 <strong>Example format:</strong><br />
+                  <code>Name, Price, Category, Stock</code><br />
+                  <code>Premium Atlantic Halibut, 24.50, Seafood, 150</code><br />
+                  <code>Organic Free-Range Dozen Eggs, 8.50, Poultry, 20</code>
+                </div>
+                <textarea
+                  value={bulkCSVText}
+                  onChange={(e) => setBulkCSVText(e.target.value)}
+                  className="luxury-input"
+                  style={{ width: '100%', minHeight: '180px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
+                  placeholder="Name, Price, Category, Stock&#10;Product A, 19.99, Seafood, 25&#10;Product B, 45.00, Seafood, 10"
+                  required
+                />
+              </div>
+
+              <div className={styles.formActions}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsBulkModalOpen(false)} 
+                  className="btn-secondary"
+                  style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  style={{ padding: '10px 20px', fontSize: '0.9rem' }}
+                >
+                  Upload Products
                 </button>
               </div>
             </form>
