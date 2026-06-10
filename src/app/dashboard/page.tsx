@@ -2018,30 +2018,7 @@ export default function DashboardPage() {
 
           {/* Right Panel: Reseed & Proposals */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Share Your Store Card */}
-            <div className={styles.lightPanelCard}>
-              <h3 className={styles.lightPanelTitle} style={{ color: '#0ea5e9' }}>🔗 Share Your Store</h3>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0 12px 0', lineHeight: '1.5' }}>
-                Send this link to your clients so they can browse your full product catalog.
-              </p>
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px', fontSize: '0.75rem', color: '#334155', fontFamily: 'monospace', wordBreak: 'break-all', marginBottom: '12px' }}>
-                {typeof window !== 'undefined' ? `${window.location.origin}/?store=${activeStoreId}` : `https://bluefine.vercel.app/?store=${activeStoreId}`}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const url = typeof window !== 'undefined'
-                    ? `${window.location.origin}/?store=${activeStoreId}`
-                    : `https://bluefine.vercel.app/?store=${activeStoreId}`;
-                  navigator.clipboard.writeText(url);
-                  toast.success('Store catalog link copied!', { description: 'Share this with your clients.' });
-                }}
-                className={styles.btnMerchantSecondary}
-                style={{ width: '100%', justifyContent: 'center', borderColor: '#0ea5e9', color: '#0ea5e9' }}
-              >
-                📋 Copy Catalog Link
-              </button>
-            </div>
+            {/* Share Your Store Card removed */}
 
             <div className={styles.lightPanelCard}>
               <h3 className={styles.lightPanelTitle} style={{ color: '#ef4444' }}>Danger Zone</h3>

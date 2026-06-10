@@ -42,6 +42,7 @@ export default function CatalogueDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortBy, setSortBy] = useState<string>('featured');
+  const [stockStatus, setStockStatus] = useState<string>('All');
 
   // Review states
   const [reviewProductId, setReviewProductId] = useState('');
@@ -258,6 +259,10 @@ export default function CatalogueDetailPage() {
 
       const price = override.customPrice;
 
+      const isLow = p.stock < 10;
+      const isOut = p.stock <= 0;
+      if (stockStatus === 'InStock' && isOut) return false;
+      if (stockStatus === 'LowStock' && !isLow) return false;
 
       const matchesCategory = selectedCategory === 'All' || selectedCategory === 'All Items' || p.category === selectedCategory;
       const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -587,74 +592,91 @@ export default function CatalogueDetailPage() {
         </div>
       </section>
 
-      {/* Search & Category Filter Toolbar */}
-      <section className="glassmorphism" style={{ width: '100%', maxWidth: '1200px', padding: '10px 16px', borderRadius: '10px', border: '1px solid var(--glass-border)', display: 'flex', gap: '10px', marginBottom: '16px', animation: 'slideUp 0.8s ease-out', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Text Search Input */}
-          <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>🔍</span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="luxury-input"
-              style={{ paddingLeft: '36px', paddingTop: '0px', paddingBottom: '0px', height: '34px', fontSize: '0.8rem' }}
-              placeholder="Search catalog by name, origin or category..."
-              id="client-catalogue-search-input"
-            />
+      {/* Split Layout: Left Sidebar Filters & Right Main Product List */}
+      <div className={styles.catalogSplitLayout} style={{ marginTop: '20px', marginBottom: '32px' }}>
+        {/* Left Sidebar Filter Panel */}
+        <aside className={styles.catalogFilterPanel}>
+          <div className={styles.filterSection}>
+            <h4 className={styles.filterTitle}>Search Product</h4>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, fontSize: '0.8rem' }}>🔍</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="luxury-input"
+                style={{ paddingLeft: '32px', height: '36px', fontSize: '0.85rem' }}
+                placeholder="Search..."
+              />
+            </div>
           </div>
 
-          {/* Category Dropdown Filter */}
-          <div style={{ minWidth: '150px' }}>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="luxury-input"
-              style={{
-                height: '34px',
-                paddingTop: '0px',
-                paddingBottom: '0px',
-                paddingLeft: '12px',
-                paddingRight: '30px',
-                fontSize: '0.8rem',
-                appearance: 'none',
-                cursor: 'pointer',
-                backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
-                backgroundSize: '16px'
-              }}
-              id="client-catalogue-category-select"
-            >
-              <option value="All" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>All Categories</option>
-              {uniqueCategories.filter(c => c !== 'All Items').map((cat) => (
-                <option key={cat} value={cat} style={{ background: '#050c1a', color: 'var(--text-primary)' }}>
-                  {cat}
-                </option>
+          <div className={styles.filterSection}>
+            <h4 className={styles.filterTitle}>Categories</h4>
+            <div className={styles.checkboxList}>
+              <label className={styles.checkboxItem} onClick={() => setSelectedCategory('All')} style={{ cursor: 'pointer' }}>
+                <div className={styles.checkboxLabelGroup}>
+                  <input type="checkbox" checked={selectedCategory === 'All'} readOnly style={{ cursor: 'pointer' }} />
+                  <span>All Items</span>
+                </div>
+                <span className={styles.checkboxCount}>{allProposalItems.length}</span>
+              </label>
+              {uniqueCategories.filter(c => c !== 'All Items' && c !== 'All').map((cat) => (
+                <label key={cat} className={styles.checkboxItem} onClick={() => setSelectedCategory(cat)} style={{ cursor: 'pointer' }}>
+                  <div className={styles.checkboxLabelGroup}>
+                    <input type="checkbox" checked={selectedCategory === cat} readOnly style={{ cursor: 'pointer' }} />
+                    <span>{cat}</span>
+                  </div>
+                  <span className={styles.checkboxCount}>{allProposalItems.filter(p => p.category === cat).length}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
-          {/* Sort Selector Dropdown */}
-          <div style={{ minWidth: '150px' }}>
+          <div className={styles.filterSection}>
+            <h4 className={styles.filterTitle}>Stock Status</h4>
+            <div className={styles.radioList}>
+              <label className={styles.radioItem} onClick={() => setStockStatus('All')} style={{ cursor: 'pointer' }}>
+                <div className={styles.checkboxLabelGroup}>
+                  <input type="radio" name="client-stock-status" checked={stockStatus === 'All'} readOnly style={{ cursor: 'pointer' }} />
+                  <span>All Stock</span>
+                </div>
+              </label>
+              <label className={styles.radioItem} onClick={() => setStockStatus('InStock')} style={{ cursor: 'pointer' }}>
+                <div className={styles.checkboxLabelGroup}>
+                  <input type="radio" name="client-stock-status" checked={stockStatus === 'InStock'} readOnly style={{ cursor: 'pointer' }} />
+                  <span>In Stock</span>
+                </div>
+              </label>
+              <label className={styles.radioItem} onClick={() => setStockStatus('LowStock')} style={{ cursor: 'pointer' }}>
+                <div className={styles.checkboxLabelGroup}>
+                  <input type="radio" name="client-stock-status" checked={stockStatus === 'LowStock'} readOnly style={{ cursor: 'pointer' }} />
+                  <span>Low Stock</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div className={styles.filterSection}>
+            <h4 className={styles.filterTitle}>Sort By</h4>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="luxury-input"
               style={{
-                height: '34px',
+                height: '36px',
                 paddingTop: '0px',
                 paddingBottom: '0px',
-                paddingLeft: '12px',
+                paddingLeft: '8px',
                 paddingRight: '30px',
                 fontSize: '0.8rem',
                 appearance: 'none',
                 cursor: 'pointer',
                 backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
-                backgroundSize: '16px'
+                backgroundPosition: 'right 10px center',
+                backgroundSize: '14px'
               }}
-              id="client-catalogue-sort-select"
             >
               <option value="featured" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Featured Picks</option>
               <option value="price-asc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Price: Low to High</option>
@@ -662,7 +684,190 @@ export default function CatalogueDetailPage() {
               <option value="name-asc" style={{ background: '#050c1a', color: 'var(--text-primary)' }}>Alphabetical (A-Z)</option>
             </select>
           </div>
-      </section>
+
+          <div className={styles.filterSection} style={{ background: 'rgba(226, 183, 68, 0.03)', border: '1px solid rgba(226, 183, 68, 0.15)', padding: '12px', borderRadius: '8px', marginTop: '10px' }}>
+            <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--accent-gold)', margin: '0 0 8px 0', letterSpacing: '0.5px' }}>Discount Guidelines</h4>
+            <ul style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0, paddingLeft: '16px', lineHeight: '1.5' }}>
+              <li>&gt; 10 units: <strong style={{ color: 'var(--accent-cyan)' }}>10% off</strong></li>
+              <li>&gt; 20 units: <strong style={{ color: 'var(--accent-cyan)' }}>15% off</strong></li>
+              <li>&gt; 30 units: <strong style={{ color: 'var(--accent-cyan)' }}>20% off</strong></li>
+            </ul>
+          </div>
+        </aside>
+
+        {/* Right Product Grid using Horizontal Card Layout */}
+        <div className={styles.horizontalProductList}>
+          {proposalItems.length === 0 ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center', background: 'rgba(255, 255, 255, 0.01)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '12px', color: '#64748b' }}>
+              <h3 style={{ fontSize: '1.1rem', color: '#cbd5e1', margin: '0 0 8px 0' }}>No matching items found</h3>
+              <p style={{ fontSize: '0.85rem', margin: 0 }}>Try adjusting your search query or sidebar filters.</p>
+            </div>
+          ) : (
+            proposalItems.map((p) => {
+              const override = catalog.overrides[p.id]!;
+              const qty = quantities[p.id] || 0;
+              const isLow = p.stock < 10;
+              const isOut = p.stock <= 0;
+
+              const price = override.customPrice;
+              const volDiscount = getVolumeDiscount(qty);
+              const baseDiscount = (override.customDiscount !== undefined && override.customDiscount > 0)
+                ? override.customDiscount
+                : (catalog.globalDiscount || 0);
+              const totalDiscount = baseDiscount + volDiscount;
+              const finalUnitPrice = price * (1 - totalDiscount / 100);
+              const subtotal = finalUnitPrice * qty;
+
+              const handleQtyChange = (val: number) => {
+                setQuantities(prev => ({
+                  ...prev,
+                  [p.id]: Math.max(0, val)
+                }));
+              };
+
+              return (
+                <div key={p.id} className={styles.horizontalCard}>
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    className={styles.horizontalCardImg}
+                    onClick={() => setSelectedFish(p)}
+                  />
+                  <div className={styles.horizontalCardContent}>
+                    <div className={styles.horizontalCardDetails}>
+                      <div className={styles.horizontalSku}>SKU: {p.id.slice(0, 10).toUpperCase()}</div>
+                      <h4 className={styles.horizontalCardTitle} onClick={() => setSelectedFish(p)}>{p.name}</h4>
+                      <p className={styles.horizontalCardSub}>
+                        {p.category} &bull; {p.scientificName} &bull; Origin: {p.origin}
+                      </p>
+                      
+                      {/* Quantity Selector */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleQtyChange(qty - 1)}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '4px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1rem',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={qty}
+                          onChange={(e) => handleQtyChange(parseInt(e.target.value) || 0)}
+                          className="luxury-input"
+                          style={{ width: '50px', height: '28px', textAlign: 'center', padding: '0 4px', fontSize: '0.85rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleQtyChange(qty + 1)}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '4px',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1rem',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          +
+                        </button>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '4px' }}>
+                          units ({p.unit || storeConfig.unit})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.horizontalPriceGroup}>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Price per {p.unit || storeConfig.unit}</div>
+                      <div className={styles.horizontalPrice}>
+                        ${finalUnitPrice.toFixed(2)}
+                        {totalDiscount > 0 && (
+                          <span style={{ fontSize: '0.75rem', color: '#10b981', marginLeft: '6px', fontWeight: 'bold' }}>
+                            -{totalDiscount}%
+                          </span>
+                        )}
+                      </div>
+                      {price !== finalUnitPrice && (
+                        <div style={{ textDecoration: 'line-through', color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
+                          ${price.toFixed(2)}
+                        </div>
+                      )}
+                      {volDiscount > 0 && (
+                        <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 'bold', marginTop: '4px' }}>
+                          Includes {volDiscount}% Volume Discount
+                        </div>
+                      )}
+                      {qty > 0 && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', fontWeight: 'bold', marginTop: '8px' }}>
+                          Subtotal: ${subtotal.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={styles.horizontalStockGroup}>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Sourcing Details</div>
+                      <div className={styles.horizontalStock} style={{ marginTop: '2px' }}>
+                        Stock: {p.stock} {p.unit || storeConfig.unit}
+                      </div>
+                      <span className={`${styles.stockStatusLabel} ${isOut ? styles.stockOutStock : isLow ? styles.stockLowStock : styles.stockInStock}`}>
+                        {isOut ? 'Out of Stock' : isLow ? 'Low Stock' : 'In Stock'}
+                      </span>
+                      
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSourcingReqProductId(p.id);
+                            setSourcingReqProductName(p.name);
+                            const element = document.getElementById('custom-sourcing-form-card');
+                            if (element) {
+                              element.scrollIntoView({ behavior: 'smooth' });
+                            }
+                          }}
+                          className="btn-cyan"
+                          style={{
+                            height: '26px',
+                            fontSize: '0.7rem',
+                            padding: '0 8px',
+                            marginTop: '8px',
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          🙋 Enquire
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
 
       {/* Main Side-by-Side Sourcing Pane */}
       <div className={styles.cartContainer}>
@@ -716,123 +921,10 @@ export default function CatalogueDetailPage() {
           </div>
         ) : (
           <>
-            {/* Left Pane: Amazon-Style Specimen List layout with Bluefine Dark Glassmorphism Theme */}
-            <div className="glassmorphism" style={{ color: 'var(--text-primary)', borderRadius: '12px', padding: '24px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: 600, margin: 0, color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>Specimen Wish List</h2>
-                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Price</span>
-              </div>
-
-              {proposalItems.length === 0 ? (
-                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Your Wish List is empty.</h3>
-                  <p style={{ fontSize: '14px', marginTop: '8px' }}>Adjust category and text searches above to load proposal catch options.</p>
-                </div>
-              ) : (
-                proposalItems.map((p) => {
-                  const override = catalog.overrides[p.id]!;
-                  const qty = quantities[p.id] || 0;
-                  if (qty === 0) return null;
-
-                  const price = override.customPrice;
-                  const volDiscount = getVolumeDiscount(qty);
-
-                  const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
-                    ? override.customDiscount
-                    : (catalog.globalDiscount || 0)) + volDiscount;
-                  const finalPrice = price * (1 - discount / 100);
-                  const itemSubtotal = finalPrice * qty;
-                  const itemEta = calculateSourcingETA(p.origin || '', catalog.marketName || '', qty, p.stock);
-
-                  return (
-                    <div key={p.id} style={{ display: 'flex', gap: '20px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '20px', marginBottom: '20px' }}>
-                      {/* Left: Product Image */}
-                      <div 
-                        onClick={() => setSelectedFish(p)}
-                        style={{ width: '130px', height: '130px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255,255,255,0.05)' }}
-                      >
-                        <img src={p.image} alt={p.name} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                      </div>
-
-                      {/* Middle: Specs & Details */}
-                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <h3 
-                          onClick={() => setSelectedFish(p)}
-                          style={{ fontSize: '18px', fontWeight: 700, color: 'var(--accent-cyan)', margin: 0, cursor: 'pointer', lineHeight: '1.25' }}
-                        >
-                          {p.name}
-                        </h3>
-                        <div style={{ fontSize: '12px', color: 'var(--accent-success)', fontWeight: 'bold' }}>In stock</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          FREE delivery <strong style={{ color: 'var(--text-primary)' }}>{new Date(itemEta.targetDateString + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</strong>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                          <span style={{ background: 'var(--accent-gold)', color: '#030812', fontSize: '9px', fontWeight: 800, padding: '1px 4px', borderRadius: '2px', textTransform: 'uppercase' }}>{storeConfig.storeName.split(' ')[0]}</span>
-                          <span>Fulfilled</span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                          <strong>Origin:</strong> {p.origin} &bull; <strong>Scientific Name:</strong> {p.scientificName}
-                        </div>
-
-                        {/* Spec Details instead of interactive cart selectors */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginTop: '12px' }}>
-                          <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold' }}>
-                            Quantity: {qty} {p.unit || storeConfig.unit || 'kg'}
-                          </span>
-                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <strong>Stock:</strong> {p.stock} {p.unit || storeConfig.unit || 'kg'} available
-                          </span>
-                          <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <strong>Category:</strong> {p.category}
-                          </span>
-                          {p.difficulty && (
-                            <>
-                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                <strong>Difficulty:</strong> {p.difficulty}
-                              </span>
-                            </>
-                          )}
-                          {p.sustainability && (
-                            <>
-                              <span style={{ color: 'rgba(255,255,255,0.15)' }}>|</span>
-                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                <strong>Sustainability:</strong> {p.sustainability}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right: Subtotal price */}
-                      <div style={{ textAlign: 'right', minWidth: '100px' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--accent-gold)' }}>${itemSubtotal.toFixed(2)}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          ${finalPrice.toFixed(2)} / {p.unit || storeConfig.unit}
-                        </div>
-                        {volDiscount > 0 && (
-                          <div style={{ fontSize: '11px', color: 'var(--accent-success)', fontWeight: 'bold', marginTop: '4px' }}>
-                            Includes {volDiscount}% Volume Sourcing Discount
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-
-              {proposalItems.length > 0 && (
-                <div style={{ textAlign: 'right', fontSize: '18px', fontWeight: 400, marginTop: '20px', color: 'var(--text-primary)' }}>
-                  Wish List Total ({totalProposalQty} items): <strong style={{ fontWeight: 700, color: 'var(--accent-gold)' }}>${(totalProposalBill - (catalog.globalDelivery || 0)).toFixed(2)}</strong>
-                </div>
-              )}
-
-
-
+            {/* Left Pane: Custom Sourcing Request Form & Reviews */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Custom Sourcing Request Form */}
-              <div className="glassmorphism" style={{ marginTop: '30px', padding: '24px', borderRadius: '12px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
+              <div id="custom-sourcing-form-card" className="glassmorphism" style={{ padding: '24px', borderRadius: '12px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
                 <h3 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)', fontFamily: 'var(--font-playfair), serif' }}>Request Custom Sourcing & Volumes</h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>
                   If you need a product not listed in the catalogue, or require larger quantities of an existing product, specify your requirements here.
