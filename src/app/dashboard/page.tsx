@@ -405,6 +405,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
+    localStorage.setItem('bluefine_logged_out', 'true');
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut();

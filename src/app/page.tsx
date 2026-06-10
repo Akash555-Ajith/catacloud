@@ -42,6 +42,7 @@ export default function HomePage() {
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
     localStorage.removeItem('bluefine_cart');
+    localStorage.setItem('bluefine_logged_out', 'true');
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut();
@@ -125,6 +126,16 @@ export default function HomePage() {
       } catch {}
 
       setMounted(true);
+
+      // Bypasses subdomain redirect to login if the user has explicitly clicked logout
+      const justLoggedOut = localStorage.getItem('bluefine_logged_out');
+      if (justLoggedOut === 'true') {
+        setIsAuthenticated(false);
+        setIsLandingPage(true);
+        localStorage.removeItem('bluefine_logged_out');
+        return;
+      }
+
       if (!user) {
         setIsAuthenticated(false);
         if (storeId) {
