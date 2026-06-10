@@ -3032,15 +3032,25 @@ export default function DashboardPage() {
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.label} htmlFor="portal-prod-unit">Unit of Measurement</label>
-                    <input
-                      type="text"
+                    <select
                       id="portal-prod-unit"
                       value={formUnit}
                       onChange={(e) => setFormUnit(e.target.value)}
                       className="luxury-input"
-                      placeholder="e.g. kg, dozen, pcs"
-                      required
-                    />
+                      style={{ appearance: 'none', cursor: 'pointer' }}
+                    >
+                      <option value="pcs">pcs</option>
+                      <option value="kg">kg</option>
+                      <option value="box">box</option>
+                      <option value="dozen">dozen</option>
+                      <option value="pack">pack</option>
+                      <option value="litres">litres</option>
+                      <option value="meters">meters</option>
+                      <option value="g">g</option>
+                      <option value="lbs">lbs</option>
+                      <option value="ml">ml</option>
+                      <option value="jar">jar</option>
+                    </select>
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.label} htmlFor="portal-prod-price">Price Per Unit ($ / {formUnit})</label>
@@ -4409,15 +4419,25 @@ export default function DashboardPage() {
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-unit">Unit of Measurement</label>
-                  <input
-                    type="text"
+                  <select
                     id="prod-unit"
                     value={formUnit}
                     onChange={(e) => setFormUnit(e.target.value)}
                     className="luxury-input"
-                    placeholder="e.g. kg, dozen, pcs"
-                    required
-                  />
+                    style={{ appearance: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="pcs">pcs</option>
+                    <option value="kg">kg</option>
+                    <option value="box">box</option>
+                    <option value="dozen">dozen</option>
+                    <option value="pack">pack</option>
+                    <option value="litres">litres</option>
+                    <option value="meters">meters</option>
+                    <option value="g">g</option>
+                    <option value="lbs">lbs</option>
+                    <option value="ml">ml</option>
+                    <option value="jar">jar</option>
+                  </select>
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-price">Price Per Unit ($ / {formUnit})</label>

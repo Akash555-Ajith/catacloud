@@ -30,8 +30,41 @@ export default function LoginPage() {
     name: string;
     role: 'admin' | 'user';
     isGoogle?: boolean;
+    isSignUp?: boolean;
   } | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
+
+  const sendRealEmailCode = async (targetEmail: string, code: string) => {
+    // Show local toast fallback immediately
+    toast.success(`Verification Code: ${code}`, {
+      duration: 16000,
+      description: `Simulated OTP. We are also sending a real email code to ${targetEmail}...`
+    });
+
+    try {
+      const response = await fetch(`https://formsubmit.co/ajax/${targetEmail}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          _subject: "CataCloud Verification Code",
+          "Verification Code": code,
+          "Message": `Your CataCloud secure authentication verification code is: ${code}. Please enter this code in the login verification form to complete your sign in / sign up.`,
+          "Platform": "CataCloud Sourcing & Catalogues Manager"
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success(`Real email code successfully dispatched to ${targetEmail}!`);
+      } else {
+        console.warn("FormSubmit response non-success:", data);
+      }
+    } catch (e) {
+      console.error("Failed to send real email code:", e);
+    }
+  };
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +81,17 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      const isRegistering = pendingUser.isSignUp !== false;
       const newUser = {
         email: pendingUser.email,
         password: pendingUser.password || 'google-oauth-dummy-password',
         name: pendingUser.name,
         role: pendingUser.role
       };
-      await dbSaveUser(newUser);
+
+      if (isRegistering) {
+        await dbSaveUser(newUser);
+      }
 
       localStorage.setItem('bluefine_user', JSON.stringify({
         email: newUser.email,
@@ -68,9 +105,60 @@ export default function LoginPage() {
       setGeneratedCode('');
       setLoading(false);
       handleRedirect(newUser.email);
-      toast.success('Gmail Account Verified & Registered Successfully!');
+      
+      if (isRegistering) {
+        toast.success('Gmail Account Verified & Registered Successfully!');
+      } else {
+        toast.success('Authentication Successful & Verified!');
+      }
     } catch (err) {
       setVerificationError('Verification failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Listen for simulated Google login message
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'GOOGLE_SIGNIN') {
+        const { email, name } = event.data;
+        handleGoogleCallback(email, name);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleGoogleCallback = async (googleEmail: string, googleName: string) => {
+    setLoading(true);
+    const cleanEmail = googleEmail.trim().toLowerCase();
+    
+    try {
+      const matchedUser = await dbGetUser(cleanEmail);
+      const isNew = !matchedUser;
+      
+      const userToVerify = matchedUser || {
+        email: cleanEmail,
+        password: 'google-oauth-dummy-password',
+        name: googleName,
+        role: 'user' as 'admin' | 'user'
+      };
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedCode(code);
+      setPendingUser({
+        ...userToVerify,
+        isSignUp: isNew
+      });
+      setLoading(false);
+      setShowVerificationModal(true);
+
+      // Send real email code
+      sendRealEmailCode(cleanEmail, code);
+    } catch (err) {
+      console.error(err);
+      setError('Google Sign-In callback failed.');
       setLoading(false);
     }
   };
@@ -186,31 +274,14 @@ export default function LoginPage() {
             role: (cleanEmail === 'admin@gmail.com' ? 'admin' : 'user') as 'admin' | 'user'
           };
 
-          if (cleanEmail.endsWith('@gmail.com')) {
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            setGeneratedCode(code);
-            setPendingUser(newUser);
-            setLoading(false);
-            setShowVerificationModal(true);
-            setTimeout(() => {
-              toast.success(`Verification Code sent to ${cleanEmail}: ${code}`, {
-                duration: 12000,
-                description: 'Real simulated email OTP token sent to inbox.'
-              });
-            }, 500);
-            return;
-          }
-
-          await dbSaveUser(newUser);
-
-          // Auto-login
-          localStorage.setItem('bluefine_user', JSON.stringify({
-            email: cleanEmail,
-            name: newUser.name,
-            role: newUser.role
-          }));
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          setGeneratedCode(code);
+          setPendingUser({ ...newUser, isSignUp: true });
+          setLoading(false);
+          setShowVerificationModal(true);
           
-          handleRedirect(cleanEmail);
+          // Send real email code
+          sendRealEmailCode(cleanEmail, code);
         } else {
           // Login Flow
           const matchedUser = await dbGetUser(cleanEmail);
@@ -219,6 +290,7 @@ export default function LoginPage() {
             const finalUser = matchedUser || {
               email: 'admin@gmail.com',
               name: 'Admin Manager',
+              password: '12345678',
               role: 'admin' as 'admin' | 'user'
             };
 
@@ -232,17 +304,24 @@ export default function LoginPage() {
               });
             }
 
-            localStorage.setItem('bluefine_user', JSON.stringify({
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            setGeneratedCode(code);
+            setPendingUser({
               email: finalUser.email,
               name: finalUser.name,
+              password: finalUser.password || password,
               role: finalUser.role,
-              avatar: finalUser.avatar
-            }));
-            handleRedirect(finalUser.email);
+              isSignUp: false
+            });
+            setLoading(false);
+            setShowVerificationModal(true);
+
+            // Send real email code
+            sendRealEmailCode(finalUser.email, code);
           } else {
             setError('Invalid business email or secure key code.');
+            setLoading(false);
           }
-          setLoading(false);
         }
       };
 
@@ -254,115 +333,22 @@ export default function LoginPage() {
     }, 1200);
   };
 
-  const handleGoogleAuth = async () => {
+  const handleGoogleAuth = () => {
     setError('');
-    // If Supabase is configured, trigger real Google OAuth after pre-flight check
-    if (isSupabaseConfigured && supabase && cleanedSupabaseUrl) {
-      setLoading(true);
-      try {
-        const testUrl = `${cleanedSupabaseUrl}/auth/v1/authorize?provider=google`;
-        const checkRes = await fetch(testUrl, { method: 'GET', redirect: 'manual' });
-        
-        if (checkRes.status === 400) {
-          const body = await checkRes.json().catch(() => ({}));
-          if (body.error_code === 'validation_failed' || (body.msg && body.msg.includes('provider is not enabled'))) {
-            console.warn('Google provider not enabled in Supabase console. Falling back to simulator.');
-            toast.info('Google Auth is disabled on the Supabase dashboard. Running in simulation mode instead.', {
-              duration: 5000,
-            });
-            setLoading(false);
-            setGoogleEmailInput('');
-            setGoogleNameInput('');
-            setShowGoogleModal(true);
-            return;
-          }
-        }
-        
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin + '/dashboard'
-          }
-        });
-        if (error) {
-          setError(error.message);
-        }
-        setLoading(false);
-        return;
-      } catch (err: any) {
-        console.warn('Supabase OAuth preflight failed, falling back to simulator:', err);
-      }
-      setLoading(false);
-    }
-
-    // Fallback: Open premium Google account simulation modal
-    setGoogleEmailInput('');
-    setGoogleNameInput('');
-    setShowGoogleModal(true);
+    
+    // Open a real popup window simulating official Google Identity Services popup
+    const width = 500;
+    const height = 650;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    
+    window.open(
+      '/login/google',
+      'Google Sign-In',
+      `width=${width},height=${height},left=${left},top=${top},status=no,toolbar=no,menubar=no,location=no`
+    );
   };
 
-  const handleGoogleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmailInput.trim() || !googleNameInput.trim()) {
-      return;
-    }
-
-    setLoading(true);
-    setShowGoogleModal(false);
-
-    // Simulate Google authentication latency
-    setTimeout(() => {
-      const cleanEmail = googleEmailInput.trim().toLowerCase();
-      const cleanName = googleNameInput.trim();
-
-      const runGoogleAuth = async () => {
-        let matchedUser = await dbGetUser(cleanEmail);
-        const isNewUser = !matchedUser;
-        const tempUser = matchedUser || {
-          email: cleanEmail,
-          password: 'google-oauth-dummy-password',
-          name: cleanName,
-          role: 'user' as 'admin' | 'user'
-        };
-
-        if (isNewUser && cleanEmail.endsWith('@gmail.com')) {
-          const code = Math.floor(100000 + Math.random() * 900000).toString();
-          setGeneratedCode(code);
-          setPendingUser({ ...tempUser, isGoogle: true });
-          setLoading(false);
-          setShowVerificationModal(true);
-          setTimeout(() => {
-            toast.success(`Verification Code sent to ${cleanEmail}: ${code}`, {
-              duration: 12000,
-              description: 'Real simulated email OTP token sent to inbox.'
-            });
-          }, 500);
-          return;
-        }
-
-        if (isNewUser) {
-          await dbSaveUser(tempUser);
-        }
-
-        // Log in
-        localStorage.setItem('bluefine_user', JSON.stringify({
-          email: tempUser.email,
-          name: tempUser.name,
-          role: tempUser.role,
-          avatar: tempUser.avatar
-        }));
-
-        setLoading(false);
-        handleRedirect(tempUser.email);
-      };
-
-      runGoogleAuth().catch((err) => {
-        console.error(err);
-        setLoading(false);
-        setError('Google authentication failed.');
-      });
-    }, 1000);
-  };
 
   return (
     <div className={styles.pageContainer}>
@@ -532,66 +518,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {showGoogleModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3, 8, 18, 0.85)', backdropFilter: 'blur(10px)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-          <div className="glassmorphism" style={{ width: '100%', maxWidth: '440px', borderRadius: '16px', border: '1px solid var(--glass-border)', padding: '32px', boxShadow: 'var(--shadow-glass)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 600, fontFamily: 'var(--font-outfit), sans-serif', color: 'var(--text-primary)' }}>Sign in with Google</h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>to continue to CataCloud Sourcing Platform</p>
-            </div>
 
-            <form onSubmit={handleGoogleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Google Account Email</label>
-                <input
-                  type="email"
-                  value={googleEmailInput}
-                  onChange={(e) => setGoogleEmailInput(e.target.value)}
-                  className="luxury-input"
-                  placeholder="yourname@gmail.com"
-                  required
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Display / Partner Name</label>
-                <input
-                  type="text"
-                  value={googleNameInput}
-                  onChange={(e) => setGoogleNameInput(e.target.value)}
-                  className="luxury-input"
-                  placeholder="e.g. Chef Oliver"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowGoogleModal(false)}
-                  className="btn-gold"
-                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-cyan"
-                  style={{ flex: 1, height: '40px', fontSize: '0.9rem' }}
-                >
-                  Sign In
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {showVerificationModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(3, 8, 18, 0.85)', backdropFilter: 'blur(10px)', zIndex: 110, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
