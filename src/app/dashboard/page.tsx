@@ -96,6 +96,7 @@ export default function DashboardPage() {
   const [catNotes, setCatNotes] = useState('');
   const [catDiscount, setCatDiscount] = useState<number>(0);
   const [catDelivery, setCatDelivery] = useState<number>(0);
+  const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
   const [catOverrides, setCatOverrides] = useState<{
     [id: string]: { price: number; stock: number; discount: number; threshold: number; volumeDiscount: number; included: boolean };
   }>({});
@@ -865,7 +866,7 @@ export default function DashboardPage() {
     }
 
     const newCatalog: CustomCatalog = {
-      id: `cat-proposal-${Math.floor(100000 + Math.random() * 900000)}`,
+      id: editingCatalogId || `cat-proposal-${Math.floor(100000 + Math.random() * 900000)}`,
       marketName: catMarket,
       notes: catNotes,
       globalDiscount: Number(catDiscount),
@@ -879,11 +880,21 @@ export default function DashboardPage() {
       store_id: activeStoreId
     };
 
-    await addCustomCatalog(newCatalog, activeStoreId);
-    const cats = await getCustomCatalogs(activeStoreId);
-    setCustomCatalogs(cats);
+    const wasEditing = Boolean(editingCatalogId);
+    if (editingCatalogId) {
+      const updatedCatalogs = customCatalogs.some((cat) => cat.id === editingCatalogId)
+        ? customCatalogs.map((cat) => cat.id === editingCatalogId ? newCatalog : cat)
+        : [newCatalog, ...customCatalogs];
+      await saveCustomCatalogs(updatedCatalogs, activeStoreId);
+      setCustomCatalogs(updatedCatalogs);
+    } else {
+      await addCustomCatalog(newCatalog, activeStoreId);
+      const cats = await getCustomCatalogs(activeStoreId);
+      setCustomCatalogs(cats);
+    }
 
     // Reset form fields
+    setEditingCatalogId(null);
     setCatMarket('');
     setCatNotes('');
     setCatDiscount(0);
@@ -900,9 +911,33 @@ export default function DashboardPage() {
       };
     });
     setCatOverrides(resetOverrides);
-    toast.success('Catalogue Generated', {
-      description: `Generated successfully on ${new Date().toLocaleString()}`
+    toast.success(wasEditing ? 'Catalogue Updated' : 'Catalogue Generated', {
+      description: `${wasEditing ? 'Updated' : 'Generated'} successfully on ${new Date().toLocaleString()}`
     });
+  };
+
+  const handleEditCustomCatalog = (catalog: CustomCatalog) => {
+    setEditingCatalogId(catalog.id);
+    setCatMarket(catalog.marketName);
+    setCatNotes(catalog.notes);
+    setCatDiscount(catalog.globalDiscount || 0);
+    setCatDelivery(catalog.globalDelivery || 0);
+
+    const nextOverrides: typeof catOverrides = {};
+    products.forEach((product) => {
+      const override = catalog.overrides[product.id];
+      nextOverrides[product.id] = {
+        price: override?.customPrice ?? product.pricePerKg,
+        stock: override?.customStock ?? product.stock,
+        discount: override?.customDiscount ?? 0,
+        threshold: override?.customVolumeThreshold ?? 0,
+        volumeDiscount: override?.customVolumeDiscount ?? 0,
+        included: override?.included ?? false
+      };
+    });
+    setCatOverrides(nextOverrides);
+    setAdminTab('catalogs');
+    toast.info(`Editing catalogue link for ${catalog.marketName}`);
   };
 
   const handleDeleteCustomCatalog = async (id: string) => {
@@ -1216,7 +1251,22 @@ export default function DashboardPage() {
   const renderMerchantDashboard = () => {
     const totalRevenue = orders.reduce((sum, o) => sum + o.totalPrice, 0);
     const activeEnquiriesCount = sourcingRequests.length;
-    const topProduct = products.length > 0 ? products[0].name : "N/A";
+    const productSales = orders.flatMap((order) => order.items).reduce<Record<string, number>>((acc, item) => {
+      acc[item.name] = (acc[item.name] || 0) + item.quantity;
+      return acc;
+    }, {});
+    const topProduct = Object.entries(productSales).sort((a, b) => b[1] - a[1])[0]?.[0] || 'No sales yet';
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const salesByDay = dayLabels.map((label) => ({ label, total: 0 }));
+    orders.forEach((order) => {
+      const parsedDate = new Date(order.date);
+      const day = parsedDate.getDay();
+      const index = day === 0 ? 6 : day - 1;
+      if (!Number.isNaN(parsedDate.getTime()) && salesByDay[index]) {
+        salesByDay[index].total += order.totalPrice;
+      }
+    });
+    const maxSalesDay = Math.max(...salesByDay.map((day) => day.total), 0);
     
     return (
       <div className={styles.merchantContainer}>
@@ -1230,10 +1280,6 @@ export default function DashboardPage() {
               <DollarSign size={18} style={{ color: '#64748b' }} />
             </div>
             <h3 className={styles.lightCardValue}>${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            <span className={styles.lightCardFooter} style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <TrendingUp size={14} />
-              +12.5% from last month
-            </span>
           </div>
 
           <div className={styles.lightCard}>
@@ -1242,9 +1288,6 @@ export default function DashboardPage() {
               <MessageSquare size={18} style={{ color: '#64748b' }} />
             </div>
             <h3 className={styles.lightCardValue}>{activeEnquiriesCount}</h3>
-            <span className={styles.lightCardFooter} style={{ color: '#f97316' }}>
-              4 high-priority tasks
-            </span>
           </div>
 
           <div className={styles.lightCard}>
@@ -1255,9 +1298,6 @@ export default function DashboardPage() {
             <h3 className={styles.lightCardValue} style={{ fontSize: '1.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '14px' }}>
               {topProduct}
             </h3>
-            <span className={styles.lightCardFooter} style={{ color: '#64748b' }}>
-              14 units sold this week
-            </span>
           </div>
         </div>
 
@@ -1271,36 +1311,21 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            <div className={styles.trendsBarChart}>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '30%' }} />
-                <span className={styles.trendsBarLabel}>Mon</span>
+            {maxSalesDay === 0 ? (
+              <div className={styles.emptyChartState}>No sales recorded yet.</div>
+            ) : (
+              <div className={styles.trendsBarChart}>
+                {salesByDay.map((day) => (
+                  <div key={day.label} className={styles.trendsBarCol}>
+                    <div
+                      className={`${styles.trendsBarFill} ${day.total === maxSalesDay ? styles.trendsBarFillActive : ''}`}
+                      style={{ height: `${Math.max(8, (day.total / maxSalesDay) * 100)}%` }}
+                    />
+                    <span className={styles.trendsBarLabel}>{day.label}</span>
+                  </div>
+                ))}
               </div>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '55%' }} />
-                <span className={styles.trendsBarLabel}>Tue</span>
-              </div>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '48%' }} />
-                <span className={styles.trendsBarLabel}>Wed</span>
-              </div>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '75%' }} />
-                <span className={styles.trendsBarLabel}>Thu</span>
-              </div>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '68%' }} />
-                <span className={styles.trendsBarLabel}>Fri</span>
-              </div>
-              <div className={styles.trendsBarCol}>
-                <div className={styles.trendsBarFill} style={{ height: '72%' }} />
-                <span className={styles.trendsBarLabel}>Sat</span>
-              </div>
-              <div className={styles.trendsBarCol}>
-                <div className={`${styles.trendsBarFill} ${styles.trendsBarFillActive}`} style={{ height: '85%' }} />
-                <span className={styles.trendsBarLabel}>Sun</span>
-              </div>
-            </div>
+            )}
           </div>
 
           <div className={styles.lightPanelCard}>
@@ -1402,12 +1427,34 @@ export default function DashboardPage() {
             </div>
 
             <div className={styles.filterSection}>
-              <h4 className={styles.filterTitle}>Price Range</h4>
-              <input type="range" min="0" max="5000" defaultValue="2500" style={{ width: '100%', cursor: 'pointer' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>
-                <span>$0</span>
-                <span>$5000+</span>
+              <h4 className={styles.filterTitle}>Catalogue Links</h4>
+              <div className={styles.checkboxList}>
+                {customCatalogs.length === 0 ? (
+                  <p style={{ color: '#64748b', fontSize: '0.8rem', lineHeight: 1.5, margin: 0 }}>
+                    No client catalogue links yet.
+                  </p>
+                ) : (
+                  customCatalogs.slice(0, 3).map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => handleCopyCatalogLink(cat.id)}
+                      className={styles.catalogLinkButton}
+                    >
+                      <span>{cat.marketName}</span>
+                      <small>Copy link</small>
+                    </button>
+                  ))
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => setAdminTab('catalogs')}
+                className={styles.btnMerchantSecondary}
+                style={{ width: '100%', justifyContent: 'center', marginTop: '12px', fontSize: '0.8rem' }}
+              >
+                Manage Catalogue Links
+              </button>
             </div>
           </div>
 
@@ -1573,7 +1620,7 @@ export default function DashboardPage() {
               <tbody>
                 {posReceipt.items.map((item, idx) => (
                   <tr key={idx}>
-                    <td style={{ color: '#334155' }}>{item.name}</td>
+                    <td style={{ color: '#334155', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'normal' }}>{item.name}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{item.quantity} {storeConfig.unit}</td>
                     <td style={{ textAlign: 'right', color: '#334155' }}>${item.price.toFixed(2)}</td>
                     <td style={{ textAlign: 'right', color: '#0f3057', fontWeight: 'bold' }}>${(item.quantity * item.price).toFixed(2)}</td>
@@ -1678,7 +1725,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div>
-                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', margin: '0 0 2px 0', lineBreak: 'anywhere' }}>{p.name}</h4>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', margin: '0 0 2px 0', wordBreak: 'normal', overflowWrap: 'normal' }}>{p.name}</h4>
                         <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: '6px', fontStyle: 'italic' }}>{p.scientificName}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
@@ -1720,7 +1767,7 @@ export default function DashboardPage() {
                 {posCart.map((item) => (
                   <div key={item.fish.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                     <div style={{ flex: 1 }}>
-                      <strong style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a' }}>{item.fish.name}</strong>
+                      <strong style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', wordBreak: 'normal', overflowWrap: 'normal' }}>{item.fish.name}</strong>
                       <span style={{ fontSize: '0.75rem', color: '#64748b' }}>${item.fish.pricePerKg.toFixed(2)} / {item.fish.unit || storeConfig.unit}</span>
                     </div>
                     
@@ -2092,6 +2139,14 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('catalogs'); }} 
+                    className={`${styles.sidebarItem} ${adminTab === 'catalogs' ? styles.sidebarItemActive : ''}`}
+                  >
+                    <FileText size={18} />
+                    Catalogue Links
+                  </button>
+                  <button 
+                    type="button"
                     onClick={() => { setShowStoreCreator(false); setAdminTab('enquiries'); }} 
                     className={`${styles.sidebarItem} ${adminTab === 'enquiries' ? styles.sidebarItemActive : ''}`}
                   >
@@ -2406,6 +2461,14 @@ export default function DashboardPage() {
                               <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Discount: {cat.globalDiscount}% &bull; Delivery: ${cat.globalDelivery}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleEditCustomCatalog(cat)}
+                                className={styles.btnMerchantSecondary}
+                                style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                              >
+                                Edit
+                              </button>
                               <button 
                                 type="button"
                                 onClick={() => {
@@ -3058,7 +3121,7 @@ export default function DashboardPage() {
                                 )}
                               </div>
                               <div>
-                                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px 0', lineBreak: 'anywhere' }}>{p.name}</h4>
+                                <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px 0', wordBreak: 'normal', overflowWrap: 'normal' }}>{p.name}</h4>
                                 <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '6px', fontStyle: 'italic' }}>{p.scientificName}</span>
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
@@ -3292,7 +3355,9 @@ export default function DashboardPage() {
             {/* Custom Catalogues Section */}
             {adminTab === 'catalogs' && (
               <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>Custom Catalogue Proposal Generator</h2>
+                <h2 className={styles.sectionTitle}>
+                  {editingCatalogId ? 'Edit Custom Catalogue Link' : 'Custom Catalogue Proposal Generator'}
+                </h2>
 
                 {/* Catalogue generator form */}
                 <form onSubmit={handleCatProposalSubmit} style={{ marginBottom: '40px', paddingBottom: '32px', borderBottom: '1px solid var(--glass-border)' }}>
@@ -3619,9 +3684,26 @@ export default function DashboardPage() {
                     </table>
                   </div>
 
-                  <button type="submit" className="btn-primary" id="generate-cat-proposal-btn">
-                    Generate Custom Catalogue Proposal Link
-                  </button>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button type="submit" className="btn-primary" id="generate-cat-proposal-btn">
+                      {editingCatalogId ? 'Save Catalogue Link Changes' : 'Generate Custom Catalogue Proposal Link'}
+                    </button>
+                    {editingCatalogId && (
+                      <button
+                        type="button"
+                        className={styles.btnMerchantSecondary}
+                        onClick={() => {
+                          setEditingCatalogId(null);
+                          setCatMarket('');
+                          setCatNotes('');
+                          setCatDiscount(0);
+                          setCatDelivery(0);
+                        }}
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
                 </form>
 
                 {/* List of custom catalogs */}
@@ -3666,6 +3748,14 @@ export default function DashboardPage() {
                               <td>{cat.createdDate}</td>
                               <td>
                                 <div className={styles.actionButtons} style={{ justifyContent: 'center' }}>
+                                  <button
+                                    onClick={() => handleEditCustomCatalog(cat)}
+                                    className={styles.btnMerchantSecondary}
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', color: '#0f3057' }}
+                                    title="Edit Catalogue Link"
+                                  >
+                                    Edit
+                                  </button>
                                   <button
                                     onClick={() => handleCopyCatalogLink(cat.id)}
                                     className="btn-primary"

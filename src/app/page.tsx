@@ -38,8 +38,6 @@ export default function HomePage() {
   const [search, setSearch] = useState<string>('');
   const [category, setCategory] = useState<string>('All');
   const [sortBy, setSortBy] = useState<string>('featured');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
 
   const handleLogout = async () => {
     localStorage.removeItem('bluefine_user');
@@ -575,11 +573,7 @@ export default function HomePage() {
       
       const matchesCategory = category === 'All' || fish.category === category;
 
-      const price = fish.pricePerKg;
-      const matchesMinPrice = minPrice === '' || price >= parseFloat(minPrice);
-      const matchesMaxPrice = maxPrice === '' || price <= parseFloat(maxPrice);
-
-      return matchesSearch && matchesCategory && matchesMinPrice && matchesMaxPrice;
+      return matchesSearch && matchesCategory;
     })
     .sort((a, b) => {
       if (sortBy === 'price-asc') return a.pricePerKg - b.pricePerKg;
@@ -829,28 +823,6 @@ export default function HomePage() {
                 </select>
               </div>
 
-              {/* Price Range Filters */}
-              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  placeholder="Min Price"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  className="luxury-input"
-                  style={{ width: '90px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
-                  id="min-price-filter"
-                />
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>to</span>
-                <input
-                  type="number"
-                  placeholder="Max Price"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  className="luxury-input"
-                  style={{ width: '90px', height: '34px', fontSize: '0.8rem', paddingTop: '0px', paddingBottom: '0px' }}
-                  id="max-price-filter"
-                />
-              </div>
             </div>
 
             <div className={styles.resultsCount} id="search-results-count">

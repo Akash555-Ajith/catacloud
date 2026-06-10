@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { 
   getCustomCatalogById, 
   getProducts, 
@@ -22,7 +22,6 @@ import { toast } from 'sonner';
 
 export default function CatalogueDetailPage() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [mounted, setMounted] = useState<boolean>(false);
   const [catalog, setCatalog] = useState<CustomCatalog | null>(null);
@@ -57,6 +56,13 @@ export default function CatalogueDetailPage() {
   const [sourcingReqNotes, setSourcingReqNotes] = useState('');
   const [sourcingReqClientName, setSourcingReqClientName] = useState('');
   const [sourcingReqClientEmail, setSourcingReqClientEmail] = useState('');
+
+  const getVolumeDiscount = (qty: number) => {
+    if (qty > 30) return 20;
+    if (qty > 20) return 15;
+    if (qty > 10) return 10;
+    return 0;
+  };
 
   // Reset checkout states when the selected variety changes or entire checkout toggled
   useEffect(() => {
@@ -235,9 +241,9 @@ export default function CatalogueDetailPage() {
           <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
             This custom catalogue proposal is either invalid or has been retracted by the administrator.
           </p>
-          <button onClick={() => router.push('/login')} className="btn-primary">
-            Go to Portal Login
-          </button>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Please ask the merchant to resend the catalogue link.
+          </p>
         </div>
       </div>
     );
@@ -286,18 +292,7 @@ export default function CatalogueDetailPage() {
     const price = override.customPrice;
     const qty = quantities[p.id] !== undefined ? quantities[p.id] : override.customStock;
     
-    // Apply dynamic volume discount based on client general rules:
-    // 10-100 kg: 10% discount
-    // 100-200 kg: 20% discount
-    // > 200 kg: 25% discount
-    let volDiscount = 0;
-    if (qty >= 10 && qty <= 100) {
-      volDiscount = 10;
-    } else if (qty > 100 && qty <= 200) {
-      volDiscount = 20;
-    } else if (qty > 200) {
-      volDiscount = 25;
-    }
+    const volDiscount = getVolumeDiscount(qty);
 
     const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
       ? override.customDiscount
@@ -322,18 +317,7 @@ export default function CatalogueDetailPage() {
   
   const unit = selectedFish?.unit || 'kg';
   
-  // Calculate dynamic volume discount based on client general rules:
-  // 10-100 kg: 10% discount
-  // 100-200 kg: 20% discount
-  // > 200 kg: 25% discount
-  let selectedVolumeDiscountPercent = 0;
-  if (allocatedStock >= 10 && allocatedStock <= 100) {
-    selectedVolumeDiscountPercent = 10;
-  } else if (allocatedStock > 100 && allocatedStock <= 200) {
-    selectedVolumeDiscountPercent = 20;
-  } else if (allocatedStock > 200) {
-    selectedVolumeDiscountPercent = 25;
-  }
+  const selectedVolumeDiscountPercent = getVolumeDiscount(allocatedStock);
 
   const activeDiscount = selectedItemDiscount + selectedVolumeDiscountPercent;
   const finalUnitPrice = selectedCustomPrice * (1 - activeDiscount / 100);
@@ -431,14 +415,7 @@ export default function CatalogueDetailPage() {
         const price = override.customPrice;
         const qty = quantities[p.id] || 0;
         
-        let volDiscount = 0;
-        if (qty >= 10 && qty <= 100) {
-          volDiscount = 10;
-        } else if (qty > 100 && qty <= 200) {
-          volDiscount = 20;
-        } else if (qty > 200) {
-          volDiscount = 25;
-        }
+        const volDiscount = getVolumeDiscount(qty);
 
         const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
           ? override.customDiscount
@@ -580,7 +557,7 @@ export default function CatalogueDetailPage() {
       {/* Global Sourcing Terms Banner */}
       <section className={styles.notesBanner} style={{ borderColor: 'var(--accent-gold)', background: 'rgba(226, 183, 68, 0.02)', marginTop: catalog.notes ? '-6px' : '0px' }}>
         <div className={styles.notesTitle} style={{ color: 'var(--accent-gold)' }}>Sourcing Offer Summary</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxWidth: '600px', margin: '0 auto', fontSize: '0.8rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', maxWidth: '760px', margin: '0 auto', fontSize: '0.8rem' }}>
           <div>
             <span style={{ color: 'var(--text-muted)' }}>Global Sourcing Discount:</span>{' '}
             <strong style={{ color: 'var(--accent-cyan)' }}>{catalog.globalDiscount > 0 ? `${catalog.globalDiscount}% Off Catalog` : 'Standard Rates'}</strong>
@@ -589,18 +566,22 @@ export default function CatalogueDetailPage() {
             <span style={{ color: 'var(--text-muted)' }}>Logistics & Delivery Fee:</span>{' '}
             <strong style={{ color: 'var(--text-primary)' }}>{catalog.globalDelivery > 0 ? `$${catalog.globalDelivery.toFixed(2)}` : 'Free Logistics'}</strong>
           </div>
+          <div>
+            <span style={{ color: 'var(--text-muted)' }}>Total Catalogue Price:</span>{' '}
+            <strong style={{ color: 'var(--accent-gold)' }}>${totalProposalBill.toFixed(2)}</strong>
+          </div>
         </div>
         <div style={{ borderTop: '1px solid rgba(226, 183, 68, 0.15)', marginTop: '8px', paddingTop: '8px', textAlign: 'center' }}>
           <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-gold)', marginBottom: '4px', fontWeight: 600 }}>Bulk Volume Sourcing Discounts</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.75rem' }}>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>10-100 kg:</span> <strong style={{ color: 'var(--accent-cyan)' }}>10% discount</strong>
+              <span style={{ color: 'var(--text-secondary)' }}>More than 10 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>10% discount</strong>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>100-200 kg:</span> <strong style={{ color: 'var(--accent-cyan)' }}>20% discount</strong>
+              <span style={{ color: 'var(--text-secondary)' }}>More than 20 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>15% discount</strong>
             </div>
             <div style={{ background: 'rgba(255,255,255,0.02)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>&gt; 200 kg:</span> <strong style={{ color: 'var(--accent-cyan)' }}>25% discount</strong>
+              <span style={{ color: 'var(--text-secondary)' }}>More than 30 {storeConfig.unit}:</span> <strong style={{ color: 'var(--accent-cyan)' }}>20% discount</strong>
             </div>
           </div>
         </div>
@@ -754,14 +735,7 @@ export default function CatalogueDetailPage() {
                   if (qty === 0) return null;
 
                   const price = override.customPrice;
-                  let volDiscount = 0;
-                  if (qty >= 10 && qty <= 100) {
-                    volDiscount = 10;
-                  } else if (qty > 100 && qty <= 200) {
-                    volDiscount = 20;
-                  } else if (qty > 200) {
-                    volDiscount = 25;
-                  }
+                  const volDiscount = getVolumeDiscount(qty);
 
                   const discount = ((override.customDiscount !== undefined && override.customDiscount > 0)
                     ? override.customDiscount
@@ -879,7 +853,7 @@ export default function CatalogueDetailPage() {
                         style={{ width: '100%', padding: '8px 10px', height: '38px', fontSize: '14px' }}
                       >
                         <option value="">-- Custom / Other Product --</option>
-                        {products.map(p => (
+                        {allProposalItems.map(p => (
                           <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                       </select>

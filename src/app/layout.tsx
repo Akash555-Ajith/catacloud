@@ -17,8 +17,8 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Bluefine | Premium Fish Market Catalogue",
-  description: "Exquisite marine catalog for the most demanding culinary chefs. Freshly sourced seafood of unparalleled quality.",
+  title: "Bluefine | Premium Catalogue Merchant",
+  description: "Premium catalogue merchant tools for building product catalogs, sharing client links, and managing enquiries.",
 };
 
 export default function RootLayout({
