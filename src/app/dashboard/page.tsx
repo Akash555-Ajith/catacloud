@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const [showStoreCreator, setShowStoreCreator] = useState(false);
 
   // Navigation / UI tabs for Admin
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'products' | 'enquiries' | 'pos' | 'settings' | 'catalogs' | 'orders'>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'products' | 'enquiries' | 'pwa' | 'settings' | 'catalogs' | 'orders'>('dashboard');
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [sourcingRequests, setSourcingRequests] = useState<CustomSourcingRequest[]>([]);
 
@@ -109,21 +109,21 @@ export default function DashboardPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState<boolean>(false);
   const [bulkCSVText, setBulkCSVText] = useState<string>('');
   
-  // POS System State
-  const [posCart, setPosCart] = useState<{ fish: FishItem; quantity: number }[]>([]);
-  const [posSearch, setPosSearch] = useState('');
-  const [posCategory, setPosCategory] = useState('All');
-  const [posCustomerName, setPosCustomerName] = useState('Walk-in Customer');
-  const [posPaymentMethod, setPosPaymentMethod] = useState<'Cash' | 'Card' | 'Tap'>('Cash');
-  const [posReceipt, setPosReceipt] = useState<Order | null>(null);
-  const [posTab, setPosTab] = useState<'all' | 'custom'>('all');
+  // PWA System State
+  const [pwaCart, setPwaCart] = useState<{ fish: FishItem; quantity: number }[]>([]);
+  const [pwaSearch, setPwaSearch] = useState('');
+  const [pwaCategory, setPwaCategory] = useState('All');
+  const [pwaCustomerName, setPwaCustomerName] = useState('Walk-in Customer');
+  const [pwaPaymentMethod, setPwaPaymentMethod] = useState<'Cash' | 'Card' | 'Tap'>('Cash');
+  const [pwaReceipt, setPwaReceipt] = useState<Order | null>(null);
+  const [pwaTab, setPwaTab] = useState<'all' | 'custom'>('all');
 
-  const handleAddToPosCart = (fish: FishItem) => {
+  const handleAddToPwaCart = (fish: FishItem) => {
     if (fish.stock <= 0) {
       toast.error('Out of Stock', { description: `${fish.name} is currently out of stock.` });
       return;
     }
-    setPosCart((prev) => {
+    setPwaCart((prev) => {
       const idx = prev.findIndex((item) => item.fish.id === fish.id);
       if (idx > -1) {
         const next = [...prev];
@@ -139,36 +139,36 @@ export default function DashboardPage() {
     });
   };
 
-  const handleUpdatePosQuantity = (fishId: string, qty: number) => {
+  const handleUpdatePwaQuantity = (fishId: string, qty: number) => {
     if (qty <= 0) {
-      setPosCart((prev) => prev.filter((item) => item.fish.id !== fishId));
+      setPwaCart((prev) => prev.filter((item) => item.fish.id !== fishId));
       return;
     }
-    const item = posCart.find((i) => i.fish.id === fishId);
+    const item = pwaCart.find((i) => i.fish.id === fishId);
     if (item && qty > item.fish.stock) {
       toast.warning('Stock Limit Reached', { description: `Only ${item.fish.stock} units are available.` });
       return;
     }
-    setPosCart((prev) =>
+    setPwaCart((prev) =>
       prev.map((item) => (item.fish.id === fishId ? { ...item, quantity: qty } : item))
     );
   };
 
-  const handleRemoveFromPosCart = (fishId: string) => {
-    setPosCart((prev) => prev.filter((item) => item.fish.id !== fishId));
+  const handleRemoveFromPwaCart = (fishId: string) => {
+    setPwaCart((prev) => prev.filter((item) => item.fish.id !== fishId));
   };
 
-  const handleCompletePosSale = async (e: React.FormEvent) => {
+  const handleCompletePwaSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (posCart.length === 0) return;
+    if (pwaCart.length === 0) return;
 
-    const totalPrice = posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0);
-    const saleId = `POS-${Math.floor(100000 + Math.random() * 900000)}`;
+    const totalPrice = pwaCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0);
+    const saleId = `PWA-${Math.floor(100000 + Math.random() * 900000)}`;
 
     const newOrder: Order = {
       id: saleId,
-      userEmail: `${posCustomerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'walkin'}@pos.com`,
-      userName: posCustomerName,
+      userEmail: `${pwaCustomerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'walkin'}@pwa.com`,
+      userName: pwaCustomerName,
       date: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
@@ -176,9 +176,9 @@ export default function DashboardPage() {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      deliveryDate: 'Instant (POS)',
-      address: `In-Store Sales (${posPaymentMethod})`,
-      items: posCart.map((item) => ({
+      deliveryDate: 'Instant (PWA)',
+      address: `In-Store Sales (${pwaPaymentMethod})`,
+      items: pwaCart.map((item) => ({
         fishId: item.fish.id,
         name: item.fish.name,
         quantity: item.quantity,
@@ -205,13 +205,13 @@ export default function DashboardPage() {
       setOrders(ords);
 
       // Keep receipt open for showing bill/invoice print view
-      setPosReceipt(newOrder);
-      setPosCart([]);
-      setPosCustomerName('Walk-in Customer');
-      setPosPaymentMethod('Cash');
+      setPwaReceipt(newOrder);
+      setPwaCart([]);
+      setPwaCustomerName('Walk-in Customer');
+      setPwaPaymentMethod('Cash');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to register POS sale.');
+      toast.error('Failed to register PWA sale.');
     }
   };
 
@@ -757,6 +757,42 @@ export default function DashboardPage() {
       console.error(err);
       toast.error('Failed to save product: ' + (err.message || 'Unknown error'));
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please upload a valid CSV file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setBulkCSVText(text || '');
+      toast.success(`Loaded content from ${file.name}`);
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file.');
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDownloadSampleCSV = () => {
+    const headers = 'Name,Price,Category,Stock\n';
+    const row1 = 'Premium Atlantic Halibut,24.50,Seafood,150\n';
+    const row2 = 'Organic Free-Range Dozen Eggs,8.50,Poultry,20\n';
+    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(headers + row1 + row2);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', csvContent);
+    link.setAttribute('download', 'sample_products.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Sample CSV download started!');
   };
 
   const handleBulkUpload = async (e: React.FormEvent) => {
@@ -1732,17 +1768,17 @@ export default function DashboardPage() {
     );
   };
 
-  const renderMerchantPOS = () => {
+  const renderMerchantPWA = () => {
     return (
       <div className={styles.merchantContainer}>
-        <h2 className={styles.merchantTitle}>⚡ Point of Sale (POS) & Billing</h2>
-        <p className={styles.merchantSubtitle}>Register direct in-store sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.</p>
+        <h2 className={styles.merchantTitle}>⚡ Progressive Web Application (PWA) & Billing</h2>
+        <p className={styles.merchantSubtitle}>Register direct sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.</p>
 
-        {posReceipt && (
+        {pwaReceipt && (
           <div className="glassmorphism" style={{ border: '2px solid var(--accent-gold)', borderRadius: '16px', padding: '24px', marginBottom: '32px', background: 'rgba(226, 183, 68, 0.03)', position: 'relative' }}>
             <button 
               type="button"
-              onClick={() => setPosReceipt(null)}
+              onClick={() => setPwaReceipt(null)}
               style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.2rem' }}
             >
               &times;
@@ -1754,16 +1790,16 @@ export default function DashboardPage() {
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
               <div>
-                <span style={{ color: '#64748b' }}>Invoice ID:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.id}</strong>
+                <span style={{ color: '#64748b' }}>Invoice ID:</span> <strong style={{ color: '#0f172a' }}>{pwaReceipt.id}</strong>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ color: '#64748b' }}>Date:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.date}</strong>
+                <span style={{ color: '#64748b' }}>Date:</span> <strong style={{ color: '#0f172a' }}>{pwaReceipt.date}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b' }}>Client:</span> <strong style={{ color: '#0f172a' }}>{posReceipt.userName}</strong>
+                <span style={{ color: '#64748b' }}>Client:</span> <strong style={{ color: '#0f172a' }}>{pwaReceipt.userName}</strong>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ color: '#64748b' }}>Method:</span> <strong style={{ color: '#0f3057' }}>{posReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
+                <span style={{ color: '#64748b' }}>Method:</span> <strong style={{ color: '#0f3057' }}>{pwaReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
               </div>
             </div>
 
@@ -1777,7 +1813,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {posReceipt.items.map((item, idx) => (
+                {pwaReceipt.items.map((item, idx) => (
                   <tr key={idx}>
                     <td style={{ color: '#334155', whiteSpace: 'normal', wordBreak: 'normal', overflowWrap: 'normal' }}>{item.name}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{item.quantity} {storeConfig.unit}</td>
@@ -1791,7 +1827,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '16px', marginTop: '16px' }}>
               <div style={{ fontSize: '0.9rem' }}>
                 <span style={{ color: '#64748b' }}>Subtotal:</span>{' '}
-                <span style={{ color: '#0f172a', fontWeight: 600 }}>${posReceipt.totalPrice.toFixed(2)}</span>
+                <span style={{ color: '#0f172a', fontWeight: 600 }}>${pwaReceipt.totalPrice.toFixed(2)}</span>
               </div>
               <div style={{ fontSize: '0.9rem' }}>
                 <span style={{ color: '#64748b' }}>Taxes & Levies:</span>{' '}
@@ -1799,7 +1835,7 @@ export default function DashboardPage() {
               </div>
               <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#07162c', marginTop: '8px' }}>
                 <span>Total Bill Amount:</span>{' '}
-                <span>${posReceipt.totalPrice.toFixed(2)}</span>
+                <span>${pwaReceipt.totalPrice.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1814,31 +1850,31 @@ export default function DashboardPage() {
               </button>
               <button 
                 type="button"
-                onClick={() => setPosReceipt(null)}
+                onClick={() => setPwaReceipt(null)}
                 className={styles.btnMerchantSecondary}
                 style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem', justifyContent: 'center' }}
               >
-                Create New POS Sale
+                Create New PWA Sale
               </button>
             </div>
           </div>
         )}
 
         <div className={styles.catalogSplitLayout} style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
-          {/* Left Column: POS Catalog List */}
+          {/* Left Column: PWA Catalog List */}
           <div className={styles.lightPanelCard}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
               <input 
                 type="text"
-                value={posSearch}
-                onChange={(e) => setPosSearch(e.target.value)}
-                placeholder="Search POS items..."
+                value={pwaSearch}
+                onChange={(e) => setPwaSearch(e.target.value)}
+                placeholder="Search PWA items..."
                 className={styles.lightInput}
                 style={{ flex: 1, height: '36px', fontSize: '0.85rem' }}
               />
               <select 
-                value={posCategory}
-                onChange={(e) => setPosCategory(e.target.value)}
+                value={pwaCategory}
+                onChange={(e) => setPwaCategory(e.target.value)}
                 className={styles.lightSelect}
                 style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
               >
@@ -1857,9 +1893,9 @@ export default function DashboardPage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
                 {products
                   .filter((p) => {
-                    const matchCat = posCategory === 'All' || p.category === posCategory;
-                    const matchSearch = p.name.toLowerCase().includes(posSearch.toLowerCase()) ||
-                      p.scientificName.toLowerCase().includes(posSearch.toLowerCase());
+                    const matchCat = pwaCategory === 'All' || p.category === pwaCategory;
+                    const matchSearch = p.name.toLowerCase().includes(pwaSearch.toLowerCase()) ||
+                      p.scientificName.toLowerCase().includes(pwaSearch.toLowerCase());
                     return matchCat && matchSearch;
                   })
                   .map((p) => (
@@ -1897,7 +1933,7 @@ export default function DashboardPage() {
                       </div>
                       <button 
                         type="button"
-                        onClick={() => handleAddToPosCart(p)}
+                        onClick={() => handleAddToPwaCart(p)}
                         disabled={p.stock <= 0}
                         className={styles.btnMerchantPrimary}
                         style={{ width: '100%', marginTop: '10px', height: '28px', fontSize: '0.75rem', padding: '0', justifyContent: 'center' }}
@@ -1910,20 +1946,20 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Right Column: POS Cart Drawer Panel */}
+          {/* Right Column: PWA Cart Drawer Panel */}
           <div className={styles.lightPanelCard} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <h3 style={{ fontSize: '1.2rem', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', fontWeight: 'bold' }}>
               Cart Bill Breakdown
             </h3>
 
-            {posCart.length === 0 ? (
+            {pwaCart.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <span>🛒 POS Cart is Empty</span>
+                <span>🛒 PWA Cart is Empty</span>
                 <span style={{ fontSize: '0.75rem' }}>Select products on the left to start a billing session.</span>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
-                {posCart.map((item) => (
+                {pwaCart.map((item) => (
                   <div key={item.fish.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                     <div style={{ flex: 1 }}>
                       <strong style={{ display: 'block', fontSize: '0.85rem', color: '#0f172a', wordBreak: 'normal', overflowWrap: 'normal' }}>{item.fish.name}</strong>
@@ -1933,7 +1969,7 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
                       <button 
                         type="button"
-                        onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity - 1)}
+                        onClick={() => handleUpdatePwaQuantity(item.fish.id, item.quantity - 1)}
                         style={{ width: '22px', height: '22px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', cursor: 'pointer' }}
                       >
                         -
@@ -1941,7 +1977,7 @@ export default function DashboardPage() {
                       <span style={{ fontSize: '0.85rem', fontWeight: 'bold', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
                       <button 
                         type="button"
-                        onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity + 1)}
+                        onClick={() => handleUpdatePwaQuantity(item.fish.id, item.quantity + 1)}
                         style={{ width: '22px', height: '22px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', color: '#0f172a', cursor: 'pointer' }}
                       >
                         +
@@ -1952,7 +1988,7 @@ export default function DashboardPage() {
                       <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a' }}>${(item.fish.pricePerKg * item.quantity).toFixed(2)}</span>
                       <button 
                         type="button" 
-                        onClick={() => handleRemoveFromPosCart(item.fish.id)}
+                        onClick={() => handleRemoveFromPwaCart(item.fish.id)}
                         style={{ fontSize: '0.7rem', color: '#ef4444', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                       >
                         Remove
@@ -1968,8 +2004,8 @@ export default function DashboardPage() {
                 <label className={styles.label} style={{ fontSize: '0.75rem' }}>Billing Client Name</label>
                 <input 
                   type="text" 
-                  value={posCustomerName}
-                  onChange={(e) => setPosCustomerName(e.target.value)}
+                  value={pwaCustomerName}
+                  onChange={(e) => setPwaCustomerName(e.target.value)}
                   className={styles.lightInput}
                   style={{ height: '32px', fontSize: '0.85rem' }}
                   required
@@ -1983,7 +2019,7 @@ export default function DashboardPage() {
                     <button
                       key={method}
                       type="button"
-                      onClick={() => setPosPaymentMethod(method)}
+                      onClick={() => setPwaPaymentMethod(method)}
                       style={{
                         height: '32px',
                         fontSize: '0.8rem',
@@ -1992,9 +2028,9 @@ export default function DashboardPage() {
                         border: '1px solid',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
-                        borderColor: posPaymentMethod === method ? '#07162c' : '#cbd5e1',
-                        color: posPaymentMethod === method ? '#ffffff' : '#64748b',
-                        background: posPaymentMethod === method ? '#07162c' : '#ffffff'
+                        borderColor: pwaPaymentMethod === method ? '#07162c' : '#cbd5e1',
+                        color: pwaPaymentMethod === method ? '#ffffff' : '#64748b',
+                        background: pwaPaymentMethod === method ? '#07162c' : '#ffffff'
                       }}
                     >
                       {method}
@@ -2006,18 +2042,18 @@ export default function DashboardPage() {
               <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Total Bill Amount:</span>
                 <strong style={{ fontSize: '1.4rem', color: '#07162c' }}>
-                  ${posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
+                  ${pwaCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
                 </strong>
               </div>
 
               <button 
                 type="button"
-                onClick={(e) => handleCompletePosSale(e)}
-                disabled={posCart.length === 0}
+                onClick={(e) => handleCompletePwaSale(e)}
+                disabled={pwaCart.length === 0}
                 className={styles.btnMerchantPrimary} 
                 style={{ width: '100%', height: '40px', fontSize: '0.9rem', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer', justifyContent: 'center' }}
               >
-                🧾 Complete POS Sale & Bill
+                🧾 Complete PWA Sale & Bill
               </button>
             </div>
           </div>
@@ -2670,11 +2706,11 @@ export default function DashboardPage() {
                   </button>
                   <button 
                     type="button"
-                    onClick={() => { setShowStoreCreator(false); setAdminTab('pos'); }} 
-                    className={`${styles.sidebarItem} ${adminTab === 'pos' ? styles.sidebarItemActive : ''}`}
+                    onClick={() => { setShowStoreCreator(false); setAdminTab('pwa'); }} 
+                    className={`${styles.sidebarItem} ${adminTab === 'pwa' ? styles.sidebarItemActive : ''}`}
                   >
                     <CreditCard size={18} />
-                    POS
+                    PWA
                   </button>
                   <button 
                     type="button"
@@ -2950,7 +2986,7 @@ export default function DashboardPage() {
                 {adminTab === 'dashboard' && renderMerchantDashboard()}
               {adminTab === 'products' && renderMerchantCatalog()}
               {adminTab === 'enquiries' && renderMerchantEnquiries()}
-              {adminTab === 'pos' && renderMerchantPOS()}
+              {adminTab === 'pwa' && renderMerchantPWA()}
               {adminTab === 'settings' && renderMerchantSettings()}
               {adminTab === 'catalogs' && renderMerchantCatalogs()}
             </>
@@ -3240,18 +3276,60 @@ export default function DashboardPage() {
 
               <form onSubmit={handleBulkUpload}>
                 <div style={{ marginBottom: '16px' }}>
-                  <label className={styles.label} style={{ marginBottom: '8px', display: 'block' }}>Paste CSV Data (First row is Header)</label>
-                  <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <label className={styles.label} style={{ margin: 0 }}>Product List CSV</label>
+                    <button
+                      type="button"
+                      onClick={handleDownloadSampleCSV}
+                      className="btn-secondary"
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
+                    >
+                      📥 Download Sample CSV
+                    </button>
+                  </div>
+
+                  <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '16px', borderRadius: '8px', textAlign: 'center', marginBottom: '16px' }}>
+                    <label
+                      htmlFor="bulk-csv-file-input-portal"
+                      className="btn-primary"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        padding: '8px 16px',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        fontWeight: '500',
+                        gap: '6px',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      📁 Choose CSV File
+                    </label>
+                    <input
+                      type="file"
+                      id="bulk-csv-file-input-portal"
+                      accept=".csv"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                      or paste the CSV data below
+                    </p>
+                  </div>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '12px' }}>
                     💡 <strong>Example format:</strong><br />
                     <code>Name, Price, Category, Stock</code><br />
                     <code>Premium Atlantic Halibut, 24.50, Seafood, 150</code><br />
                     <code>Organic Free-Range Dozen Eggs, 8.50, Poultry, 20</code>
                   </div>
+
                   <textarea
                     value={bulkCSVText}
                     onChange={(e) => setBulkCSVText(e.target.value)}
                     className="luxury-input"
-                    style={{ width: '100%', minHeight: '180px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
+                    style={{ width: '100%', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
                     placeholder="Name, Price, Category, Stock&#10;Product A, 19.99, Seafood, 25&#10;Product B, 45.00, Seafood, 10"
                     required
                   />
@@ -3358,7 +3436,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>📦 2. Add Your Products</h4>
-                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Add products, track stock levels, and log offline sales via the POS terminal.</p>
+                    <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>Add products, track stock levels, and log offline sales via the PWA terminal.</p>
                   </div>
                   <div>
                     <h4 style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', marginBottom: '6px' }}>📄 3. Share Custom Catalogues</h4>
@@ -3591,11 +3669,11 @@ export default function DashboardPage() {
                 Logistics & Orders ({orders.length})
               </button>
               <button 
-                onClick={() => setAdminTab('pos')}
-                className={`${styles.tabBtn} ${adminTab === 'pos' ? styles.tabBtnActive : ''}`}
-                id="admin-tab-pos"
+                onClick={() => setAdminTab('pwa')}
+                className={`${styles.tabBtn} ${adminTab === 'pwa' ? styles.tabBtnActive : ''}`}
+                id="admin-tab-pwa"
               >
-                ⚡ Sell Products (POS)
+                ⚡ Sell Products (PWA)
               </button>
               <button 
                 onClick={() => setAdminTab('products')}
@@ -3735,18 +3813,18 @@ export default function DashboardPage() {
               </section>
             )}
 
-            {/* POS Point of Sale Section */}
-            {adminTab === 'pos' && (
+            {/* PWA Point of Sale Section */}
+            {adminTab === 'pwa' && (
               <section className={`${styles.sectionCard} glassmorphism`}>
-                <h2 className={styles.sectionTitle}>⚡ Point of Sale (POS) & Billing</h2>
+                <h2 className={styles.sectionTitle}>⚡ Progressive Web Application (PWA) & Billing</h2>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
-                  Register direct in-store sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.
+                  Register direct sales, customize client billing names, and automatically deduct sourced quantities from active catalogue inventory stocks.
                 </p>
 
-                {posReceipt && (
+                {pwaReceipt && (
                   <div className="glassmorphism" style={{ border: '2px solid var(--accent-gold)', borderRadius: '16px', padding: '24px', marginBottom: '32px', background: 'rgba(226, 183, 68, 0.03)', position: 'relative' }}>
                     <button 
-                      onClick={() => setPosReceipt(null)}
+                      onClick={() => setPwaReceipt(null)}
                       style={{ position: 'absolute', top: '16px', right: '16px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}
                     >
                       &times;
@@ -3758,16 +3836,16 @@ export default function DashboardPage() {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
                       <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Invoice ID:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.id}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}>Invoice ID:</span> <strong style={{ color: 'var(--text-primary)' }}>{pwaReceipt.id}</strong>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Date:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.date}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}>Date:</span> <strong style={{ color: 'var(--text-primary)' }}>{pwaReceipt.date}</strong>
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-muted)' }}>Client:</span> <strong style={{ color: 'var(--text-primary)' }}>{posReceipt.userName}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}>Client:</span> <strong style={{ color: 'var(--text-primary)' }}>{pwaReceipt.userName}</strong>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Method:</span> <strong style={{ color: 'var(--accent-cyan)' }}>{posReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
+                        <span style={{ color: 'var(--text-muted)' }}>Method:</span> <strong style={{ color: 'var(--accent-cyan)' }}>{pwaReceipt.address.replace('In-Store Sales (', '').replace(')', '')}</strong>
                       </div>
                     </div>
 
@@ -3781,7 +3859,7 @@ export default function DashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {posReceipt.items.map((item, idx) => (
+                        {pwaReceipt.items.map((item, idx) => (
                           <tr key={idx}>
                             <td>{item.name}</td>
                             <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
@@ -3795,7 +3873,7 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '16px', marginTop: '16px' }}>
                       <div style={{ fontSize: '0.9rem' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Subtotal:</span>{' '}
-                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${posReceipt.totalPrice.toFixed(2)}</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${pwaReceipt.totalPrice.toFixed(2)}</span>
                       </div>
                       <div style={{ fontSize: '0.9rem' }}>
                         <span style={{ color: 'var(--text-muted)' }}>Taxes & Levies:</span>{' '}
@@ -3803,7 +3881,7 @@ export default function DashboardPage() {
                       </div>
                       <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--accent-gold)', marginTop: '8px' }}>
                         <span>Total Bill Amount:</span>{' '}
-                        <span>${posReceipt.totalPrice.toFixed(2)}</span>
+                        <span>${pwaReceipt.totalPrice.toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -3816,31 +3894,31 @@ export default function DashboardPage() {
                         🖨️ Print Bill Invoice
                       </button>
                       <button 
-                        onClick={() => setPosReceipt(null)}
+                        onClick={() => setPwaReceipt(null)}
                         className="btn-gold"
                         style={{ flex: 1, padding: '10px 0', fontSize: '0.9rem' }}
                       >
-                        Create New POS Sale
+                        Create New PWA Sale
                       </button>
                     </div>
                   </div>
                 )}
 
                 <div className={styles.splitLayout} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
-                  {/* Left Column: POS Catalog List */}
+                  {/* Left Column: PWA Catalog List */}
                   <div className="glassmorphism" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
                       <input 
                         type="text"
-                        value={posSearch}
-                        onChange={(e) => setPosSearch(e.target.value)}
-                        placeholder="Search POS items..."
+                        value={pwaSearch}
+                        onChange={(e) => setPwaSearch(e.target.value)}
+                        placeholder="Search PWA items..."
                         className="luxury-input"
                         style={{ flex: 1, height: '36px', fontSize: '0.85rem' }}
                       />
                       <select 
-                        value={posCategory}
-                        onChange={(e) => setPosCategory(e.target.value)}
+                        value={pwaCategory}
+                        onChange={(e) => setPwaCategory(e.target.value)}
                         className="luxury-input"
                         style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
                       >
@@ -3859,9 +3937,9 @@ export default function DashboardPage() {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', maxHeight: '550px', overflowY: 'auto', paddingRight: '4px' }}>
                         {products
                           .filter((p) => {
-                            const matchCat = posCategory === 'All' || p.category === posCategory;
-                            const matchSearch = p.name.toLowerCase().includes(posSearch.toLowerCase()) ||
-                              p.scientificName.toLowerCase().includes(posSearch.toLowerCase());
+                            const matchCat = pwaCategory === 'All' || p.category === pwaCategory;
+                            const matchSearch = p.name.toLowerCase().includes(pwaSearch.toLowerCase()) ||
+                              p.scientificName.toLowerCase().includes(pwaSearch.toLowerCase());
                             return matchCat && matchSearch;
                           })
                           .map((p) => (
@@ -3899,7 +3977,7 @@ export default function DashboardPage() {
                                 </div>
                               </div>
                               <button 
-                                onClick={() => handleAddToPosCart(p)}
+                                onClick={() => handleAddToPwaCart(p)}
                                 disabled={p.stock <= 0}
                                 className="btn-primary"
                                 style={{ width: '100%', marginTop: '10px', height: '28px', fontSize: '0.75rem', padding: '0' }}
@@ -3912,20 +3990,20 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Right Column: POS Cart Drawer Panel */}
+                  {/* Right Column: PWA Cart Drawer Panel */}
                   <div className="glassmorphism" style={{ border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <h3 style={{ fontFamily: 'var(--font-playfair), serif', fontSize: '1.2rem', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
                       Cart Bill Breakdown
                     </h3>
 
-                    {posCart.length === 0 ? (
+                    {pwaCart.length === 0 ? (
                       <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                        <span>🛒 POS Cart is Empty</span>
+                        <span>🛒 PWA Cart is Empty</span>
                         <span style={{ fontSize: '0.75rem' }}>Select products on the left to start a billing session.</span>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '20px', paddingRight: '4px' }}>
-                        {posCart.map((item) => (
+                        {pwaCart.map((item) => (
                           <div key={item.fish.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--glass-border)', borderRadius: '8px' }}>
                             <div style={{ flex: 1 }}>
                               <strong style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-primary)' }}>{item.fish.name}</strong>
@@ -3935,7 +4013,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '12px' }}>
                               <button 
                                 type="button"
-                                onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity - 1)}
+                                onClick={() => handleUpdatePwaQuantity(item.fish.id, item.quantity - 1)}
                                 style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer' }}
                               >
                                 -
@@ -3943,7 +4021,7 @@ export default function DashboardPage() {
                               <span style={{ fontSize: '0.85rem', fontWeight: 'bold', minWidth: '24px', textAlign: 'center' }}>{item.quantity}</span>
                               <button 
                                 type="button"
-                                onClick={() => handleUpdatePosQuantity(item.fish.id, item.quantity + 1)}
+                                onClick={() => handleUpdatePwaQuantity(item.fish.id, item.quantity + 1)}
                                 style={{ width: '22px', height: '22px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer' }}
                               >
                                 +
@@ -3954,7 +4032,7 @@ export default function DashboardPage() {
                               <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>${(item.fish.pricePerKg * item.quantity).toFixed(2)}</span>
                               <button 
                                 type="button" 
-                                onClick={() => handleRemoveFromPosCart(item.fish.id)}
+                                onClick={() => handleRemoveFromPwaCart(item.fish.id)}
                                 style={{ fontSize: '0.7rem', color: 'var(--accent-danger)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                               >
                                 Remove
@@ -3970,8 +4048,8 @@ export default function DashboardPage() {
                         <label className={styles.label} style={{ fontSize: '0.75rem' }}>Billing Client Name</label>
                         <input 
                           type="text" 
-                          value={posCustomerName}
-                          onChange={(e) => setPosCustomerName(e.target.value)}
+                          value={pwaCustomerName}
+                          onChange={(e) => setPwaCustomerName(e.target.value)}
                           className="luxury-input"
                           style={{ height: '32px', fontSize: '0.85rem' }}
                           required
@@ -3985,7 +4063,7 @@ export default function DashboardPage() {
                             <button
                               key={method}
                               type="button"
-                              onClick={() => setPosPaymentMethod(method)}
+                              onClick={() => setPwaPaymentMethod(method)}
                               style={{
                                 height: '32px',
                                 fontSize: '0.8rem',
@@ -3994,9 +4072,9 @@ export default function DashboardPage() {
                                 border: '1px solid',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                borderColor: posPaymentMethod === method ? 'var(--accent-cyan)' : 'var(--glass-border)',
-                                color: posPaymentMethod === method ? '#030812' : 'var(--text-secondary)',
-                                background: posPaymentMethod === method ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.01)'
+                                borderColor: pwaPaymentMethod === method ? 'var(--accent-cyan)' : 'var(--glass-border)',
+                                color: pwaPaymentMethod === method ? '#030812' : 'var(--text-secondary)',
+                                background: pwaPaymentMethod === method ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.01)'
                               }}
                             >
                               {method}
@@ -4008,18 +4086,18 @@ export default function DashboardPage() {
                       <div style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Total Bill Amount:</span>
                         <strong style={{ fontSize: '1.4rem', color: 'var(--accent-cyan)' }}>
-                          ${posCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
+                          ${pwaCart.reduce((sum, item) => sum + item.fish.pricePerKg * item.quantity, 0).toFixed(2)}
                         </strong>
                       </div>
 
                       <button 
                         type="button"
-                        onClick={(e) => handleCompletePosSale(e)}
-                        disabled={posCart.length === 0}
+                        onClick={(e) => handleCompletePwaSale(e)}
+                        disabled={pwaCart.length === 0}
                         className="btn-cyan" 
                         style={{ width: '100%', height: '40px', fontSize: '0.9rem', fontWeight: 'bold', marginTop: '8px', cursor: 'pointer' }}
                       >
-                        🧾 Complete POS Sale & Bill
+                        🧾 Complete PWA Sale & Bill
                       </button>
                     </div>
                   </div>
@@ -4625,18 +4703,60 @@ export default function DashboardPage() {
 
             <form onSubmit={handleBulkUpload}>
               <div style={{ marginBottom: '16px' }}>
-                <label className={styles.label} style={{ marginBottom: '8px', display: 'block' }}>Paste CSV Data (First row is Header)</label>
-                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className={styles.label} style={{ margin: 0 }}>Product List CSV</label>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleCSV}
+                    className="btn-secondary"
+                    style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' }}
+                  >
+                    📥 Download Sample CSV
+                  </button>
+                </div>
+
+                <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '16px', borderRadius: '8px', textAlign: 'center', marginBottom: '16px' }}>
+                  <label
+                    htmlFor="bulk-csv-file-input-fallback"
+                    className="btn-primary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      fontSize: '0.85rem',
+                      fontWeight: '500',
+                      gap: '6px',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    📁 Choose CSV File
+                  </label>
+                  <input
+                    type="file"
+                    id="bulk-csv-file-input-fallback"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                    or paste the CSV data below
+                  </p>
+                </div>
+
+                <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '12px', borderRadius: '6px', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.8)', marginBottom: '12px' }}>
                   💡 <strong>Example format:</strong><br />
                   <code>Name, Price, Category, Stock</code><br />
                   <code>Premium Atlantic Halibut, 24.50, Seafood, 150</code><br />
                   <code>Organic Free-Range Dozen Eggs, 8.50, Poultry, 20</code>
                 </div>
+
                 <textarea
                   value={bulkCSVText}
                   onChange={(e) => setBulkCSVText(e.target.value)}
                   className="luxury-input"
-                  style={{ width: '100%', minHeight: '180px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
+                  style={{ width: '100%', minHeight: '150px', fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: '1.5', padding: '12px' }}
                   placeholder="Name, Price, Category, Stock&#10;Product A, 19.99, Seafood, 25&#10;Product B, 45.00, Seafood, 10"
                   required
                 />

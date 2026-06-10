@@ -284,7 +284,7 @@ export default function HomePage() {
             <nav style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
               <a href="#solutions" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>Solutions</a>
               <a href="#catalog" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>Catalog</a>
-              <a href="#pos" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>POS</a>
+              <a href="#pwa" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>PWA</a>
               <a href="#suppliers" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>Suppliers</a>
               <a href="#pricing" style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', fontWeight: 600, textDecoration: 'none', transition: 'color 0.2s' }}>Pricing</a>
             </nav>
@@ -440,7 +440,7 @@ export default function HomePage() {
                 <div className="glassmorphism hover:scale-[1.02] transition-all duration-300" style={{ padding: '32px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.01)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div style={{ background: 'rgba(99, 102, 241, 0.08)', color: 'var(--accent-blue)', borderRadius: '16px', width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.4rem' }}>📦</div>
                   <div>
-                    <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Manage POS & Items</h3>
+                    <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px', fontWeight: 'bold' }}>Manage PWA & Items</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>
                       Keep inventories synchronized automatically. Add new product lines, track stock counts, and check out walk-in or telephone sales on the terminal.
                     </p>
@@ -535,9 +535,9 @@ export default function HomePage() {
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                     <div style={{ background: 'rgba(0, 242, 254, 0.08)', color: 'var(--accent-cyan)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.1rem', flexShrink: 0 }}>2</div>
                     <div>
-                      <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📦 Manage Products & POS</h3>
+                      <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px', fontWeight: 'bold' }}>📦 Manage Products & PWA</h3>
                       <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', lineHeight: '1.5', margin: 0 }}>
-                        Add items to your catalog, manage stock levels, and set base pricing. Keep track of stock counts automatically, and check out walk-in or phone sales instantly using the built-in POS Billing Terminal.
+                        Add items to your catalog, manage stock levels, and set base pricing. Keep track of stock counts automatically, and check out walk-in or phone sales instantly using the built-in PWA Billing Terminal.
                       </p>
                     </div>
                   </div>
