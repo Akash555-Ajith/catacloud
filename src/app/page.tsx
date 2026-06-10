@@ -99,6 +99,9 @@ export default function HomePage() {
 
       const params = new URLSearchParams(window.location.search);
       let storeId = params.get('store');
+      if (storeId === 'catacloud') {
+        storeId = null;
+      }
       if (!storeId && typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         const parts = hostname.split('.');
@@ -308,7 +311,10 @@ export default function HomePage() {
             margin: '0 auto',
             width: '100%'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+              onClick={() => router.push('/')}
+            >
               <img src="/logo-horizontal.svg" alt="CataCloud" style={{ height: '36px', display: 'block' }} />
             </div>
             <nav style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
@@ -590,6 +596,36 @@ export default function HomePage() {
       <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)' }}>
         <span style={{ color: 'var(--text-secondary)', letterSpacing: '2px', fontSize: '0.8rem', textTransform: 'uppercase', fontFamily: 'var(--font-outfit), sans-serif' }}>
           Redirecting to Authorization...
+        </span>
+      </div>
+    );
+  }
+
+  // Prevent rendering the store catalog if there's no active merchant store selected (i.e. on root domain or catacloud platform)
+  if (isLandingPage || !currentStoreId || currentStoreId === 'catacloud') {
+    return (
+      <div className="glassmorphism" style={{ height: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundImage: 'radial-gradient(circle at 50% 50%, #0c1c38 0%, #030812 100%)' }}>
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 32 32"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ animation: 'float 3s ease-in-out infinite' }}
+        >
+          <path
+            d="M28 16C28 22.6274 22.6274 28 16 28C11.5 28 7.5 25.5 5 21.5C8 21.5 11.5 19.5 13.5 17C15.5 14.5 16 11.5 17.5 9.5C19 7.5 21.5 6 24 6C26 6 28 7 28 9C28 11 25.5 12.5 24 13.5C22.5 14.5 20.5 15.5 20.5 16.5C20.5 17.5 22 18.5 23.5 19C25 19.5 28 19 28 16Z"
+            fill="url(#loading-logo-redirect)"
+          />
+          <defs>
+            <linearGradient id="loading-logo-redirect" x1="5" y1="6" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#00f2fe" />
+              <stop offset="1" stopColor="#4facfe" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <span style={{ marginTop: '16px', color: 'var(--text-secondary)', letterSpacing: '2px', fontSize: '0.8rem', textTransform: 'uppercase', fontFamily: 'var(--font-outfit), sans-serif' }}>
+          Redirecting to Dashboard...
         </span>
       </div>
     );
