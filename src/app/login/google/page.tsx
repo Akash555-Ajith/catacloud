@@ -6,6 +6,7 @@ export default function GoogleOAuthSimulator() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [step, setStep] = useState(1);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +20,7 @@ export default function GoogleOAuthSimulator() {
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      alert('Please enter your name.');
+      alert('Please enter your name to proceed.');
       return;
     }
 
@@ -36,233 +37,327 @@ export default function GoogleOAuthSimulator() {
     window.close();
   };
 
-  const selectPredefinedAccount = (pEmail: string, pName: string) => {
-    if (window.opener) {
-      window.opener.postMessage(
-        {
-          type: 'GOOGLE_SIGNIN',
-          email: pEmail.toLowerCase(),
-          name: pName
-        },
-        window.location.origin
-      );
-    }
-    window.close();
-  };
-
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#131314',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-      color: '#202124',
-      padding: '20px'
+      flexDirection: 'column',
+      fontFamily: '"Google Sans", Roboto, Helvetica, Arial, sans-serif',
+      color: '#e3e3e3',
+      boxSizing: 'border-box',
+      position: 'relative'
     }}>
+      {/* Main Container */}
       <div style={{
-        width: '100%',
-        maxWidth: '450px',
-        border: '1px solid #dadce0',
-        borderRadius: '8px',
-        padding: '40px',
-        boxSizing: 'border-box'
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 12px'
       }}>
-        {/* Google Logo */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
-          <svg width="74" height="24" viewBox="0 0 74 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M9.25 18.2C6.11 18.2 3.51 15.63 3.51 12.1C3.51 8.57 6.11 6 9.25 6C10.79 6 12.08 6.6 13.06 7.53L10.97 9.62C10.28 8.97 9.4 8.61 8.35 8.61C6.27 8.61 4.7 10.29 4.7 12.37C4.7 14.45 6.27 16.13 8.35 16.13C9.9 16.13 10.78 15.51 11.34 14.95C11.92 14.37 12.3 13.55 12.45 12.35H8.35V9.75H15.1C15.2 10.12 15.25 10.58 15.25 11.08C15.25 13.18 14.67 15.7 13.28 17.08C11.93 18.45 10.45 19.2 8.35 19.2H9.25ZM22.5 18.2C19.78 18.2 17.58 16.03 17.58 13.1C17.58 10.17 19.78 8 22.5 8C25.22 8 27.42 10.17 27.42 13.1C27.42 16.03 25.22 18.2 22.5 18.2ZM22.5 10.61C20.89 10.61 19.46 11.9 19.46 13.1C19.46 14.3 20.89 15.59 22.5 15.59C24.11 15.59 25.54 14.3 25.54 13.1C25.54 11.9 24.11 10.61 22.5 10.61ZM34.7 18.2C31.98 18.2 29.78 16.03 29.78 13.1C29.78 10.17 31.98 8 34.7 8C37.42 8 39.62 10.17 39.62 13.1C39.62 16.03 37.42 18.2 34.7 18.2ZM34.7 10.61C33.09 10.61 31.66 11.9 31.66 13.1C31.66 14.3 33.09 15.59 34.7 15.59C36.31 15.59 37.74 14.3 37.74 13.1C37.74 11.9 36.31 10.61 34.7 10.61ZM46.85 18.2C44.75 18.2 43.15 17.25 42.3 15.58L45.42 14.28C45.92 15.1 46.85 15.65 47.95 15.65C49.4 15.65 50.15 14.85 50.15 13.5V12.8H49.95C49.3 13.55 48.05 14.1 46.75 14.1C44.05 14.1 41.75 11.85 41.75 8.9C41.75 5.95 44.05 3.7 46.75 3.7C48.05 3.7 49.3 4.25 49.95 5H50.15V4.2H53.15V13.3C53.15 16.5 51.15 18.2 48.15 18.2H46.85ZM47.2 6.31C45.55 6.31 44.15 7.6 44.15 8.9C44.15 10.2 45.55 11.49 47.2 11.49C48.85 11.49 50.25 10.2 50.25 8.9C50.25 7.6 48.85 6.31 47.2 6.31ZM56.75 18.2V0.8H60.25V18.2H56.75ZM68.15 18.2C65.55 18.2 63.45 16.03 63.45 13.1C63.45 10.17 65.55 8 68.15 8C70.75 8 72.7 10.1 72.7 13.1C72.7 13.5 72.65 13.9 72.55 14.2H66.65C66.85 15.3 67.8 15.9 68.85 15.9C69.95 15.9 70.8 15.4 71.35 14.65L74 16.4C73.15 17.5 71.35 18.2 68.15 18.2ZM68.15 10.39C66.85 10.39 65.55 11.39 65.55 12.8H70.75C70.65 11.49 69.45 10.39 68.15 10.39Z" fill="#1A73E8"/>
-            <path d="M9.25 18.2C6.11 18.2 3.51 15.63 3.51 12.1C3.51 8.57 6.11 6 9.25 6C10.79 6 12.08 6.6 13.06 7.53L10.97 9.62C10.28 8.97 9.4 8.61 8.35 8.61C6.27 8.61 4.7 10.29 4.7 12.37C4.7 14.45 6.27 16.13 8.35 16.13C9.9 16.13 10.78 15.51 11.34 14.95C11.92 14.37 12.3 13.55 12.45 12.35H8.35V9.75H15.1C15.2 10.12 15.25 10.58 15.25 11.08C15.25 13.18 14.67 15.7 13.28 17.08C11.93 18.45 10.45 19.2 8.35 19.2H9.25Z" fill="#4285F4"/>
-            <path d="M34.7 18.2C31.98 18.2 29.78 16.03 29.78 13.1C29.78 10.17 31.98 8 34.7 8C37.42 8 39.62 10.17 39.62 13.1C39.62 16.03 37.42 18.2 34.7 18.2Z" fill="#EA4335"/>
-            <path d="M22.5 18.2C19.78 18.2 17.58 16.03 17.58 13.1C17.58 10.17 19.78 8 22.5 8C25.22 8 27.42 10.17 27.42 13.1C27.42 16.03 25.22 18.2 22.5 18.2Z" fill="#FBBC05"/>
-            <path d="M46.85 18.2C44.75 18.2 43.15 17.25 42.3 15.58L45.42 14.28C45.92 15.1 46.85 15.65 47.95 15.65C49.4 15.65 50.15 14.85 50.15 13.5V12.8H49.95C49.3 13.55 48.05 14.1 46.75 14.1C44.05 14.1 41.75 11.85 41.75 8.9C41.75 5.95 44.05 3.7 46.75 3.7C48.05 3.7 49.3 4.25 49.95 5H50.15V4.2H53.15V13.3C53.15 16.5 51.15 18.2 48.15 18.2H46.85Z" fill="#34A853"/>
-          </svg>
-        </div>
-
-        <h1 style={{ fontSize: '24px', fontWeight: 400, textAlign: 'center', margin: '0 0 8px 0' }}>
-          {step === 1 ? 'Sign in' : 'Confirm your name'}
-        </h1>
-        <p style={{ fontSize: '16px', textAlign: 'center', margin: '0 0 28px 0', color: '#202124' }}>
-          to continue to CataCloud Sourcing Platform
-        </p>
-
-        {step === 1 ? (
-          <form onSubmit={handleNext}>
-            {/* Email field */}
-            <div style={{ position: 'relative', marginBottom: '24px' }}>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email or phone"
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  borderRadius: '4px',
-                  border: '1px solid #dadce0',
-                  padding: '0 16px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
-                onBlur={(e) => e.target.style.borderColor = '#dadce0'}
-              />
+        <div style={{
+          width: '100%',
+          maxWidth: '1040px',
+          backgroundColor: '#0f0f0f',
+          border: '1px solid #444746',
+          borderRadius: '28px',
+          padding: '40px',
+          display: 'grid',
+          gridTemplateColumns: '1.2fr 1fr',
+          gap: '48px',
+          boxSizing: 'border-box'
+        }}>
+          
+          {/* Left Column (Brand info) */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            {/* Google G Logo */}
+            <div style={{ marginBottom: '20px' }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
             </div>
 
-            {/* Predefined Quick Accounts */}
-            <div style={{ marginBottom: '24px' }}>
-              <span style={{ fontSize: '13px', color: '#5f6368', display: 'block', marginBottom: '10px' }}>Choose a standard account to test quickly:</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {[
-                  { email: 'alex.retailer@gmail.com', name: 'Alex Retailer' },
-                  { email: 'sourcing.pro@gmail.com', name: 'Sourcing Pro' },
-                  { email: 'admin@gmail.com', name: 'Admin Manager' }
-                ].map((acc) => (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    onClick={() => selectPredefinedAccount(acc.email, acc.name)}
+            {step === 1 ? (
+              <>
+                <h1 style={{ fontSize: '36px', fontWeight: 400, color: '#e3e3e3', margin: '0 0 16px 0', lineHeight: '1.2' }}>
+                  Sign in
+                </h1>
+                <p style={{ fontSize: '16px', color: '#c4c7c5', margin: 0, lineHeight: '1.5' }}>
+                  with your Google Account. This account will be available to other Google apps in the browser.
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 style={{ fontSize: '36px', fontWeight: 400, color: '#e3e3e3', margin: '0 0 16px 0', lineHeight: '1.2' }}>
+                  Welcome
+                </h1>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  borderRadius: '100px',
+                  border: '1px solid #444746',
+                  backgroundColor: '#1e1f20',
+                  color: '#e3e3e3',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  width: 'fit-content'
+                }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: '#0b57d0',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: 'bold'
+                  }}>
+                    {email.charAt(0).toUpperCase()}
+                  </div>
+                  <span>{email}</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Column (Input & Form actions) */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {step === 1 ? (
+              <form onSubmit={handleNext} style={{ display: 'flex', flexDirection: 'column' }}>
+                
+                {/* Floating label style input container */}
+                <div style={{ position: 'relative', marginBottom: '8px', width: '100%' }}>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 14px',
-                      border: '1px solid #dadce0',
+                      width: '100%',
+                      height: '56px',
+                      backgroundColor: 'transparent',
+                      border: isInputFocused ? '2px solid #a8c7fa' : '1px solid #8e918f',
                       borderRadius: '4px',
-                      background: '#ffffff',
-                      cursor: 'pointer',
+                      padding: '0 16px',
+                      fontSize: '16px',
+                      color: '#e3e3e3',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                  />
+                  {/* Floating Label */}
+                  <label style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: (isInputFocused || email) ? '-10px' : '16px',
+                    backgroundColor: '#0f0f0f',
+                    padding: '0 4px',
+                    fontSize: (isInputFocused || email) ? '12px' : '16px',
+                    color: isInputFocused ? '#a8c7fa' : '#8e918f',
+                    pointerEvents: 'none',
+                    transition: 'all 0.15s ease'
+                  }}>
+                    Email or phone
+                  </label>
+                </div>
+
+                <a href="#forgot" style={{
+                  color: '#a8c7fa',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  marginBottom: '36px',
+                  width: 'fit-content'
+                }}>
+                  Forgot email?
+                </a>
+
+                <p style={{
+                  fontSize: '14px',
+                  color: '#c4c7c5',
+                  lineHeight: '1.5',
+                  margin: '0 0 40px 0'
+                }}>
+                  Not your computer? Use Guest mode to sign in privately.{' '}
+                  <a href="#guest" style={{ color: '#a8c7fa', textDecoration: 'none', fontWeight: 500 }}>
+                    Learn more about using Guest mode
+                  </a>
+                </p>
+
+                {/* Footer Buttons */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '12px'
+                }}>
+                  <a href="#create" style={{
+                    color: '#a8c7fa',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textDecoration: 'none'
+                  }}>
+                    Create account
+                  </a>
+                  
+                  <button
+                    type="submit"
+                    style={{
+                      backgroundColor: '#a8c7fa',
+                      color: '#062e6f',
+                      border: 'none',
+                      borderRadius: '100px',
+                      padding: '10px 24px',
                       fontSize: '14px',
-                      textAlign: 'left',
+                      fontWeight: 600,
+                      cursor: 'pointer',
                       transition: 'background-color 0.2s'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7f8f9'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c2e7ff'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a8c7fa'}
                   >
-                    <div style={{
-                      width: '28px',
-                      height: '28px',
-                      borderRadius: '50%',
-                      backgroundColor: '#1a73e8',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 'bold',
-                      fontSize: '12px'
-                    }}>
-                      {acc.name.charAt(0)}
-                    </div>
-                    <div>
-                      <strong style={{ display: 'block', color: '#3c4043' }}>{acc.name}</strong>
-                      <span style={{ fontSize: '12px', color: '#5f6368' }}>{acc.email}</span>
-                    </div>
+                    Next
                   </button>
-                ))}
-              </div>
-            </div>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column' }}>
+                
+                {/* Floating label style input container */}
+                <div style={{ position: 'relative', marginBottom: '36px', width: '100%' }}>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
+                    style={{
+                      width: '100%',
+                      height: '56px',
+                      backgroundColor: 'transparent',
+                      border: isInputFocused ? '2px solid #a8c7fa' : '1px solid #8e918f',
+                      borderRadius: '4px',
+                      padding: '0 16px',
+                      fontSize: '16px',
+                      color: '#e3e3e3',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      transition: 'border-color 0.15s ease'
+                    }}
+                  />
+                  {/* Floating Label */}
+                  <label style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: (isInputFocused || name) ? '-10px' : '16px',
+                    backgroundColor: '#0f0f0f',
+                    padding: '0 4px',
+                    fontSize: (isInputFocused || name) ? '12px' : '16px',
+                    color: isInputFocused ? '#a8c7fa' : '#8e918f',
+                    pointerEvents: 'none',
+                    transition: 'all 0.15s ease'
+                  }}>
+                    Display Name / Full Name
+                  </label>
+                </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px' }}>
-              <button
-                type="button"
-                onClick={() => window.close()}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#1a73e8',
+                <p style={{
                   fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  padding: '8px 0'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#1a73e8',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '10px 24px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
-                }}
-              >
-                Next
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSignIn}>
-            {/* Display name field */}
-            <div style={{ position: 'relative', marginBottom: '24px' }}>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full Display Name"
-                style={{
-                  width: '100%',
-                  height: '56px',
-                  borderRadius: '4px',
-                  border: '1px solid #dadce0',
-                  padding: '0 16px',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#1a73e8'}
-                onBlur={(e) => e.target.style.borderColor = '#dadce0'}
-              />
-            </div>
+                  color: '#c4c7c5',
+                  lineHeight: '1.5',
+                  margin: '0 0 40px 0'
+                }}>
+                  Please enter your full name. This will be used as your display name inside the CataCloud Sourcing Platform.
+                </p>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '32px' }}>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#1a73e8',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  padding: '8px 0'
-                }}
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                style={{
-                  backgroundColor: '#1a73e8',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '10px 24px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)'
-                }}
-              >
-                Sign In
-              </button>
-            </div>
-          </form>
-        )}
+                {/* Footer Buttons */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '12px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#a8c7fa',
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '8px 0'
+                    }}
+                  >
+                    Back
+                  </button>
+                  
+                  <button
+                    type="submit"
+                    style={{
+                      backgroundColor: '#a8c7fa',
+                      color: '#062e6f',
+                      border: 'none',
+                      borderRadius: '100px',
+                      padding: '10px 24px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#c2e7ff'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#a8c7fa'}
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Bottom Footer links */}
+      <footer style={{
+        padding: '0 40px 24px 40px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        fontSize: '12px',
+        color: '#c4c7c5',
+        flexShrink: 0
+      }}>
+        <div>
+          <select style={{
+            backgroundColor: 'transparent',
+            border: 'none',
+            color: '#c4c7c5',
+            fontSize: '12px',
+            outline: 'none',
+            cursor: 'pointer'
+          }}>
+            <option value="en-US">English (United States)</option>
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: '24px' }}>
+          <a href="#help" style={{ color: '#c4c7c5', textDecoration: 'none' }}>Help</a>
+          <a href="#privacy" style={{ color: '#c4c7c5', textDecoration: 'none' }}>Privacy</a>
+          <a href="#terms" style={{ color: '#c4c7c5', textDecoration: 'none' }}>Terms</a>
+        </div>
+      </footer>
     </div>
   );
 }
