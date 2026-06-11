@@ -65,8 +65,27 @@ let columnsCache: Record<string, string[]> = {};
 function handleSupabaseError(error: any) {
   if (!error) return;
   console.warn('Supabase operation error encountered:', error.message || error);
-  // Force disable Supabase on ANY error to ensure LocalStorage fallback works
-  disableSupabase();
+  
+  const errorMsg = (error.message || '').toLowerCase();
+  const isNetworkOrServerDown = 
+    errorMsg.includes('fetch') || 
+    errorMsg.includes('network') || 
+    errorMsg.includes('connect') || 
+    errorMsg.includes('timeout') || 
+    errorMsg.includes('failed to fetch') ||
+    error.status === 502 || 
+    error.status === 503 || 
+    error.status === 504 ||
+    error.status === 0;
+
+  const isDbLevelError = error.code && typeof error.code === 'string' && error.code.length === 5;
+  const isAuthError = error.status === 400 || error.status === 401 || error.status === 403;
+  
+  // Force disable Supabase only on network/connectivity issues or server crashes,
+  // NOT on validation, database constraint, or RLS policy errors.
+  if (isNetworkOrServerDown || (!isDbLevelError && !isAuthError)) {
+    disableSupabase();
+  }
 }
 
 async function getTableColumns(tableName: string): Promise<string[]> {
@@ -316,6 +335,7 @@ export async function saveStoreConfig(storeId: string, config: StoreConfig): Pro
       if (error) throw error;
     } catch (e: any) {
       handleSupabaseError(e);
+      throw e;
     }
   }
   if (!isBrowser()) return;
@@ -443,6 +463,7 @@ export async function saveProducts(products: FishItem[], storeId: string = 'cata
     } catch (err: any) {
       console.warn('Error saving products to Supabase:', err.message || err);
       handleSupabaseError(err);
+      throw err;
     }
   }
 
@@ -468,6 +489,7 @@ export async function addProduct(product: FishItem, storeId: string = 'catacloud
     } catch (err: any) {
       console.warn('Error adding product to Supabase:', err.message || err);
       handleSupabaseError(err);
+      throw err;
     }
   }
 
@@ -498,6 +520,7 @@ export async function updateProduct(updatedProduct: FishItem, storeId: string = 
     } catch (err: any) {
       console.warn('Error updating product in Supabase:', err.message || err);
       handleSupabaseError(err);
+      throw err;
     }
   }
 
@@ -524,6 +547,7 @@ export async function deleteProduct(id: string, storeId: string = 'catacloud'): 
     } catch (err: any) {
       console.warn('Error deleting product in Supabase:', err.message || err);
       handleSupabaseError(err);
+      throw err;
     }
   }
 

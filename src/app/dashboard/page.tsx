@@ -651,9 +651,9 @@ export default function DashboardPage() {
       setOnboardNiche('');
       setOnboardUnit('pcs');
       setShowStoreCreator(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Failed to create store.');
+      toast.error(`Failed to create store: ${err.message || err}`);
     } finally {
       setOnboardSubmitting(false);
     }
@@ -730,11 +730,16 @@ export default function DashboardPage() {
       }
     };
 
-    await saveStoreConfig(activeStoreId, updatedConfig);
-    setStoreConfig(updatedConfig);
-    toast.success('Configuration Saved', {
-      description: 'Store parameters have been successfully updated.'
-    });
+    try {
+      await saveStoreConfig(activeStoreId, updatedConfig);
+      setStoreConfig(updatedConfig);
+      toast.success('Configuration Saved', {
+        description: 'Store parameters have been successfully updated.'
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Failed to save configuration: ${err.message || err}`);
+    }
   };
 
   const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic' | 'clothing' | 'bakery' | 'coffee' | 'wine' | 'produce') => {
@@ -922,7 +927,7 @@ export default function DashboardPage() {
       setIsProductModalOpen(false);
     } catch (err: any) {
       console.error(err);
-      toast.error('Failed to save product: ' + (err.message || 'Unknown error'));
+      toast.error(`Failed to save product: ${err.message || err}${err.code ? ` (Code: ${err.code})` : ''}`);
     }
   };
 
@@ -1108,9 +1113,9 @@ export default function DashboardPage() {
       } else {
         toast.success(`Successfully uploaded ${successCount} products!`);
       }
-    } catch (saveErr) {
+    } catch (saveErr: any) {
       console.error(saveErr);
-      toast.error('Failed to save bulk uploaded products.');
+      toast.error(`Failed to save bulk uploaded products: ${saveErr.message || saveErr}${saveErr.code ? ` (Code: ${saveErr.code})` : ''}`);
     }
   };
 
@@ -1151,16 +1156,16 @@ export default function DashboardPage() {
               const restoredProds = await getProducts(activeStoreId);
               setProducts(restoredProds);
               toast.success(`Restored product "${productToDelete.name}" successfully!`);
-            } catch (restoreErr) {
+            } catch (restoreErr: any) {
               console.error("Failed to restore product on Undo action:", restoreErr);
-              toast.error("Failed to restore product");
+              toast.error(`Failed to restore product: ${restoreErr.message || restoreErr}${restoreErr.code ? ` (Code: ${restoreErr.code})` : ''}`);
             }
           },
         },
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error encountered in handleDeleteProduct:", err);
-      toast.error("An error occurred while deleting the product.");
+      toast.error(`An error occurred while deleting the product: ${err.message || err}${err.code ? ` (Code: ${err.code})` : ''}`);
     }
   };
 
