@@ -40,9 +40,9 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<string>('featured');
 
   const handleLogout = async () => {
-    localStorage.removeItem('bluefine_user');
-    localStorage.removeItem('bluefine_cart');
-    localStorage.setItem('bluefine_logged_out', 'true');
+    localStorage.removeItem('catacloud_user');
+    localStorage.removeItem('catacloud_cart');
+    localStorage.setItem('catacloud_logged_out', 'true');
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut();
@@ -59,7 +59,7 @@ export default function HomePage() {
   // Guard route & Hydration safety
   useEffect(() => {
     const checkAuthAndInit = async () => {
-      let user = localStorage.getItem('bluefine_user');
+      let user = localStorage.getItem('catacloud_user');
       
       // If no local storage user, check if we have a valid Supabase session
       if (!user && isSupabaseConfigured && supabase) {
@@ -73,12 +73,12 @@ export default function HomePage() {
               name: userName,
               role: userEmail.toLowerCase() === 'admin@gmail.com' ? 'admin' : 'user'
             };
-            localStorage.setItem('bluefine_user', JSON.stringify(appUser));
+            localStorage.setItem('catacloud_user', JSON.stringify(appUser));
             user = JSON.stringify(appUser);
             // Sync user details to accounts directory
             let accounts: any[] = [];
             try {
-              const stored = localStorage.getItem('bluefine_user_accounts');
+              const stored = localStorage.getItem('catacloud_user_accounts');
               if (stored) accounts = JSON.parse(stored);
             } catch (e) {}
             if (!accounts.some(a => a.email.toLowerCase() === appUser.email)) {
@@ -88,7 +88,7 @@ export default function HomePage() {
                 name: appUser.name,
                 role: appUser.role
               });
-              localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+              localStorage.setItem('catacloud_user_accounts', JSON.stringify(accounts));
             }
             window.dispatchEvent(new Event('storage'));
           }
@@ -105,7 +105,7 @@ export default function HomePage() {
       if (!storeId && typeof window !== 'undefined') {
         const hostname = window.location.hostname;
         const parts = hostname.split('.');
-        if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
+        if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'catacloud' && !parts[0].includes('catacloud')) {
           storeId = parts[0];
         }
       }
@@ -131,11 +131,11 @@ export default function HomePage() {
       setMounted(true);
 
       // Bypasses subdomain redirect to login if the user has explicitly clicked logout
-      const justLoggedOut = localStorage.getItem('bluefine_logged_out');
+      const justLoggedOut = localStorage.getItem('catacloud_logged_out');
       if (justLoggedOut === 'true') {
         setIsAuthenticated(false);
         setIsLandingPage(true);
-        localStorage.removeItem('bluefine_logged_out');
+        localStorage.removeItem('catacloud_logged_out');
         return;
       }
 
@@ -155,7 +155,7 @@ export default function HomePage() {
           if (parsed.email) userEmail = parsed.email.toLowerCase();
         } catch {}
         
-        const cartKey = userEmail ? `bluefine_cart_${userEmail}` : 'bluefine_cart';
+        const cartKey = userEmail ? `catacloud_cart_${userEmail}` : 'catacloud_cart';
         const savedCart = localStorage.getItem(cartKey);
         if (savedCart) {
           try {
@@ -171,7 +171,7 @@ export default function HomePage() {
           return;
         } else {
           setIsLandingPage(false);
-          localStorage.setItem('bluefine_current_store_id', storeId);
+          localStorage.setItem('catacloud_current_store_id', storeId);
         }
 
         setCurrentStoreId(storeId);
@@ -194,14 +194,14 @@ export default function HomePage() {
   useEffect(() => {
     const handleConfigUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
-      const storeId = customEvent.detail?.storeId || localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+      const storeId = customEvent.detail?.storeId || localStorage.getItem('catacloud_current_store_id') || 'catacloud';
       getStoreConfig(storeId).then(setStoreConfig);
       getProducts(storeId).then(setProducts);
     };
 
     const handleProductsUpdate = (e: Event) => {
       const customEvent = e as CustomEvent;
-      const storeId = customEvent.detail?.storeId || localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+      const storeId = customEvent.detail?.storeId || localStorage.getItem('catacloud_current_store_id') || 'catacloud';
       getProducts(storeId).then(setProducts);
     };
 
@@ -217,12 +217,12 @@ export default function HomePage() {
   // Listen for storage changes from other tabs to sync cart in real-time
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent | Event) => {
-      const user = localStorage.getItem('bluefine_user');
+      const user = localStorage.getItem('catacloud_user');
       if (!user) return;
       try {
         const parsed = JSON.parse(user);
         if (parsed.email) {
-          const cartKey = `bluefine_cart_${parsed.email.toLowerCase()}`;
+          const cartKey = `catacloud_cart_${parsed.email.toLowerCase()}`;
           const savedCart = localStorage.getItem(cartKey);
           if (savedCart) {
             const parsedCart = JSON.parse(savedCart);
@@ -245,12 +245,12 @@ export default function HomePage() {
   // Persist cart items scoped to user
   useEffect(() => {
     if (mounted && isAuthenticated) {
-      const user = localStorage.getItem('bluefine_user');
+      const user = localStorage.getItem('catacloud_user');
       if (user) {
         try {
           const parsed = JSON.parse(user);
           if (parsed.email) {
-            const cartKey = `bluefine_cart_${parsed.email.toLowerCase()}`;
+            const cartKey = `catacloud_cart_${parsed.email.toLowerCase()}`;
             localStorage.setItem(cartKey, JSON.stringify(cart));
             // Trigger storage change manually for same-tab listening (so other tabs can synchronize)
             window.dispatchEvent(new Event('storage'));

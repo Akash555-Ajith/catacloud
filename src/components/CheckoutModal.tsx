@@ -99,7 +99,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart,
       let userEmail = 'chef@example.com';
       let userName = 'Chef Guest';
       if (typeof window !== 'undefined') {
-        const userStr = localStorage.getItem('bluefine_user');
+        const userStr = localStorage.getItem('catacloud_user');
         if (userStr) {
           try {
             const parsed = JSON.parse(userStr);
@@ -133,7 +133,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, onClearCart,
         status: 'Pending'
       };
 
-      addOrder(newOrder, storeId || 'bluefine');
+      addOrder(newOrder, storeId || 'catacloud');
       setStep(3);
     }
   };

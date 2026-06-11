@@ -46,7 +46,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
 
   useEffect(() => {
     const loadUser = () => {
-      const storedUser = localStorage.getItem('bluefine_user');
+      const storedUser = localStorage.getItem('catacloud_user');
       if (storedUser) {
         setIsLoggedIn(true);
         try {
@@ -87,12 +87,12 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         if (!activeStore) {
           const hostname = window.location.hostname;
           const parts = hostname.split('.');
-          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'catacloud' && !parts[0].includes('catacloud')) {
             activeStore = parts[0];
           }
         }
         if (!activeStore) {
-          activeStore = localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+          activeStore = localStorage.getItem('catacloud_current_store_id') || 'catacloud';
         }
       }
       if (!activeStore) activeStore = 'catacloud';
@@ -109,12 +109,12 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
         if (!activeStore) {
           const hostname = window.location.hostname;
           const parts = hostname.split('.');
-          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
+          if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'catacloud' && !parts[0].includes('catacloud')) {
             activeStore = parts[0];
           }
         }
         if (!activeStore) {
-          activeStore = localStorage.getItem('bluefine_current_store_id') || 'catacloud';
+          activeStore = localStorage.getItem('catacloud_current_store_id') || 'catacloud';
         }
       }
       if (!activeStore) activeStore = 'catacloud';
@@ -153,7 +153,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
       return;
     }
 
-    const storedUser = localStorage.getItem('bluefine_user');
+    const storedUser = localStorage.getItem('catacloud_user');
     let email = userEmail;
     let role = userRole;
     if (storedUser) {
@@ -183,7 +183,7 @@ export default function Navbar({ cartCount, onCartToggle, onLogout, storeId }: N
       console.warn('Failed to save user in db', err);
     }
 
-    localStorage.setItem('bluefine_user', JSON.stringify(updatedUser));
+    localStorage.setItem('catacloud_user', JSON.stringify(updatedUser));
     
     // Update local state directly
     setUserName(updatedUser.name);

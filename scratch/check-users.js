@@ -1,7 +1,7 @@
-const { createClient } = require('c:/Users/akash/OneDrive/Documents/bluefine/node_modules/@supabase/supabase-js');
+const { createClient } = require('c:/Users/akash/OneDrive/Documents/catacloud/node_modules/@supabase/supabase-js');
 const fs = require('fs');
 
-const envPath = 'c:/Users/akash/OneDrive/Documents/bluefine/.env.local';
+const envPath = 'c:/Users/akash/OneDrive/Documents/catacloud/.env.local';
 const envContent = fs.readFileSync(envPath, 'utf-8');
 const env = {};
 envContent.split('\n').forEach(line => {

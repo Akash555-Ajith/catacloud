@@ -123,7 +123,7 @@ export default function LoginPage() {
         await dbSaveUser(newUser);
       }
 
-      localStorage.setItem('bluefine_user', JSON.stringify({
+      localStorage.setItem('catacloud_user', JSON.stringify({
         email: newUser.email,
         name: newUser.name,
         role: newUser.role
@@ -251,14 +251,14 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const targetStore = params.get('store');
     if (targetStore) {
-      localStorage.setItem(`bluefine_active_store_id_${userEmail}`, targetStore);
+      localStorage.setItem(`catacloud_active_store_id_${userEmail}`, targetStore);
     }
     router.push('/dashboard');
   };
 
   // If already logged in, redirect to home page, and listen for Supabase auth redirects
   useEffect(() => {
-    const user = localStorage.getItem('bluefine_user');
+    const user = localStorage.getItem('catacloud_user');
     if (user) {
       try {
         const parsed = JSON.parse(user);
@@ -281,12 +281,12 @@ export default function LoginPage() {
             role: userEmail.toLowerCase() === 'admin@gmail.com' ? 'admin' : 'user'
           };
           
-          localStorage.setItem('bluefine_user', JSON.stringify(appUser));
+          localStorage.setItem('catacloud_user', JSON.stringify(appUser));
           
           // Add to local accounts directory for consistency
           let accounts: any[] = [];
           try {
-            const stored = localStorage.getItem('bluefine_user_accounts');
+            const stored = localStorage.getItem('catacloud_user_accounts');
             if (stored) accounts = JSON.parse(stored);
           } catch (e) {}
           if (!accounts.some(a => a.email.toLowerCase() === appUser.email)) {
@@ -296,7 +296,7 @@ export default function LoginPage() {
               name: appUser.name,
               role: appUser.role
             });
-            localStorage.setItem('bluefine_user_accounts', JSON.stringify(accounts));
+            localStorage.setItem('catacloud_user_accounts', JSON.stringify(accounts));
           }
           
           handleRedirect(appUser.email);
@@ -444,7 +444,7 @@ export default function LoginPage() {
               role: (cleanEmail === 'admin@gmail.com' ? 'admin' : 'user') as 'admin' | 'user'
             };
 
-            localStorage.setItem('bluefine_user', JSON.stringify({
+            localStorage.setItem('catacloud_user', JSON.stringify({
               email: finalUser.email,
               name: finalUser.name,
               role: finalUser.role

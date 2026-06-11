@@ -101,7 +101,7 @@ export default function CatalogueDetailPage() {
     if (!resolvedStoreId && typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       const parts = hostname.split('.');
-      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'bluefine' && !parts[0].includes('catacloud')) {
+      if (parts.length > 1 && parts[0] !== 'www' && parts[0] !== 'localhost' && parts[0] !== 'catacloud' && !parts[0].includes('catacloud')) {
         resolvedStoreId = parts[0];
       }
     }
@@ -1140,7 +1140,7 @@ export default function CatalogueDetailPage() {
               <div className="glassmorphism" style={{ color: 'var(--text-primary)', borderRadius: '12px', padding: '24px', border: '1px solid var(--glass-border)', boxShadow: 'var(--shadow-glass)' }}>
                 <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 12px 0', color: 'var(--accent-cyan)' }}>Contact Partner</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <div>📧 <strong>Email:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.ownerEmail || 'contact@bluefine.com'}</span></div>
+                  <div>📧 <strong>Email:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.ownerEmail || 'contact@catacloud.com'}</span></div>
                   {storeConfig.storePhone && (
                     <div>📞 <strong>Phone:</strong> <span style={{ color: 'var(--text-primary)' }}>{storeConfig.storePhone}</span></div>
                   )}

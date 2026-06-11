@@ -266,7 +266,7 @@ export default function DashboardPage() {
   // 1. Initial User load
   useEffect(() => {
     const loadUser = () => {
-      const storedUser = localStorage.getItem('bluefine_user');
+      const storedUser = localStorage.getItem('catacloud_user');
       if (!storedUser) {
         router.push('/login');
       } else {
@@ -298,15 +298,15 @@ export default function DashboardPage() {
       getStoresOwnedByUser(user.email).then((stores) => {
         setUserStores(stores);
         if (stores.length > 0) {
-          const savedActive = localStorage.getItem(`bluefine_active_store_id_${user.email}`);
+          const savedActive = localStorage.getItem(`catacloud_active_store_id_${user.email}`);
           const exists = stores.some(s => s.id === savedActive);
           const initialStoreId = exists && savedActive ? savedActive : stores[0].id || '';
           setActiveStoreId(initialStoreId);
-          localStorage.setItem(`bluefine_active_store_id_${user.email}`, initialStoreId);
+          localStorage.setItem(`catacloud_active_store_id_${user.email}`, initialStoreId);
           setShowStoreCreator(false);
         } else {
           setActiveStoreId('');
-          localStorage.removeItem(`bluefine_active_store_id_${user.email}`);
+          localStorage.removeItem(`catacloud_active_store_id_${user.email}`);
           setShowStoreCreator(true);
         }
       });
@@ -403,9 +403,9 @@ export default function DashboardPage() {
   }
 
   const handleLogout = async () => {
-    localStorage.removeItem('bluefine_user');
-    localStorage.removeItem('bluefine_cart');
-    localStorage.setItem('bluefine_logged_out', 'true');
+    localStorage.removeItem('catacloud_user');
+    localStorage.removeItem('catacloud_cart');
+    localStorage.setItem('catacloud_logged_out', 'true');
     if (isSupabaseConfigured && supabase) {
       try {
         await supabase.auth.signOut();
@@ -481,7 +481,7 @@ export default function DashboardPage() {
       
       // Set as active store
       setActiveStoreId(finalStoreId);
-      localStorage.setItem(`bluefine_active_store_id_${user.email}`, finalStoreId);
+      localStorage.setItem(`catacloud_active_store_id_${user.email}`, finalStoreId);
       
       // Reset forms & close wizard
       setOnboardName('');
@@ -629,11 +629,11 @@ export default function DashboardPage() {
         if (stores.length > 0) {
           const newActive = stores[0].id || '';
           setActiveStoreId(newActive);
-          localStorage.setItem(`bluefine_active_store_id_${user!.email}`, newActive);
+          localStorage.setItem(`catacloud_active_store_id_${user!.email}`, newActive);
           setShowStoreCreator(false);
         } else {
           setActiveStoreId('');
-          localStorage.removeItem(`bluefine_active_store_id_${user!.email}`);
+          localStorage.removeItem(`catacloud_active_store_id_${user!.email}`);
           setShowStoreCreator(true);
         }
 
@@ -661,7 +661,7 @@ export default function DashboardPage() {
               const restoredStores = await getStoresOwnedByUser(user!.email);
               setUserStores(restoredStores);
               setActiveStoreId(storeIdToDelete);
-              localStorage.setItem(`bluefine_active_store_id_${user!.email}`, storeIdToDelete);
+              localStorage.setItem(`catacloud_active_store_id_${user!.email}`, storeIdToDelete);
               setShowStoreCreator(false);
               
               toast.success(`Restored store "${storeName}" successfully!`);
@@ -2791,7 +2791,7 @@ export default function DashboardPage() {
                     onChange={(e) => {
                       const newId = e.target.value;
                       setActiveStoreId(newId);
-                      localStorage.setItem(`bluefine_active_store_id_${user?.email || 'admin'}`, newId);
+                      localStorage.setItem(`catacloud_active_store_id_${user?.email || 'admin'}`, newId);
                       toast.info(`Switched active store context to "${userStores.find(s => s.id === newId)?.storeName}"`);
                     }}
                     style={{
@@ -3553,7 +3553,7 @@ export default function DashboardPage() {
                         onChange={(e) => {
                           const newId = e.target.value;
                           setActiveStoreId(newId);
-                          localStorage.setItem(`bluefine_active_store_id_${user.email}`, newId);
+                          localStorage.setItem(`catacloud_active_store_id_${user.email}`, newId);
                           toast.info(`Switched active store context to "${userStores.find(s => s.id === newId)?.storeName}"`);
                         }}
                         style={{
