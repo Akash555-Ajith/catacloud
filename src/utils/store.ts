@@ -90,13 +90,15 @@ async function getTableColumns(tableName: string): Promise<string[]> {
     }
     if (!idError) {
       if (tableName === 'products') {
-        columnsCache[tableName] = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty'];
+        columnsCache[tableName] = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty', 'store_id'];
+      } else if (tableName === 'store_config') {
+        columnsCache[tableName] = ['id', 'owner_email', 'store_name', 'store_type', 'store_phone', 'store_address', 'categories', 'created_at', 'store_tagline', 'unit', 'attributes'];
       } else if (tableName === 'orders') {
-        columnsCache[tableName] = ['id', 'userEmail', 'userName', 'date', 'deliveryDate', 'address', 'items', 'totalPrice', 'status'];
+        columnsCache[tableName] = ['id', 'userEmail', 'userName', 'date', 'deliveryDate', 'address', 'items', 'totalPrice', 'status', 'store_id'];
       } else if (tableName === 'custom_catalogs') {
-        columnsCache[tableName] = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides'];
+        columnsCache[tableName] = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides', 'store_id'];
       } else if (tableName === 'proposals') {
-        columnsCache[tableName] = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount'];
+        columnsCache[tableName] = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount', 'store_id'];
       } else if (tableName === 'users') {
         columnsCache[tableName] = ['email', 'name', 'password', 'role', 'avatar'];
       } else {
@@ -131,6 +133,11 @@ async function sanitizePayload(tableName: string, payload: any): Promise<any> {
       let dbKey = key;
       if (key === 'storeId') dbKey = 'store_id';
       if (key === 'ownerEmail') dbKey = 'owner_email';
+      if (key === 'storeName') dbKey = 'store_name';
+      if (key === 'storeTagline') dbKey = 'store_tagline';
+      if (key === 'storeType') dbKey = 'store_type';
+      if (key === 'storePhone') dbKey = 'store_phone';
+      if (key === 'storeAddress') dbKey = 'store_address';
       
       if (columns.includes(dbKey)) {
         sanitized[dbKey] = item[key];
@@ -166,6 +173,21 @@ function normalizeStoreConfig(store: any): StoreConfig {
   const normalized = { ...store };
   if ('owner_email' in normalized && !normalized.ownerEmail) {
     normalized.ownerEmail = normalized.owner_email;
+  }
+  if ('store_name' in normalized && !normalized.storeName) {
+    normalized.storeName = normalized.store_name;
+  }
+  if ('store_tagline' in normalized && !normalized.storeTagline) {
+    normalized.storeTagline = normalized.store_tagline;
+  }
+  if ('store_type' in normalized && !normalized.storeType) {
+    normalized.storeType = normalized.store_type;
+  }
+  if ('store_phone' in normalized && !normalized.storePhone) {
+    normalized.storePhone = normalized.store_phone;
+  }
+  if ('store_address' in normalized && !normalized.storeAddress) {
+    normalized.storeAddress = normalized.store_address;
   }
   return normalized as StoreConfig;
 }
