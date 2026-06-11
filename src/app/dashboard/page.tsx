@@ -41,6 +41,9 @@ import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import { TrendingUp, DollarSign, Award, Target, Plus, CheckCircle, Package, Clock, Users, ArrowUpRight, ShoppingBag, Eye, Settings, FileText, ChevronRight, Activity, ShieldCheck, ShoppingCart, LayoutDashboard, Bell, HelpCircle, Search, CreditCard, MessageSquare, Star, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import * as XLSX from 'xlsx';
+
+const isBrowser = () => typeof window !== 'undefined';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -117,6 +120,10 @@ export default function DashboardPage() {
   const [pwaPaymentMethod, setPwaPaymentMethod] = useState<'Cash' | 'Card' | 'Tap'>('Cash');
   const [pwaReceipt, setPwaReceipt] = useState<Order | null>(null);
   const [pwaTab, setPwaTab] = useState<'all' | 'custom'>('all');
+  const [pwaIsOffline, setPwaIsOffline] = useState<boolean>(false);
+  const [pwaSyncQueue, setPwaSyncQueue] = useState<Order[]>([]);
+  const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any>(null);
+  const [pwaIsInstalled, setPwaIsInstalled] = useState<boolean>(false);
 
   const handleAddToPwaCart = (fish: FishItem) => {
     if (fish.stock <= 0) {
@@ -189,6 +196,34 @@ export default function DashboardPage() {
       status: 'Delivered',
       store_id: activeStoreId
     };
+
+    if (pwaIsOffline) {
+      const updatedQueue = [...pwaSyncQueue, newOrder];
+      setPwaSyncQueue(updatedQueue);
+      if (isBrowser()) {
+        localStorage.setItem(`catacloud_pwa_sync_queue_${activeStoreId}`, JSON.stringify(updatedQueue));
+      }
+      toast.success('Sale Processed Offline', {
+        description: `Receipt ${saleId} queued for sync.`
+      });
+      
+      // Deduct stock locally from state to show instant PWA updates
+      setProducts(prevProducts => 
+        prevProducts.map(prod => {
+          const itemInCart = pwaCart.find(item => item.fish.id === prod.id);
+          if (itemInCart) {
+            return { ...prod, stock: Math.max(0, prod.stock - itemInCart.quantity) };
+          }
+          return prod;
+        })
+      );
+
+      setPwaReceipt(newOrder);
+      setPwaCart([]);
+      setPwaCustomerName('Walk-in Customer');
+      setPwaPaymentMethod('Cash');
+      return;
+    }
 
     try {
       await addOrder(newOrder, activeStoreId);
@@ -375,6 +410,106 @@ export default function DashboardPage() {
       setCatOverrides(initialOverrides);
     }
   }, [products]);
+
+  // PWA Initialization & Offline Handling Helper
+  const syncOfflineOrders = async (queueToSync: Order[] = pwaSyncQueue) => {
+    if (queueToSync.length === 0) return;
+    
+    let successCount = 0;
+    const remainingQueue: Order[] = [];
+
+    for (const order of queueToSync) {
+      try {
+        await addOrder(order, activeStoreId);
+        successCount++;
+      } catch (err) {
+        console.error('Failed to sync offline order:', order.id, err);
+        remainingQueue.push(order);
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success('Offline Sync Completed', {
+        description: `Successfully synchronized ${successCount} transaction(s) with cloud.`
+      });
+      // Reload lists
+      const [prods, ords] = await Promise.all([
+        getProducts(activeStoreId),
+        getOrders(activeStoreId)
+      ]);
+      setProducts(prods);
+      setOrders(ords);
+    }
+
+    setPwaSyncQueue(remainingQueue);
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_pwa_sync_queue_${activeStoreId}`, JSON.stringify(remainingQueue));
+    }
+  };
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+
+    // Load offline sync queue
+    const queueKey = `catacloud_pwa_sync_queue_${activeStoreId}`;
+    const stored = localStorage.getItem(queueKey);
+    if (stored) {
+      try {
+        setPwaSyncQueue(JSON.parse(stored));
+      } catch (e) {
+        console.error('Failed to parse offline sync queue:', e);
+      }
+    }
+
+    // Check standalone app status
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setPwaIsInstalled(true);
+    }
+
+    // Listen for install prompts
+    const handleInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setPwaInstallPrompt(e);
+    };
+
+    // Listen for online status to sync
+    const handleOnline = () => {
+      setPwaIsOffline(false);
+      toast.success('Connection restored! Synchronizing offline sales...');
+      // Sync queue
+      const storedQueue = localStorage.getItem(queueKey);
+      if (storedQueue) {
+        try {
+          const queue = JSON.parse(storedQueue);
+          if (queue.length > 0) {
+            syncOfflineOrders(queue);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+
+    const handleOffline = () => {
+      setPwaIsOffline(true);
+      toast.warning('Network disconnected! Switched to offline billing.');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial browser status check
+    if (!navigator.onLine) {
+      setPwaIsOffline(true);
+    }
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [activeStoreId]);
 
   if (!mounted || !isAuthenticated || !user) {
     return (
@@ -763,22 +898,44 @@ export default function DashboardPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please upload a valid CSV file.');
+
+    const fileNameLower = file.name.toLowerCase();
+    const isExcel = fileNameLower.endsWith('.xlsx') || fileNameLower.endsWith('.xls');
+    const isCSV = fileNameLower.endsWith('.csv');
+
+    if (!isExcel && !isCSV) {
+      toast.error('Please upload a valid CSV or Excel file.');
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      setBulkCSVText(text || '');
-      toast.success(`Loaded content from ${file.name}`);
-    };
-    reader.onerror = () => {
-      toast.error('Failed to read file.');
-    };
-    reader.readAsText(file);
+    if (isExcel) {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const sheet = workbook.Sheets[sheetName];
+          const csv = XLSX.utils.sheet_to_csv(sheet);
+          setBulkCSVText(csv || '');
+          toast.success(`Successfully parsed Excel sheet: ${file.name}`);
+        } catch (err) {
+          toast.error('Failed to parse Excel file.');
+          console.error(err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        setBulkCSVText(text || '');
+        toast.success(`Loaded CSV content from ${file.name}`);
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read file.');
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleDownloadSampleCSV = () => {
@@ -811,10 +968,19 @@ export default function DashboardPage() {
 
     // Parse header row
     const headers = rows[0].split(',').map(h => h.trim().toLowerCase().replace(/["']/g, ''));
-    const nameIndex = headers.indexOf('name');
-    const priceIndex = headers.indexOf('price');
-    const categoryIndex = headers.indexOf('category');
-    const stockIndex = headers.indexOf('stock');
+    const nameIndex = headers.findIndex(h => h === 'name' || h.includes('name') || h.includes('title') || h.includes('product'));
+    const priceIndex = headers.findIndex(h => h === 'price' || h.includes('price') || h.includes('rate') || h.includes('cost') || h.includes('mrp'));
+    const categoryIndex = headers.findIndex(h => h === 'category' || h.includes('category') || h.includes('type') || h.includes('group') || h.includes('cat'));
+    const stockIndex = headers.findIndex(h => h === 'stock' || h.includes('stock') || h.includes('qty') || h.includes('quantity') || h.includes('count') || h === 'qnty');
+    
+    // Custom optional columns detection
+    const idIndex = headers.findIndex(h => h === 'id' || h === 'sku' || h === 'code' || h === 'productid' || h === 'product id' || h === 'key' || h === 'itemid');
+    const sciNameIndex = headers.findIndex(h => h.includes('scientific') || h.includes('sci') || h.includes('type') || h.includes('model') || h.includes('fit'));
+    const originIndex = headers.findIndex(h => h.includes('origin') || h.includes('source') || h.includes('made') || h.includes('location') || h.includes('from'));
+    const sustainabilityIndex = headers.findIndex(h => h.includes('sustain') || h.includes('cert') || h.includes('environ') || h.includes('eco') || h.includes('green') || h.includes('ethics'));
+    const descIndex = headers.findIndex(h => h === 'description' || h.includes('desc') || h.includes('detail') || h.includes('info') || h.includes('about') || h.includes('text'));
+    const unitColIndex = headers.findIndex(h => h === 'unit' || h.includes('measure') || h.includes('pack') || h.includes('qty unit'));
+    const imageIndex = headers.findIndex(h => h.includes('image') || h.includes('img') || h.includes('pic') || h.includes('photo'));
 
     if (nameIndex === -1 || priceIndex === -1) {
       toast.error('CSV headers must include at least "Name" and "Price" columns.');
@@ -862,24 +1028,35 @@ export default function DashboardPage() {
         continue;
       }
 
-      const generatedId = pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + `-${Math.floor(100 + Math.random() * 900)}`;
+      // Extract optional fields from the columns
+      const rawId = idIndex !== -1 && colValues[idIndex] ? colValues[idIndex].trim() : '';
+      const generatedId = rawId 
+        ? rawId.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
+        : pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + `-${Math.floor(100 + Math.random() * 900)}`;
+
+      const pSciName = sciNameIndex !== -1 && colValues[sciNameIndex] ? colValues[sciNameIndex].trim() : 'Imported Specimen';
+      const pOrigin = originIndex !== -1 && colValues[originIndex] ? colValues[originIndex].trim() : 'Global Wholesaler';
+      const pSustainability = sustainabilityIndex !== -1 && colValues[sustainabilityIndex] ? colValues[sustainabilityIndex].trim() : 'Sourced Sustainably';
+      const pDesc = descIndex !== -1 && colValues[descIndex] ? colValues[descIndex].trim() : 'Bulk imported catalog item.';
+      const pUnit = unitColIndex !== -1 && colValues[unitColIndex] ? colValues[unitColIndex].trim() : (storeConfig.unit || 'pcs');
+      const pImage = imageIndex !== -1 && colValues[imageIndex] ? colValues[imageIndex].trim() : '/images/bluefin_tuna.png';
 
       const newProd: FishItem = {
         id: generatedId,
         name: pName,
-        scientificName: 'Imported Specimen',
+        scientificName: pSciName,
         category: pCategory,
         pricePerKg: pPrice,
-        origin: 'Global Wholesaler',
+        origin: pOrigin,
         stock: pStock,
-        image: '/images/bluefin_tuna.png',
-        description: 'Bulk imported catalog item.',
+        image: pImage,
+        description: pDesc,
         tasteProfile: ['Fresh', 'Premium'],
         texture: 'Delicate',
-        sustainability: 'Sourced Sustainably',
+        sustainability: pSustainability,
         prepTime: '5 mins',
         difficulty: 'Easy',
-        unit: storeConfig.unit
+        unit: pUnit
       };
 
       currentProducts.push(newProd);
@@ -1860,6 +2037,174 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* PWA Dashboard control panel */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          
+          {/* Card 1: Network & Offline simulation */}
+          <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Network Status</span>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 'bold', 
+                  color: pwaIsOffline ? '#ea580c' : '#16a34a',
+                  background: pwaIsOffline ? 'rgba(234,88,12,0.1)' : 'rgba(22,163,74,0.1)',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  border: `1px solid ${pwaIsOffline ? 'rgba(234,88,12,0.2)' : 'rgba(22,163,74,0.2)'}`
+                }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pwaIsOffline ? '#ea580c' : '#16a34a', display: 'inline-block' }}></span>
+                  {pwaIsOffline ? 'Offline Mode' : 'Online'}
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#0f172a', margin: '4px 0 8px 0' }}>
+                {pwaIsOffline ? '⚡ Simulated Offline POS' : '🌐 Connected to CataCloud'}
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: '1.4' }}>
+                {pwaIsOffline 
+                  ? 'Products and inventories are fetched from offline local cache. Sales are queued locally in browser.' 
+                  : 'Syncing live products, inventories, and processing invoices in real-time with your cloud database.'}
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const newOffline = !pwaIsOffline;
+                setPwaIsOffline(newOffline);
+                if (!newOffline) {
+                  syncOfflineOrders();
+                } else {
+                  toast.warning('Switched to Offline Mode', {
+                    description: 'Simulating disconnected database state.'
+                  });
+                }
+              }}
+              className={styles.btnMerchantSecondary}
+              style={{ marginTop: '14px', width: '100%', fontSize: '0.8rem', padding: '6px 12px', justifyContent: 'center' }}
+            >
+              {pwaIsOffline ? '🔌 Go Online & Sync' : '✈️ Simulate Offline Mode'}
+            </button>
+          </div>
+
+          {/* Card 2: App Installation & Standalone */}
+          <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Install Status</span>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 'bold', 
+                  color: (pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? '#0284c7' : '#ea580c',
+                  background: (pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'rgba(2,132,199,0.1)' : 'rgba(234,88,12,0.1)',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  border: `1px solid ${(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'rgba(2,132,199,0.2)' : 'rgba(234,88,12,0.2)'}`
+                }}>
+                  {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'Standalone Active' : 'Installable'}
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#0f172a', margin: '4px 0 8px 0' }}>
+                {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? '📱 Standalone Native App' : '💻 Running in Browser'}
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, lineHeight: '1.4' }}>
+                {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches)
+                  ? 'Running as a standalone native app on your desktop/mobile home screen with custom shell.' 
+                  : 'Install CataCloud on your home screen or desktop taskbar to run offline with native app shell.'}
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                if (pwaInstallPrompt) {
+                  pwaInstallPrompt.prompt();
+                  pwaInstallPrompt.userChoice.then((choiceResult: any) => {
+                    if (choiceResult.outcome === 'accepted') {
+                      toast.success('Thank you for installing CataCloud!');
+                      setPwaIsInstalled(true);
+                    }
+                    setPwaInstallPrompt(null);
+                  });
+                } else {
+                  toast.info('How to install CataCloud PWA:', {
+                    description: 'Click the Install icon ⊕ in your browser address bar or click "Add to Home Screen" in your browser menu.'
+                  });
+                }
+              }}
+              className={styles.btnMerchantPrimary}
+              style={{ marginTop: '14px', width: '100%', fontSize: '0.8rem', padding: '6px 12px', justifyContent: 'center' }}
+            >
+              {pwaInstallPrompt ? '📥 Install Native App' : '📲 How to Install App'}
+            </button>
+          </div>
+
+          {/* Card 3: Storage, Sync & Cache Stats */}
+          <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#ffffff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Offline Storage</span>
+                <span style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  fontSize: '0.75rem', 
+                  fontWeight: 'bold', 
+                  color: pwaSyncQueue.length > 0 ? '#ef4444' : '#16a34a',
+                  background: pwaSyncQueue.length > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(22,163,74,0.1)',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  border: `1px solid ${pwaSyncQueue.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(22,163,74,0.2)'}`
+                }}>
+                  {pwaSyncQueue.length} Pending Sales
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#0f172a', margin: '4px 0 8px 0' }}>
+                📦 Offline Cache & Storage Stats
+              </h3>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div>Products Cached: <strong>{products.length} items</strong></div>
+                <div>Storage Usage: <strong>~{(JSON.stringify(products).length / 1024).toFixed(1)} KB</strong></div>
+                <div>Sync Queue: <strong>{pwaSyncQueue.length} transactions</strong></div>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  toast.info('Refreshing local storage offline cache...');
+                  const prods = await getProducts(activeStoreId);
+                  setProducts(prods);
+                  toast.success('Offline cache refreshed!', { description: `${prods.length} products cached.` });
+                }}
+                className={styles.btnMerchantSecondary}
+                style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px', justifyContent: 'center' }}
+              >
+                🔄 Refresh Cache
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => syncOfflineOrders()}
+                disabled={pwaSyncQueue.length === 0 || pwaIsOffline}
+                className={styles.btnMerchantPrimary}
+                style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px', justifyContent: 'center', opacity: (pwaSyncQueue.length === 0 || pwaIsOffline) ? 0.5 : 1 }}
+              >
+                ☁️ Sync Queue
+              </button>
+            </div>
+          </div>
+
+        </div>
 
         <div className={styles.catalogSplitLayout} style={{ gridTemplateColumns: '1.2fr 0.8fr' }}>
           {/* Left Column: PWA Catalog List */}
@@ -3307,17 +3652,17 @@ export default function DashboardPage() {
                         marginBottom: '8px'
                       }}
                     >
-                      📁 Choose CSV File
+                      📁 Choose CSV or Excel File
                     </label>
                     <input
                       type="file"
                       id="bulk-csv-file-input-portal"
-                      accept=".csv"
+                      accept=".csv, .xlsx, .xls"
                       onChange={handleFileChange}
                       style={{ display: 'none' }}
                     />
                     <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                      or paste the CSV data below
+                      or paste the CSV/Excel data below
                     </p>
                   </div>
 
@@ -3906,6 +4251,174 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 )}
+
+                {/* PWA Dashboard control panel */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                  
+                  {/* Card 1: Network & Offline simulation */}
+                  <div className="glassmorphism" style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Network Status</span>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 'bold', 
+                          color: pwaIsOffline ? 'var(--accent-gold)' : 'var(--accent-success)',
+                          background: pwaIsOffline ? 'rgba(226,183,68,0.1)' : 'rgba(34,197,94,0.1)',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          border: `1px solid ${pwaIsOffline ? 'rgba(226,183,68,0.2)' : 'rgba(34,197,94,0.2)'}`
+                        }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: pwaIsOffline ? 'var(--accent-gold)' : 'var(--accent-success)', display: 'inline-block' }}></span>
+                          {pwaIsOffline ? 'Offline Mode' : 'Online'}
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: '4px 0 8px 0' }}>
+                        {pwaIsOffline ? '⚡ Simulated Offline POS' : '🌐 Connected to CataCloud'}
+                      </h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
+                        {pwaIsOffline 
+                          ? 'Products and inventories are fetched from offline local cache. Sales are queued locally in browser.' 
+                          : 'Syncing live products, inventories, and processing invoices in real-time with your cloud database.'}
+                      </p>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newOffline = !pwaIsOffline;
+                        setPwaIsOffline(newOffline);
+                        if (!newOffline) {
+                          syncOfflineOrders();
+                        } else {
+                          toast.warning('Switched to Offline Mode', {
+                            description: 'Simulating disconnected database state.'
+                          });
+                        }
+                      }}
+                      className="btn-secondary"
+                      style={{ marginTop: '14px', width: '100%', fontSize: '0.8rem', padding: '6px 12px' }}
+                    >
+                      {pwaIsOffline ? '🔌 Go Online & Sync' : '✈️ Simulate Offline Mode'}
+                    </button>
+                  </div>
+
+                  {/* Card 2: App Installation & Standalone */}
+                  <div className="glassmorphism" style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Install Status</span>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 'bold', 
+                          color: (pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'var(--accent-cyan)' : 'var(--accent-gold)',
+                          background: (pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'rgba(0,180,216,0.1)' : 'rgba(226,183,68,0.1)',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          border: `1px solid ${(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'rgba(0,180,216,0.2)' : 'rgba(226,183,68,0.2)'}`
+                        }}>
+                          {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? 'Standalone Active' : 'Installable'}
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: '4px 0 8px 0' }}>
+                        {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) ? '📱 Standalone Native App' : '💻 Running in Browser'}
+                      </h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.4' }}>
+                        {(pwaIsInstalled || typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches)
+                          ? 'Running as a standalone native app on your desktop/mobile home screen with custom shell.' 
+                          : 'Install CataCloud on your home screen or desktop taskbar to run offline with native app shell.'}
+                      </p>
+                    </div>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (pwaInstallPrompt) {
+                          pwaInstallPrompt.prompt();
+                          pwaInstallPrompt.userChoice.then((choiceResult: any) => {
+                            if (choiceResult.outcome === 'accepted') {
+                              toast.success('Thank you for installing CataCloud!');
+                              setPwaIsInstalled(true);
+                            }
+                            setPwaInstallPrompt(null);
+                          });
+                        } else {
+                          toast.info('How to install CataCloud PWA:', {
+                            description: 'Click the Install icon ⊕ in your browser address bar or click "Add to Home Screen" in your browser menu.'
+                          });
+                        }
+                      }}
+                      className="btn-primary"
+                      style={{ marginTop: '14px', width: '100%', fontSize: '0.8rem', padding: '6px 12px' }}
+                    >
+                      {pwaInstallPrompt ? '📥 Install Native App' : '📲 How to Install App'}
+                    </button>
+                  </div>
+
+                  {/* Card 3: Storage, Sync & Cache Stats */}
+                  <div className="glassmorphism" style={{ padding: '16px', borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Offline Storage</span>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 'bold', 
+                          color: pwaSyncQueue.length > 0 ? 'var(--accent-danger)' : 'var(--accent-success)',
+                          background: pwaSyncQueue.length > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          border: `1px solid ${pwaSyncQueue.length > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)'}`
+                        }}>
+                          {pwaSyncQueue.length} Pending Sales
+                        </span>
+                      </div>
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 'bold', color: 'var(--text-primary)', margin: '4px 0 8px 0' }}>
+                        📦 Offline Cache & Storage Stats
+                      </h3>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div>Products Cached: <strong>{products.length} items</strong></div>
+                        <div>Storage Usage: <strong>~{(JSON.stringify(products).length / 1024).toFixed(1)} KB</strong></div>
+                        <div>Sync Queue: <strong>{pwaSyncQueue.length} transactions</strong></div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          toast.info('Refreshing local storage offline cache...');
+                          const prods = await getProducts(activeStoreId);
+                          setProducts(prods);
+                          toast.success('Offline cache refreshed!', { description: `${prods.length} products cached.` });
+                        }}
+                        className="btn-secondary"
+                        style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px' }}
+                      >
+                        🔄 Refresh Cache
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => syncOfflineOrders()}
+                        disabled={pwaSyncQueue.length === 0 || pwaIsOffline}
+                        className="btn-primary"
+                        style={{ flex: 1, fontSize: '0.8rem', padding: '6px 12px', opacity: (pwaSyncQueue.length === 0 || pwaIsOffline) ? 0.5 : 1 }}
+                      >
+                        ☁️ Sync Queue
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
 
                 <div className={styles.splitLayout} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '24px', alignItems: 'start' }}>
                   {/* Left Column: PWA Catalog List */}
@@ -4734,17 +5247,17 @@ export default function DashboardPage() {
                       marginBottom: '8px'
                     }}
                   >
-                    📁 Choose CSV File
+                    📁 Choose CSV or Excel File
                   </label>
                   <input
                     type="file"
                     id="bulk-csv-file-input-fallback"
-                    accept=".csv"
+                    accept=".csv, .xlsx, .xls"
                     onChange={handleFileChange}
                     style={{ display: 'none' }}
                   />
                   <p style={{ margin: 0, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
-                    or paste the CSV data below
+                    or paste the CSV/Excel data below
                   </p>
                 </div>
 

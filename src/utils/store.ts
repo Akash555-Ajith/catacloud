@@ -72,46 +72,62 @@ function handleSupabaseError(error: any) {
 async function getTableColumns(tableName: string): Promise<string[]> {
   if (!isSupabaseConfigured) return [];
   if (columnsCache[tableName]) return columnsCache[tableName];
-  try {
-    const { data, error } = await supabase.from(tableName).select('*').limit(1);
-    if (error) {
-      handleSupabaseError(error);
-    }
-    if (!error && data) {
-      const columns = data.length > 0 ? Object.keys(data[0]) : [];
-      columnsCache[tableName] = columns;
-      return columns;
-    }
-    // Check if table exists even if empty
-    const queryKey = tableName === 'users' ? 'email' : 'id';
-    const { error: idError } = await supabase.from(tableName).select(queryKey).limit(1);
-    if (idError) {
-      handleSupabaseError(idError);
-    }
-    if (!idError) {
-      if (tableName === 'products') {
-        columnsCache[tableName] = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty', 'store_id'];
-      } else if (tableName === 'store_config') {
-        columnsCache[tableName] = ['id', 'owner_email', 'store_name', 'store_type', 'store_phone', 'store_address', 'categories', 'created_at', 'store_tagline', 'unit', 'attributes'];
-      } else if (tableName === 'orders') {
-        columnsCache[tableName] = ['id', 'userEmail', 'userName', 'date', 'deliveryDate', 'address', 'items', 'totalPrice', 'status', 'store_id'];
-      } else if (tableName === 'custom_catalogs') {
-        columnsCache[tableName] = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides', 'store_id'];
-      } else if (tableName === 'proposals') {
-        columnsCache[tableName] = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount', 'store_id'];
-      } else if (tableName === 'users') {
-        columnsCache[tableName] = ['email', 'name', 'password', 'role', 'avatar'];
-      } else {
-        columnsCache[tableName] = ['id'];
-      }
-      return columnsCache[tableName];
-    }
-  } catch (e) {
-    handleSupabaseError(e);
+
+  let candidateColumns: string[] = [];
+  if (tableName === 'products') {
+    candidateColumns = ['id', 'name', 'scientificName', 'category', 'pricePerKg', 'origin', 'stock', 'image', 'description', 'tasteProfile', 'texture', 'sustainability', 'prepTime', 'difficulty', 'store_id'];
+  } else if (tableName === 'store_config') {
+    candidateColumns = ['id', 'owner_email', 'store_name', 'store_type', 'store_phone', 'store_address', 'categories', 'created_at', 'store_tagline', 'unit', 'attributes'];
+  } else if (tableName === 'orders') {
+    candidateColumns = ['id', 'userEmail', 'userName', 'date', 'deliveryDate', 'address', 'items', 'totalPrice', 'status', 'store_id'];
+  } else if (tableName === 'custom_catalogs') {
+    candidateColumns = ['id', 'marketName', 'notes', 'globalDiscount', 'globalDelivery', 'createdDate', 'overrides', 'store_id'];
+  } else if (tableName === 'proposals') {
+    candidateColumns = ['id', 'marketName', 'fishId', 'customPrice', 'discount', 'shippingCharge', 'notes', 'createdDate', 'volumeThreshold', 'volumeDiscount', 'store_id'];
+  } else if (tableName === 'users') {
+    candidateColumns = ['email', 'name', 'password', 'role', 'avatar'];
+  } else {
+    candidateColumns = ['id'];
   }
+
+  let workingColumns = [...candidateColumns];
+  while (workingColumns.length > 0) {
+    try {
+      const selectStr = workingColumns.join(',');
+      const { error } = await supabase.from(tableName).select(selectStr).limit(0);
+      if (!error) {
+        columnsCache[tableName] = workingColumns;
+        return workingColumns;
+      }
+      
+      const msg = error.message || '';
+      if (msg.includes('does not exist') || msg.includes('column')) {
+        let foundAndRemoved = false;
+        for (const col of workingColumns) {
+          const regex = new RegExp('\\b' + col + '\\b');
+          if (regex.test(msg)) {
+            workingColumns = workingColumns.filter(c => c !== col);
+            foundAndRemoved = true;
+          }
+        }
+        if (!foundAndRemoved) {
+          workingColumns.pop();
+        }
+      } else {
+        // Other database error (like RLS or connection), we assume the base column (id/email) is supported
+        const fallback = candidateColumns.includes('id') ? ['id'] : (candidateColumns.includes('email') ? ['email'] : []);
+        columnsCache[tableName] = fallback;
+        return fallback;
+      }
+    } catch (e) {
+      workingColumns.pop();
+    }
+  }
+
   columnsCache[tableName] = [];
   return [];
 }
+
 
 async function isTableSupported(tableName: string): Promise<boolean> {
   const columns = await getTableColumns(tableName);
@@ -189,6 +205,32 @@ function normalizeStoreConfig(store: any): StoreConfig {
   if ('store_address' in normalized && !normalized.storeAddress) {
     normalized.storeAddress = normalized.store_address;
   }
+
+  // Extract serialized config from categories if present
+  if (normalized.categories && Array.isArray(normalized.categories)) {
+    const configIndex = normalized.categories.findIndex((c: string) => c.startsWith('__config__:'));
+    if (configIndex !== -1) {
+      try {
+        const jsonStr = normalized.categories[configIndex].substring('__config__:'.length);
+        const extra = JSON.parse(jsonStr);
+        if (extra.storeTagline) normalized.storeTagline = extra.storeTagline;
+        if (extra.unit) normalized.unit = extra.unit;
+        if (extra.attributes) normalized.attributes = extra.attributes;
+      } catch (e) {
+        // ignore
+      }
+      // Filter it out so it's not shown as a category
+      normalized.categories = normalized.categories.filter((c: string) => !c.startsWith('__config__:'));
+    }
+  }
+
+  // Fallbacks for missing configurations
+  if (!normalized.unit) normalized.unit = 'pcs';
+  if (!normalized.attributes) {
+    const preset = getPresetDefault(normalized.id || 'catacloud');
+    normalized.attributes = preset.attributes;
+  }
+
   return normalized as StoreConfig;
 }
 
@@ -204,6 +246,7 @@ export function getSeedData(type: string): FishItem[] {
 }
 
 export async function getStoreConfig(storeId: string = 'catacloud'): Promise<StoreConfig> {
+  let dbConfig: StoreConfig | null = null;
   if (isSupabaseConfigured && await isTableSupported('store_config')) {
     try {
       const query = supabase.from('store_config').select('*');
@@ -211,21 +254,36 @@ export async function getStoreConfig(storeId: string = 'catacloud'): Promise<Sto
         ? await query.eq('id', storeId).maybeSingle()
         : await query.limit(1).maybeSingle();
       if (!error && data) {
-        return normalizeStoreConfig(data);
+        dbConfig = normalizeStoreConfig(data);
       }
     } catch (e) {
       // fallback
     }
   }
+
+  if (dbConfig) {
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_store_config_${storeId}`, JSON.stringify(dbConfig));
+    }
+    return dbConfig;
+  }
+
   if (!isBrowser()) return getPresetDefault(storeId);
   const stored = localStorage.getItem(`catacloud_store_config_${storeId}`);
   if (!stored) {
     const preset = getPresetDefault(storeId);
     localStorage.setItem(`catacloud_store_config_${storeId}`, JSON.stringify(preset));
+    if (isSupabaseConfigured) {
+      saveStoreConfig(storeId, preset).catch(() => {});
+    }
     return preset;
   }
   try {
-    return JSON.parse(stored);
+    const localConfig = JSON.parse(stored) as StoreConfig;
+    if (isSupabaseConfigured && localConfig) {
+      saveStoreConfig(storeId, localConfig).catch(() => {});
+    }
+    return localConfig;
   } catch {
     return getPresetDefault(storeId);
   }
@@ -235,7 +293,21 @@ export async function saveStoreConfig(storeId: string, config: StoreConfig): Pro
   const configWithId = { id: storeId, ...config };
   if (isSupabaseConfigured && await isTableSupported('store_config')) {
     try {
-      const sanitized = await sanitizePayload('store_config', configWithId);
+      const hasStoreTagline = await isColumnSupported('store_config', 'store_tagline');
+      let finalConfig = { ...configWithId };
+      
+      // If store_tagline is not supported, we serialize store_tagline, unit, and attributes into categories
+      if (!hasStoreTagline) {
+        const serialized = JSON.stringify({
+          storeTagline: config.storeTagline,
+          unit: config.unit,
+          attributes: config.attributes
+        });
+        const cleanCategories = (config.categories || []).filter(c => !c.startsWith('__config__:'));
+        finalConfig.categories = [...cleanCategories, `__config__:${serialized}`];
+      }
+
+      const sanitized = await sanitizePayload('store_config', finalConfig);
       const { error } = await supabase.from('store_config').upsert(sanitized);
       if (error) throw error;
     } catch (e: any) {
@@ -288,6 +360,7 @@ export async function getProducts(storeId: string = 'catacloud'): Promise<FishIt
   const config = await getStoreConfig(storeId);
   const seed = getSeedData(config.storeType);
 
+  let dbProducts: FishItem[] | null = null;
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
@@ -297,35 +370,28 @@ export async function getProducts(storeId: string = 'catacloud'): Promise<FishIt
         : await query;
       if (error) throw error;
       
-      if (!data || data.length === 0) {
-        if (storeId === 'catacloud' || !hasStoreId) {
-          const seedWithStore = hasStoreId ? seed.map(item => ({ ...item, store_id: storeId })) : seed;
-          const sanitized = await sanitizePayload('products', seedWithStore);
-          const { error: seedError } = await supabase.from('products').insert(sanitized);
-          if (seedError) {
-            console.warn('Failed to seed products in Supabase:', seedError.message);
-          }
-          return seed;
-        }
-        // Seed the custom store products if table is partitioned by store_id
+      if (data) {
         if (hasStoreId) {
-          try {
-            const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
-            const sanitized = await sanitizePayload('products', seedWithStore);
-            const { error: seedError } = await supabase.from('products').insert(sanitized);
-            if (seedError) {
-              console.warn(`Failed to seed products for store ${storeId} in Supabase:`, seedError.message);
-            }
-          } catch (e) {
-            // ignore
-          }
+          dbProducts = data as FishItem[];
+        } else {
+          const prefix = `${storeId}_`;
+          const filtered = (data as any[]).filter(p => p.id && p.id.startsWith(prefix));
+          dbProducts = filtered.map(p => ({
+            ...p,
+            id: p.id.substring(prefix.length)
+          }));
         }
-        return seed;
       }
-      return data as FishItem[];
     } catch (err: any) {
       console.warn('Error fetching products from Supabase, falling back to LocalStorage:', err.message || err);
     }
+  }
+
+  if (dbProducts && dbProducts.length > 0) {
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(dbProducts));
+    }
+    return dbProducts;
   }
 
   if (!isBrowser()) return seed;
@@ -333,26 +399,42 @@ export async function getProducts(storeId: string = 'catacloud'): Promise<FishIt
   if (!stored) {
     const initialProducts = seed;
     localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(initialProducts));
+    if (isSupabaseConfigured) {
+      saveProducts(initialProducts, storeId).catch(() => {});
+    }
     return initialProducts;
   }
   try {
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : seed;
+    const localProducts = JSON.parse(stored);
+    const hasCustomItems = Array.isArray(localProducts) && localProducts.length > 0;
+    const finalProducts = hasCustomItems ? localProducts : seed;
+    
+    if (isSupabaseConfigured && hasCustomItems) {
+      saveProducts(finalProducts, storeId).catch(() => {});
+    }
+    return finalProducts;
   } catch {
     return seed;
   }
 }
 
 export async function saveProducts(products: FishItem[], storeId: string = 'catacloud'): Promise<void> {
-  const productsWithStore = products.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const productsWithStore = products.map(item => ({ ...item, store_id: storeId }));
         const sanitized = await sanitizePayload('products', productsWithStore);
         const { error } = await supabase.from('products').upsert(sanitized);
         if (error) throw error;
-        return;
+      } else {
+        const prefixedProducts = products.map(item => ({
+          ...item,
+          id: `${storeId}_${item.id}`
+        }));
+        const sanitized = await sanitizePayload('products', prefixedProducts);
+        const { error } = await supabase.from('products').upsert(sanitized);
+        if (error) throw error;
       }
     } catch (err: any) {
       console.warn('Error saving products to Supabase:', err.message || err);
@@ -365,15 +447,19 @@ export async function saveProducts(products: FishItem[], storeId: string = 'cata
 }
 
 export async function addProduct(product: FishItem, storeId: string = 'catacloud'): Promise<void> {
-  const productWithStore = { ...product, store_id: storeId };
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const productWithStore = { ...product, store_id: storeId };
         const sanitized = await sanitizePayload('products', productWithStore);
         const { error } = await supabase.from('products').insert(sanitized);
         if (error) throw error;
-        return;
+      } else {
+        const productWithPrefix = { ...product, id: `${storeId}_${product.id}` };
+        const sanitized = await sanitizePayload('products', productWithPrefix);
+        const { error } = await supabase.from('products').insert(sanitized);
+        if (error) throw error;
       }
     } catch (err: any) {
       console.warn('Error adding product to Supabase:', err.message || err);
@@ -382,23 +468,28 @@ export async function addProduct(product: FishItem, storeId: string = 'catacloud
   }
 
   const products = await getProducts(storeId);
-  products.push(product);
-  await saveProducts(products, storeId);
+  if (!products.some(p => p.id === product.id)) {
+    products.push(product);
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(products));
+    }
+  }
 }
 
 export async function updateProduct(updatedProduct: FishItem, storeId: string = 'catacloud'): Promise<void> {
-  const productWithStore = { ...updatedProduct, store_id: storeId };
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const productWithStore = { ...updatedProduct, store_id: storeId };
         const sanitized = await sanitizePayload('products', productWithStore);
-        const query = supabase.from('products').update(sanitized).eq('id', updatedProduct.id);
-        const { error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
+        const { error } = await supabase.from('products').update(sanitized).eq('id', updatedProduct.id).eq('store_id', storeId);
         if (error) throw error;
-        return;
+      } else {
+        const productWithPrefix = { ...updatedProduct, id: `${storeId}_${updatedProduct.id}` };
+        const sanitized = await sanitizePayload('products', productWithPrefix);
+        const { error } = await supabase.from('products').update(sanitized).eq('id', `${storeId}_${updatedProduct.id}`);
+        if (error) throw error;
       }
     } catch (err: any) {
       console.warn('Error updating product in Supabase:', err.message || err);
@@ -410,7 +501,9 @@ export async function updateProduct(updatedProduct: FishItem, storeId: string = 
   const index = products.findIndex((p) => p.id === updatedProduct.id);
   if (index > -1) {
     products[index] = updatedProduct;
-    await saveProducts(products, storeId);
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(products));
+    }
   }
 }
 
@@ -418,13 +511,12 @@ export async function deleteProduct(id: string, storeId: string = 'catacloud'): 
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('products').delete().eq('id', id);
-        const { error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-      }
+      const targetId = hasStoreId ? id : `${storeId}_${id}`;
+      const query = supabase.from('products').delete().eq('id', targetId);
+      const { error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
     } catch (err: any) {
       console.warn('Error deleting product in Supabase:', err.message || err);
       handleSupabaseError(err);
@@ -433,20 +525,32 @@ export async function deleteProduct(id: string, storeId: string = 'catacloud'): 
 
   const products = await getProducts(storeId);
   const filtered = products.filter((p) => p.id !== id);
-  await saveProducts(filtered, storeId);
+  if (isBrowser()) {
+    localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(filtered));
+  }
 }
 
 export async function getOrders(storeId: string = 'catacloud'): Promise<Order[]> {
   if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
       const hasStoreId = await isColumnSupported('orders', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('orders').select('*');
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        return (data || []) as Order[];
+      const query = supabase.from('orders').select('*');
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
+      
+      if (data) {
+        if (hasStoreId) {
+          return data as Order[];
+        } else {
+          const prefix = `${storeId}_`;
+          const filtered = (data as any[]).filter(o => o.id && o.id.startsWith(prefix));
+          return filtered.map(o => ({
+            ...o,
+            id: o.id.substring(prefix.length)
+          })) as Order[];
+        }
       }
     } catch (err: any) {
       console.warn('Error fetching orders from Supabase, falling back to LocalStorage:', err.message || err);
@@ -464,12 +568,21 @@ export async function getOrders(storeId: string = 'catacloud'): Promise<Order[]>
 }
 
 export async function saveOrders(orders: Order[], storeId: string = 'catacloud'): Promise<void> {
-  const ordersWithStore = orders.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
       const hasStoreId = await isColumnSupported('orders', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const ordersWithStore = orders.map(item => ({ ...item, store_id: storeId }));
         const sanitized = await sanitizePayload('orders', ordersWithStore);
+        const { error } = await supabase.from('orders').upsert(sanitized);
+        if (error) throw error;
+        return;
+      } else {
+        const prefixedOrders = orders.map(item => ({
+          ...item,
+          id: `${storeId}_${item.id}`
+        }));
+        const sanitized = await sanitizePayload('orders', prefixedOrders);
         const { error } = await supabase.from('orders').upsert(sanitized);
         if (error) throw error;
         return;
@@ -484,12 +597,17 @@ export async function saveOrders(orders: Order[], storeId: string = 'catacloud')
 }
 
 export async function addOrder(order: Order, storeId: string = 'catacloud'): Promise<void> {
-  const orderWithStore = { ...order, store_id: storeId };
   if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
       const hasStoreId = await isColumnSupported('orders', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const orderWithStore = { ...order, store_id: storeId };
         const sanitized = await sanitizePayload('orders', orderWithStore);
+        const { error } = await supabase.from('orders').insert(sanitized);
+        if (error) throw error;
+      } else {
+        const orderWithPrefix = { ...order, id: `${storeId}_${order.id}` };
+        const sanitized = await sanitizePayload('orders', orderWithPrefix);
         const { error } = await supabase.from('orders').insert(sanitized);
         if (error) throw error;
       }
@@ -532,7 +650,17 @@ export async function getOrdersForBuyer(email: string): Promise<Order[]> {
     try {
       const { data, error } = await supabase.from('orders').select('*').eq('userEmail', email.toLowerCase());
       if (!error && data) {
-        return data as Order[];
+        return (data as any[]).map(o => {
+          let cleanId = o.id;
+          if (o.id && o.id.includes('_')) {
+            const parts = o.id.split('_');
+            cleanId = parts.slice(1).join('_');
+          }
+          return {
+            ...o,
+            id: cleanId
+          };
+        }) as Order[];
       }
     } catch (e) {
       // fallback
@@ -569,14 +697,13 @@ export async function updateOrderStatus(
   if (isSupabaseConfigured && await isTableSupported('orders')) {
     try {
       const hasStoreId = await isColumnSupported('orders', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('orders').update({ status }).eq('id', orderId);
-        const { error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        return;
-      }
+      const targetId = hasStoreId ? orderId : `${storeId}_${orderId}`;
+      const query = supabase.from('orders').update({ status }).eq('id', targetId);
+      const { error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
+      return;
     } catch (err: any) {
       console.warn('Error updating order status in Supabase:', err.message || err);
     }
@@ -591,17 +718,25 @@ export async function updateOrderStatus(
 }
 
 export async function getProposals(storeId: string = 'catacloud'): Promise<Proposal[]> {
+  let dbProposals: Proposal[] | null = null;
   if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
       const hasStoreId = await isColumnSupported('proposals', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('proposals').select('*');
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        if (data && data.length > 0) {
-          return data as Proposal[];
+      const query = supabase.from('proposals').select('*');
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
+      if (data) {
+        if (hasStoreId) {
+          dbProposals = data as Proposal[];
+        } else {
+          const prefix = `${storeId}_`;
+          const filtered = (data as any[]).filter(p => p.id && p.id.startsWith(prefix));
+          dbProposals = filtered.map(p => ({
+            ...p,
+            id: p.id.substring(prefix.length)
+          })) as Proposal[];
         }
       }
     } catch (err: any) {
@@ -609,23 +744,43 @@ export async function getProposals(storeId: string = 'catacloud'): Promise<Propo
     }
   }
 
+  if (dbProposals && dbProposals.length > 0) {
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_proposals_${storeId}`, JSON.stringify(dbProposals));
+    }
+    return dbProposals;
+  }
+
   if (!isBrowser()) return [];
   const stored = localStorage.getItem(`catacloud_proposals_${storeId}`);
   if (!stored) return [];
   try {
-    return JSON.parse(stored);
+    const localProposals = JSON.parse(stored);
+    const hasCustomItems = Array.isArray(localProposals) && localProposals.length > 0;
+    if (isSupabaseConfigured && hasCustomItems) {
+      saveProposals(localProposals, storeId).catch(() => {});
+    }
+    return localProposals;
   } catch {
     return [];
   }
 }
 
 export async function saveProposals(proposals: Proposal[], storeId: string = 'catacloud'): Promise<void> {
-  const proposalsWithStore = proposals.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
       const hasStoreId = await isColumnSupported('proposals', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const proposalsWithStore = proposals.map(item => ({ ...item, store_id: storeId }));
         const sanitized = await sanitizePayload('proposals', proposalsWithStore);
+        const { error } = await supabase.from('proposals').upsert(sanitized);
+        if (error) throw error;
+      } else {
+        const prefixedProposals = proposals.map(item => ({
+          ...item,
+          id: `${storeId}_${item.id}`
+        }));
+        const sanitized = await sanitizePayload('proposals', prefixedProposals);
         const { error } = await supabase.from('proposals').upsert(sanitized);
         if (error) throw error;
       }
@@ -639,12 +794,17 @@ export async function saveProposals(proposals: Proposal[], storeId: string = 'ca
 }
 
 export async function addProposal(proposal: Proposal, storeId: string = 'catacloud'): Promise<void> {
-  const proposalWithStore = { ...proposal, store_id: storeId };
   if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
       const hasStoreId = await isColumnSupported('proposals', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const proposalWithStore = { ...proposal, store_id: storeId };
         const sanitized = await sanitizePayload('proposals', proposalWithStore);
+        const { error } = await supabase.from('proposals').insert(sanitized);
+        if (error) throw error;
+      } else {
+        const proposalWithPrefix = { ...proposal, id: `${storeId}_${proposal.id}` };
+        const sanitized = await sanitizePayload('proposals', proposalWithPrefix);
         const { error } = await supabase.from('proposals').insert(sanitized);
         if (error) throw error;
       }
@@ -655,8 +815,10 @@ export async function addProposal(proposal: Proposal, storeId: string = 'cataclo
 
   const proposals = await getProposals(storeId);
   if (!proposals.some(p => p.id === proposal.id)) {
-    proposals.unshift(proposalWithStore);
-    await saveProposals(proposals, storeId);
+    proposals.unshift(proposal);
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_proposals_${storeId}`, JSON.stringify(proposals));
+    }
   }
 }
 
@@ -664,13 +826,21 @@ export async function getProposalById(id: string, storeId: string = 'catacloud')
   if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
       const hasStoreId = await isColumnSupported('proposals', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('proposals').select('*').eq('id', id);
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId).maybeSingle()
-          : await query.maybeSingle();
-        if (error) throw error;
-        if (data) return data as Proposal;
+      const targetId = hasStoreId ? id : `${storeId}_${id}`;
+      const query = supabase.from('proposals').select('*').eq('id', targetId);
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId).maybeSingle()
+        : await query.maybeSingle();
+      if (error) throw error;
+      if (data) {
+        if (hasStoreId) {
+          return data as Proposal;
+        } else {
+          return {
+            ...data,
+            id: (data as any).id.substring(`${storeId}_`.length)
+          } as Proposal;
+        }
       }
     } catch (err: any) {
       console.warn('Error fetching proposal by ID from Supabase:', err.message || err);
@@ -685,14 +855,12 @@ export async function deleteProposal(id: string, storeId: string = 'catacloud'):
   if (isSupabaseConfigured && await isTableSupported('proposals')) {
     try {
       const hasStoreId = await isColumnSupported('proposals', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('proposals').delete().eq('id', id);
-        const { error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        return;
-      }
+      const targetId = hasStoreId ? id : `${storeId}_${id}`;
+      const query = supabase.from('proposals').delete().eq('id', targetId);
+      const { error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
     } catch (err: any) {
       console.warn('Error deleting proposal in Supabase:', err.message || err);
     }
@@ -700,21 +868,31 @@ export async function deleteProposal(id: string, storeId: string = 'catacloud'):
 
   const proposals = await getProposals(storeId);
   const filtered = proposals.filter((p) => p.id !== id);
-  await saveProposals(filtered, storeId);
+  if (isBrowser()) {
+    localStorage.setItem(`catacloud_proposals_${storeId}`, JSON.stringify(filtered));
+  }
 }
 
 export async function getCustomCatalogs(storeId: string = 'catacloud'): Promise<CustomCatalog[]> {
+  let dbCatalogs: CustomCatalog[] | null = null;
   if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
       const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('custom_catalogs').select('*');
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-        if (data && data.length > 0) {
-          return data as CustomCatalog[];
+      const query = supabase.from('custom_catalogs').select('*');
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
+      if (data) {
+        if (hasStoreId) {
+          dbCatalogs = data as CustomCatalog[];
+        } else {
+          const prefix = `${storeId}_`;
+          const filtered = (data as any[]).filter(c => c.id && c.id.startsWith(prefix));
+          dbCatalogs = filtered.map(c => ({
+            ...c,
+            id: c.id.substring(prefix.length)
+          })) as CustomCatalog[];
         }
       }
     } catch (err: any) {
@@ -722,23 +900,43 @@ export async function getCustomCatalogs(storeId: string = 'catacloud'): Promise<
     }
   }
 
+  if (dbCatalogs && dbCatalogs.length > 0) {
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_custom_catalogs_${storeId}`, JSON.stringify(dbCatalogs));
+    }
+    return dbCatalogs;
+  }
+
   if (!isBrowser()) return [];
   const stored = localStorage.getItem(`catacloud_custom_catalogs_${storeId}`);
   if (!stored) return [];
   try {
-    return JSON.parse(stored);
+    const localCatalogs = JSON.parse(stored);
+    const hasCustomItems = Array.isArray(localCatalogs) && localCatalogs.length > 0;
+    if (isSupabaseConfigured && hasCustomItems) {
+      saveCustomCatalogs(localCatalogs, storeId).catch(() => {});
+    }
+    return localCatalogs;
   } catch {
     return [];
   }
 }
 
 export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: string = 'catacloud'): Promise<void> {
-  const catalogsWithStore = catalogs.map(item => ({ ...item, store_id: storeId }));
   if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
       const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const catalogsWithStore = catalogs.map(item => ({ ...item, store_id: storeId }));
         const sanitized = await sanitizePayload('custom_catalogs', catalogsWithStore);
+        const { error } = await supabase.from('custom_catalogs').upsert(sanitized);
+        if (error) throw error;
+      } else {
+        const prefixedCatalogs = catalogs.map(item => ({
+          ...item,
+          id: `${storeId}_${item.id}`
+        }));
+        const sanitized = await sanitizePayload('custom_catalogs', prefixedCatalogs);
         const { error } = await supabase.from('custom_catalogs').upsert(sanitized);
         if (error) throw error;
       }
@@ -752,12 +950,17 @@ export async function saveCustomCatalogs(catalogs: CustomCatalog[], storeId: str
 }
 
 export async function addCustomCatalog(catalog: CustomCatalog, storeId: string = 'catacloud'): Promise<void> {
-  const catalogWithStore = { ...catalog, store_id: storeId };
   if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
       const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
+        const catalogWithStore = { ...catalog, store_id: storeId };
         const sanitized = await sanitizePayload('custom_catalogs', catalogWithStore);
+        const { error } = await supabase.from('custom_catalogs').insert(sanitized);
+        if (error) throw error;
+      } else {
+        const catalogWithPrefix = { ...catalog, id: `${storeId}_${catalog.id}` };
+        const sanitized = await sanitizePayload('custom_catalogs', catalogWithPrefix);
         const { error } = await supabase.from('custom_catalogs').insert(sanitized);
         if (error) throw error;
       }
@@ -768,8 +971,10 @@ export async function addCustomCatalog(catalog: CustomCatalog, storeId: string =
 
   const catalogs = await getCustomCatalogs(storeId);
   if (!catalogs.some(c => c.id === catalog.id)) {
-    catalogs.unshift(catalogWithStore);
-    await saveCustomCatalogs(catalogs, storeId);
+    catalogs.unshift(catalog);
+    if (isBrowser()) {
+      localStorage.setItem(`catacloud_custom_catalogs_${storeId}`, JSON.stringify(catalogs));
+    }
   }
 }
 
@@ -777,13 +982,21 @@ export async function getCustomCatalogById(id: string, storeId: string = 'catacl
   if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
       const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('custom_catalogs').select('*').eq('id', id);
-        const { data, error } = hasStoreId 
-          ? await query.eq('store_id', storeId).maybeSingle()
-          : await query.maybeSingle();
-        if (error) throw error;
-        if (data) return data as CustomCatalog;
+      const targetId = hasStoreId ? id : `${storeId}_${id}`;
+      const query = supabase.from('custom_catalogs').select('*').eq('id', targetId);
+      const { data, error } = hasStoreId 
+        ? await query.eq('store_id', storeId).maybeSingle()
+        : await query.maybeSingle();
+      if (error) throw error;
+      if (data) {
+        if (hasStoreId) {
+          return data as CustomCatalog;
+        } else {
+          return {
+            ...data,
+            id: (data as any).id.substring(`${storeId}_`.length)
+          } as CustomCatalog;
+        }
       }
     } catch (err: any) {
       console.warn('Error fetching custom catalog by ID from Supabase:', err.message || err);
@@ -798,13 +1011,12 @@ export async function deleteCustomCatalog(id: string, storeId: string = 'cataclo
   if (isSupabaseConfigured && await isTableSupported('custom_catalogs')) {
     try {
       const hasStoreId = await isColumnSupported('custom_catalogs', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
-        const query = supabase.from('custom_catalogs').delete().eq('id', id);
-        const { error } = hasStoreId 
-          ? await query.eq('store_id', storeId)
-          : await query;
-        if (error) throw error;
-      }
+      const targetId = hasStoreId ? id : `${storeId}_${id}`;
+      const query = supabase.from('custom_catalogs').delete().eq('id', targetId);
+      const { error } = hasStoreId 
+        ? await query.eq('store_id', storeId)
+        : await query;
+      if (error) throw error;
     } catch (err: any) {
       console.warn('Error deleting custom catalog in Supabase:', err.message || err);
     }
@@ -812,7 +1024,9 @@ export async function deleteCustomCatalog(id: string, storeId: string = 'cataclo
 
   const catalogs = await getCustomCatalogs(storeId);
   const filtered = catalogs.filter((c) => c.id !== id);
-  await saveCustomCatalogs(filtered, storeId);
+  if (isBrowser()) {
+    localStorage.setItem(`catacloud_custom_catalogs_${storeId}`, JSON.stringify(filtered));
+  }
 }
 
 export interface ETAPrediction {
@@ -909,19 +1123,33 @@ export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic' | 
   if (isSupabaseConfigured && await isTableSupported('products')) {
     try {
       const hasStoreId = await isColumnSupported('products', 'store_id');
-      if (hasStoreId || storeId === 'catacloud') {
+      if (hasStoreId) {
         const seedWithStore = seed.map(item => ({ ...item, store_id: storeId }));
         const sanitized = await sanitizePayload('products', seedWithStore);
-        
-        if (hasStoreId) {
-          await supabase.from('products').delete().eq('store_id', storeId);
-        } else {
-          await supabase.from('products').delete().neq('id', 'dummy_non_existent');
-        }
-        
+        await supabase.from('products').delete().eq('store_id', storeId);
         const { error } = await supabase.from('products').insert(sanitized);
         if (error) {
           console.warn('Failed to seed products in Supabase:', error.message);
+        } else {
+          window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
+          return seed;
+        }
+      } else {
+        const prefix = `${storeId}_`;
+        const { data: allProds } = await supabase.from('products').select('id');
+        const idsToDelete = allProds 
+          ? (allProds as any[]).filter(p => p.id && p.id.startsWith(prefix)).map(p => p.id)
+          : [];
+        
+        if (idsToDelete.length > 0) {
+          await supabase.from('products').delete().in('id', idsToDelete);
+        }
+        
+        const seedWithPrefix = seed.map(item => ({ ...item, id: `${prefix}${item.id}` }));
+        const sanitized = await sanitizePayload('products', seedWithPrefix);
+        const { error } = await supabase.from('products').insert(sanitized);
+        if (error) {
+          console.warn('Failed to seed products in Supabase with prefix:', error.message);
         } else {
           window.dispatchEvent(new CustomEvent('products-updated', { detail: { storeId } }));
           return seed;
@@ -1147,18 +1375,26 @@ export async function deleteStore(storeId: string): Promise<void> {
       if (await isTableSupported('store_config')) {
         await supabase.from('store_config').delete().eq('id', storeId);
       }
-      if (await isTableSupported('products') && await isColumnSupported('products', 'store_id')) {
-        await supabase.from('products').delete().eq('store_id', storeId);
+      
+      const tablesWithPrefix = ['products', 'orders', 'custom_catalogs', 'proposals'];
+      for (const table of tablesWithPrefix) {
+        if (await isTableSupported(table)) {
+          const hasStoreId = await isColumnSupported(table, 'store_id');
+          if (hasStoreId) {
+            await supabase.from(table).delete().eq('store_id', storeId);
+          } else {
+            const prefix = `${storeId}_`;
+            const { data } = await supabase.from(table).select('id');
+            const idsToDelete = data 
+              ? (data as any[]).filter(row => row.id && row.id.startsWith(prefix)).map(row => row.id)
+              : [];
+            if (idsToDelete.length > 0) {
+              await supabase.from(table).delete().in('id', idsToDelete);
+            }
+          }
+        }
       }
-      if (await isTableSupported('orders') && await isColumnSupported('orders', 'store_id')) {
-        await supabase.from('orders').delete().eq('store_id', storeId);
-      }
-      if (await isTableSupported('custom_catalogs') && await isColumnSupported('custom_catalogs', 'store_id')) {
-        await supabase.from('custom_catalogs').delete().eq('store_id', storeId);
-      }
-      if (await isTableSupported('proposals') && await isColumnSupported('proposals', 'store_id')) {
-        await supabase.from('proposals').delete().eq('store_id', storeId);
-      }
+
       if (await isTableSupported('reviews') && await isColumnSupported('reviews', 'store_id')) {
         await supabase.from('reviews').delete().eq('store_id', storeId);
       }
