@@ -606,9 +606,7 @@ export default function DashboardPage() {
       storeTagline: onboardTagline,
       storeType: resolvedType,
       unit: onboardUnit.trim(),
-      categories: resolvedType === 'generic' 
-        ? ['Featured', 'New Arrivals', 'Sale'] 
-        : basePreset.categories
+      categories: []
     };
 
     try {
@@ -1786,23 +1784,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className={styles.filterSection}>
-              <h4 className={styles.filterTitle}>Stock Status</h4>
-              <div className={styles.radioList}>
-                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
-                  <input type="radio" name="stock-status" defaultChecked style={{ cursor: 'pointer' }} />
-                  <span>All Stock</span>
-                </label>
-                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
-                  <input type="radio" name="stock-status" style={{ cursor: 'pointer' }} />
-                  <span>In Stock</span>
-                </label>
-                <label className={styles.radioItem} style={{ cursor: 'pointer' }}>
-                  <input type="radio" name="stock-status" style={{ cursor: 'pointer' }} />
-                  <span>Low Stock</span>
-                </label>
-              </div>
-            </div>
 
             <div className={styles.filterSection}>
               <h4 className={styles.filterTitle}>Catalogue Links</h4>

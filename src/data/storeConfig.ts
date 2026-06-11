@@ -25,7 +25,7 @@ export const SEAFOOD_PRESET: StoreConfig = {
   storeTagline: 'Landed Catch & Logistics Hub',
   storeType: 'seafood',
   unit: 'kg',
-  categories: ['Saltwater', 'Freshwater', 'Shellfish', 'Premium Import'],
+  categories: [],
   storePhone: '+1 (555) 347-4886',
   storeAddress: 'Pier 45, Fisherman\'s Wharf, San Francisco, CA',
   attributes: {
@@ -43,7 +43,7 @@ export const EGG_PRESET: StoreConfig = {
   storeTagline: 'Organic Farm Egg Supplier',
   storeType: 'egg',
   unit: 'dozen',
-  categories: ['Free-Range', 'Organic', 'Jumbo Specials', 'Liquid & Egg Whites'],
+  categories: [],
   storePhone: '+1 (555) 762-3447',
   storeAddress: 'Rural Route 4, Petaluma, CA',
   attributes: {
@@ -61,7 +61,7 @@ export const GENERIC_PRESET: StoreConfig = {
   storeTagline: 'Boutique Goods & Provisions',
   storeType: 'generic',
   unit: 'pcs',
-  categories: ['Featured', 'New Arrivals', 'Clearance', 'Bestsellers'],
+  categories: [],
   storePhone: '+1 (555) 964-1017',
   storeAddress: '100 Market St, San Francisco, CA',
   attributes: {
@@ -187,7 +187,7 @@ export const CLOTHING_PRESET: StoreConfig = {
   storeTagline: 'Premium Menswear & Essentials',
   storeType: 'clothing',
   unit: 'pcs',
-  categories: ['Shirts', 'Pants', 'Jeans', 'Cargos', 'Hoodies', 'T-Shirts'],
+  categories: [],
   storePhone: '+1 (555) 843-3237',
   storeAddress: '404 Fashion Ave, New York, NY',
   attributes: {
