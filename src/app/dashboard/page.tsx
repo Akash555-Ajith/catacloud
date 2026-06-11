@@ -97,6 +97,13 @@ export default function DashboardPage() {
   const [cfgSustainabilityLabel, setCfgSustainabilityLabel] = useState('');
   const [cfgDifficultyLabel, setCfgDifficultyLabel] = useState('');
 
+  const handleSetDashboardMode = (mode: 'buyer' | 'seller') => {
+    setDashboardMode(mode);
+    if (user?.email) {
+      localStorage.setItem(`catacloud_dashboard_mode_${user.email.toLowerCase()}`, mode);
+    }
+  };
+
   // Custom Catalogue Form Fields
   const [catSearchQuery, setCatSearchQuery] = useState('');
   const [catSelectedCategory, setCatSelectedCategory] = useState('All');
@@ -314,8 +321,9 @@ export default function DashboardPage() {
           const parsed = JSON.parse(storedUser);
           setUser(parsed);
           setIsAuthenticated(true);
-          // Set initial dashboard mode based on role
-          setDashboardMode(parsed.role === 'admin' ? 'seller' : 'buyer');
+          // Set initial dashboard mode based on role or saved preference
+          const savedMode = localStorage.getItem(`catacloud_dashboard_mode_${parsed.email.toLowerCase()}`);
+          setDashboardMode(savedMode === 'seller' || savedMode === 'buyer' ? savedMode : (parsed.role === 'admin' ? 'seller' : 'buyer'));
         } catch {
           router.push('/login');
         }
@@ -3147,7 +3155,7 @@ export default function DashboardPage() {
               <button 
                 type="button" 
                 onClick={() => {
-                  setDashboardMode('seller');
+                  handleSetDashboardMode('seller');
                   setShowStoreCreator(true);
                   toast.info('Opening Store Creation Wizard...');
                 }} 
@@ -3181,7 +3189,7 @@ export default function DashboardPage() {
                 <button 
                   type="button"
                   onClick={() => {
-                    setDashboardMode('seller');
+                    handleSetDashboardMode('seller');
                     setAdminTab('dashboard');
                   }}
                   className={styles.btnMerchantSecondary}
@@ -3193,7 +3201,7 @@ export default function DashboardPage() {
                 <button 
                   type="button"
                   onClick={() => {
-                    setDashboardMode('buyer');
+                    handleSetDashboardMode('buyer');
                     setAdminTab('dashboard');
                   }}
                   className={styles.btnMerchantSecondary}
@@ -3718,7 +3726,10 @@ export default function DashboardPage() {
           </div>
           <div style={{ display: 'flex', gap: '4px', background: 'rgba(5, 12, 26, 0.6)', padding: '4px', borderRadius: '9999px', border: '1px solid var(--glass-border)' }}>
             <button
-              onClick={() => setDashboardMode('buyer')}
+              onClick={() => {
+                handleSetDashboardMode('buyer');
+                setAdminTab('dashboard');
+              }}
               style={{
                 background: (dashboardMode as string) === 'buyer' ? 'var(--gradient-gold)' : 'transparent',
                 color: (dashboardMode as string) === 'buyer' ? '#030812' : 'var(--text-secondary)',
@@ -3735,7 +3746,10 @@ export default function DashboardPage() {
               🛒 Buyer Panel
             </button>
             <button
-              onClick={() => setDashboardMode('seller')}
+              onClick={() => {
+                handleSetDashboardMode('seller');
+                setAdminTab('dashboard');
+              }}
               style={{
                 background: (dashboardMode as string) === 'seller' ? 'var(--gradient-premium)' : 'transparent',
                 color: (dashboardMode as string) === 'seller' ? '#030812' : 'var(--text-secondary)',
