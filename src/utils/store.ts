@@ -1,6 +1,6 @@
 import { fishData, FishItem } from '@/data/fishData';
 import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData, CLOTHING_PRESET, clothingSeedData, BAKERY_PRESET, bakerySeedData, COFFEE_PRESET, coffeeSeedData, WINE_PRESET, wineSeedData, PRODUCE_PRESET, produceSeedData } from '@/data/storeConfig';
-import { supabase, isSupabaseConfigured, disableSupabase } from './supabaseClient';
+import { supabaseAnon as supabase, isSupabaseConfigured, disableSupabase } from './supabaseClient';
 
 export interface OrderItem {
   fishId: string;
