@@ -5,7 +5,7 @@ export interface StoreConfig {
   ownerEmail?: string;
   storeName: string;
   storeTagline: string;
-  storeType: 'seafood' | 'egg' | 'generic' | 'clothing';
+  storeType: 'seafood' | 'egg' | 'generic' | 'clothing' | 'bakery' | 'coffee' | 'wine' | 'produce';
   unit: string;
   categories: string[];
   storePhone?: string;
@@ -471,6 +471,226 @@ export const clothingSeedData: FishItem[] = [
     sustainability: 'Sustainably Hand-Harvested',
     prepTime: 'Wash cold, air dry to avoid shrinkage',
     difficulty: 'Easy Care',
+    unit: 'pcs'
+  }
+];
+
+export const BAKERY_PRESET: StoreConfig = {
+  storeName: 'Le Petit Croissant',
+  storeTagline: 'Artisanal French Bakery & Pastries',
+  storeType: 'bakery',
+  unit: 'pcs',
+  categories: [],
+  storePhone: '+1 (555) 234-5678',
+  storeAddress: '456 Boulangerie Way, Boston, MA',
+  attributes: {
+    specimenLabel: 'Baked Good',
+    scientificNameLabel: 'Flour / Ingredients',
+    tasteProfileLabel: 'Flavor Profile',
+    textureLabel: 'Texture & Crust',
+    sustainabilityLabel: 'Sourcing Standard',
+    difficultyLabel: 'Allergen / Warning'
+  }
+};
+
+export const COFFEE_PRESET: StoreConfig = {
+  storeName: 'Bean & Brew',
+  storeTagline: 'Micro-Lot Single Origin Coffee Roasters',
+  storeType: 'coffee',
+  unit: 'bag',
+  categories: [],
+  storePhone: '+1 (555) 345-6789',
+  storeAddress: '789 Espresso Lane, Seattle, WA',
+  attributes: {
+    specimenLabel: 'Coffee Roast',
+    scientificNameLabel: 'Origin / Varietal',
+    tasteProfileLabel: 'Cupping Notes',
+    textureLabel: 'Roast Level',
+    sustainabilityLabel: 'Trade Practice',
+    difficultyLabel: 'Brewing Method'
+  }
+};
+
+export const WINE_PRESET: StoreConfig = {
+  storeName: 'Vintage Cellars',
+  storeTagline: 'Curated Fine Wines & Artisanal Spirits',
+  storeType: 'wine',
+  unit: 'bottle',
+  categories: [],
+  storePhone: '+1 (555) 456-7890',
+  storeAddress: '101 Vineyard Rd, Napa Valley, CA',
+  attributes: {
+    specimenLabel: 'Wine/Spirit',
+    scientificNameLabel: 'Appellation / Region',
+    tasteProfileLabel: 'Tasting Notes',
+    textureLabel: 'Body / ABV',
+    sustainabilityLabel: 'Farming Practice',
+    difficultyLabel: 'Serving Temp'
+  }
+};
+
+export const PRODUCE_PRESET: StoreConfig = {
+  storeName: 'Green Harvest',
+  storeTagline: 'Locally Sourced Organic Greens & Produce',
+  storeType: 'produce',
+  unit: 'kg',
+  categories: [],
+  storePhone: '+1 (555) 567-8901',
+  storeAddress: '202 Farm Fresh Rd, Portland, OR',
+  attributes: {
+    specimenLabel: 'Produce Item',
+    scientificNameLabel: 'Variety / Cultivar',
+    tasteProfileLabel: 'Flavor Profile',
+    textureLabel: 'Freshness / Grade',
+    sustainabilityLabel: 'Farming Standard',
+    difficultyLabel: 'Storage Life'
+  }
+};
+
+export const bakerySeedData: FishItem[] = [
+  {
+    id: 'croissant-classic',
+    name: 'Butter Croissant',
+    scientificName: 'Organic Wheat Flour & French Butter',
+    category: 'Viennoiserie',
+    pricePerKg: 3.50,
+    origin: 'Le Petit Croissant Hearth',
+    stock: 80,
+    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=300&q=80',
+    description: 'Flaky, golden-brown butter croissant made with layers of laminated French butter and wild-ferment wheat starter.',
+    tasteProfile: ['Buttery', 'Rich', 'Light Sweetness'],
+    texture: 'Crispy Shell, Airy Crumb',
+    sustainability: 'AOP Charentes-Poitou Butter',
+    prepTime: 'Serve warm (180°C for 3 mins)',
+    difficulty: 'Contains Gluten, Dairy, Eggs',
+    unit: 'pcs'
+  },
+  {
+    id: 'baguette-tradition',
+    name: 'Artisan French Baguette',
+    scientificName: 'T55 Unbleached Flour, Water, Sea Salt, Yeast',
+    category: 'Bread',
+    pricePerKg: 2.80,
+    origin: 'Le Petit Croissant Hearth',
+    stock: 50,
+    image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=300&q=80',
+    description: 'Traditional Parisian baguette with a dark rustic crust and a light, open, creamy crumb structure.',
+    tasteProfile: ['Wheaty', 'Slightly Nutty', 'Savory Crust'],
+    texture: 'Crunchy Crust, Soft Interior',
+    sustainability: '100% Locally Milled Wheat',
+    prepTime: 'Consume within 24 hours of baking',
+    difficulty: 'Gluten-free alternatives available',
+    unit: 'pcs'
+  }
+];
+
+export const coffeeSeedData: FishItem[] = [
+  {
+    id: 'coffee-ethiopia-yirgacheffe',
+    name: 'Ethiopia Yirgacheffe (Single Origin)',
+    scientificName: 'Heirloom / Washed Process',
+    category: 'African Origin',
+    pricePerKg: 18.99,
+    origin: 'Yirgacheffe Highlands, 2100m',
+    stock: 100,
+    image: 'https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=300&q=80',
+    description: 'Bright and highly aromatic single-origin coffee with complex floral, citrusy, and tea-like cupping notes.',
+    tasteProfile: ['Jasmine Floral', 'Lemon Zest', 'Black Tea Finish'],
+    texture: 'Light-Medium Roast',
+    sustainability: 'Direct Trade Organic Certified',
+    prepTime: 'Pour-Over (V60 or Chemex)',
+    difficulty: 'Best enjoyed black to taste notes',
+    unit: 'bag'
+  },
+  {
+    id: 'coffee-colombia-supremo',
+    name: 'Colombia Supremo',
+    scientificName: 'Castillo & Caturra / Honey Process',
+    category: 'South American Origin',
+    pricePerKg: 16.50,
+    origin: 'Huila Region, 1750m',
+    stock: 120,
+    image: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=300&q=80',
+    description: 'Perfectly balanced, full-bodied coffee featuring smooth caramel sweetness and hints of roasted nuts.',
+    tasteProfile: ['Brown Sugar', 'Roasted Hazelnut', 'Red Apple'],
+    texture: 'Medium Roast',
+    sustainability: 'Rainforest Alliance Certified',
+    prepTime: 'Espresso or French Press',
+    difficulty: 'Pairs beautifully with oat milk',
+    unit: 'bag'
+  }
+];
+
+export const wineSeedData: FishItem[] = [
+  {
+    id: 'wine-pinot-noir-2022',
+    name: 'Estate Pinot Noir 2022',
+    scientificName: 'Pinot Noir / French Oak Aged',
+    category: 'Red Wine',
+    pricePerKg: 35.00,
+    origin: 'Carneros, Napa Valley',
+    stock: 60,
+    image: 'https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&fit=crop&w=300&q=80',
+    description: 'Elegant estate pinot noir with bright acidity, presenting notes of ripe red cherries, forest floor, and warm spices.',
+    tasteProfile: ['Red Cherry', 'Warm Clove', 'Subtle Earthiness'],
+    texture: 'Light-Medium Body / 13.5% ABV',
+    sustainability: 'Certified Biodynamic Vineyard',
+    prepTime: 'Chill to 14-16°C before serving',
+    difficulty: 'Contains Sulfites',
+    unit: 'bottle'
+  },
+  {
+    id: 'wine-chardonnay-reserve',
+    name: 'Reserve Chardonnay 2021',
+    scientificName: 'Chardonnay / Barrel Fermented',
+    category: 'White Wine',
+    pricePerKg: 28.50,
+    origin: 'Los Carneros, California',
+    stock: 75,
+    image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=300&q=80',
+    description: 'Crisp yet buttery reserve chardonnay with highlights of green apple, Meyer lemon, and toasted vanilla oak.',
+    tasteProfile: ['Meyer Lemon', 'Toasted Brioche', 'Green Apple'],
+    texture: 'Full Body, Creamy Finish / 14.2% ABV',
+    sustainability: 'Sustainable In Practice (SIP) Certified',
+    prepTime: 'Serve chilled (8-10°C)',
+    difficulty: 'Contains Sulfites',
+    unit: 'bottle'
+  }
+];
+
+export const produceSeedData: FishItem[] = [
+  {
+    id: 'produce-baby-spinach',
+    name: 'Organic Baby Spinach (1kg)',
+    scientificName: 'Spinacia oleracea / Flat-leaf',
+    category: 'Leafy Greens',
+    pricePerKg: 8.99,
+    origin: 'Willamette Valley Farms',
+    stock: 90,
+    image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=300&q=80',
+    description: 'Tender organic baby spinach greens. Triple-washed and packed fresh, ideal for nutrient-rich green salads or quick sautés.',
+    tasteProfile: ['Mildly Sweet', 'Iron-Rich', 'Fresh Earthy Notes'],
+    texture: 'Tender Leaves / USDA Organic',
+    sustainability: '100% Water-Recycled Farming',
+    prepTime: 'Keep refrigerated (1-3°C)',
+    difficulty: 'Consume within 5 days of delivery',
+    unit: 'kg'
+  },
+  {
+    id: 'produce-heirloom-tomatoes',
+    name: 'Heirloom Tomatoes Basket (2kg)',
+    scientificName: 'Solanum lycopersicum / Mixed Varietals',
+    category: 'Vining Veggies',
+    pricePerKg: 12.50,
+    origin: 'Sun Gold Gardens',
+    stock: 40,
+    image: 'https://images.unsplash.com/photo-1595855759920-86582396756a?auto=format&fit=crop&w=300&q=80',
+    description: 'A colorful selection of vine-ripened heritage heirloom tomatoes. Incredibly juicy with an outstanding balance of sweetness and acidity.',
+    tasteProfile: ['High Acidity Sweetness', 'Juicy', 'Umami Rich'],
+    texture: 'Firm Flesh, Thin Skin / Grade A',
+    sustainability: 'Bee-Pollinated Greenhouse',
+    prepTime: 'Store at room temperature (do not refrigerate)',
+    difficulty: 'Handle with care to prevent bruising',
     unit: 'pcs'
   }
 ];

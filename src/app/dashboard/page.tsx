@@ -34,7 +34,7 @@ import {
   saveProposals,
   saveCustomCatalogs
 } from '@/utils/store';
-import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, CLOTHING_PRESET } from '@/data/storeConfig';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, CLOTHING_PRESET, BAKERY_PRESET, COFFEE_PRESET, WINE_PRESET, PRODUCE_PRESET } from '@/data/storeConfig';
 import Navbar from '@/components/Navbar';
 import styles from './dashboard.module.css';
 import { toast } from 'sonner';
@@ -85,7 +85,7 @@ export default function DashboardPage() {
   // Store Config Form States
   const [cfgStoreName, setCfgStoreName] = useState('');
   const [cfgStoreTagline, setCfgStoreTagline] = useState('');
-  const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic' | 'clothing'>('seafood');
+  const [cfgStoreType, setCfgStoreType] = useState<'seafood' | 'egg' | 'generic' | 'clothing' | 'bakery' | 'coffee' | 'wine' | 'produce'>('seafood');
   const [cfgUnit, setCfgUnit] = useState('kg');
   const [cfgCategories, setCfgCategories] = useState<string[]>([]);
   const [cfgStorePhone, setCfgStorePhone] = useState('');
@@ -596,7 +596,15 @@ export default function DashboardPage() {
         ? 'egg'
         : (cleanNiche.includes('clothing') || cleanNiche.includes('apparel') || cleanNiche.includes('wear') || cleanNiche.includes('fashion') || cleanNiche.includes('threads') || cleanNiche.includes('garment') || cleanNiche.includes('boutique'))
           ? 'clothing'
-          : 'generic';
+          : cleanNiche.includes('bakery') || cleanNiche.includes('pastry') || cleanNiche.includes('bread') || cleanNiche.includes('cake')
+            ? 'bakery'
+            : cleanNiche.includes('coffee') || cleanNiche.includes('cafe') || cleanNiche.includes('bean') || cleanNiche.includes('espresso')
+              ? 'coffee'
+              : cleanNiche.includes('wine') || cleanNiche.includes('spirit') || cleanNiche.includes('vintage') || cleanNiche.includes('liquor') || cleanNiche.includes('cellar')
+                ? 'wine'
+                : cleanNiche.includes('produce') || cleanNiche.includes('green') || cleanNiche.includes('harvest') || cleanNiche.includes('vegetable') || cleanNiche.includes('fruit')
+                  ? 'produce'
+                  : 'generic';
 
     const basePreset = resolvedType === 'egg' 
       ? EGG_PRESET 
@@ -604,7 +612,15 @@ export default function DashboardPage() {
         ? SEAFOOD_PRESET 
         : resolvedType === 'clothing'
           ? CLOTHING_PRESET
-          : GENERIC_PRESET;
+          : resolvedType === 'bakery'
+            ? BAKERY_PRESET
+            : resolvedType === 'coffee'
+              ? COFFEE_PRESET
+              : resolvedType === 'wine'
+                ? WINE_PRESET
+                : resolvedType === 'produce'
+                  ? PRODUCE_PRESET
+                  : GENERIC_PRESET;
 
     const newConfig: StoreConfig = {
       ...basePreset,
@@ -721,11 +737,15 @@ export default function DashboardPage() {
     });
   };
 
-  const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic' | 'clothing') => {
+  const handlePresetChange = (presetType: 'seafood' | 'egg' | 'generic' | 'clothing' | 'bakery' | 'coffee' | 'wine' | 'produce') => {
     let preset: StoreConfig;
     if (presetType === 'seafood') preset = SEAFOOD_PRESET;
     else if (presetType === 'egg') preset = EGG_PRESET;
     else if (presetType === 'clothing') preset = CLOTHING_PRESET;
+    else if (presetType === 'bakery') preset = BAKERY_PRESET;
+    else if (presetType === 'coffee') preset = COFFEE_PRESET;
+    else if (presetType === 'wine') preset = WINE_PRESET;
+    else if (presetType === 'produce') preset = PRODUCE_PRESET;
     else preset = GENERIC_PRESET;
 
     setCfgStoreName(preset.storeName);
@@ -2817,26 +2837,44 @@ export default function DashboardPage() {
 
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Primary Unit of Measurement</label>
-                  <input
-                    type="text"
+                  <select
                     value={cfgUnit}
                     onChange={(e) => setCfgUnit(e.target.value)}
-                    className={styles.lightInput}
+                    className={styles.lightSelect}
                     required
-                  />
+                  >
+                    {cfgUnit && !['pcs', 'kg', 'box', 'dozen', 'pack', 'litres', 'meters', 'bag', 'bottle', 'case', 'bunch'].includes(cfgUnit) && (
+                      <option value={cfgUnit}>{cfgUnit}</option>
+                    )}
+                    <option value="pcs">pcs (pieces)</option>
+                    <option value="kg">kg (kilograms)</option>
+                    <option value="box">box</option>
+                    <option value="dozen">dozen</option>
+                    <option value="pack">pack</option>
+                    <option value="litres">litres</option>
+                    <option value="meters">meters</option>
+                    <option value="bag">bag</option>
+                    <option value="bottle">bottle</option>
+                    <option value="case">case</option>
+                    <option value="bunch">bunch</option>
+                  </select>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label className={styles.label}>Niche Preset Type</label>
                   <select
                     value={cfgStoreType}
-                    onChange={(e) => handlePresetChange(e.target.value as 'seafood' | 'egg' | 'generic' | 'clothing')}
+                    onChange={(e) => handlePresetChange(e.target.value as any)}
                     className={styles.lightSelect}
                   >
                     <option value="seafood">Seafood Catch Niche</option>
                     <option value="egg">Poultry Egg Farm Niche</option>
                     <option value="clothing">Menswear Clothing Niche</option>
-                    <option value="generic">General Bakery / Retail Niche</option>
+                    <option value="bakery">Bakery & Pastry Niche</option>
+                    <option value="coffee">Coffee Roastery & Cafe Niche</option>
+                    <option value="wine">Wine & Spirits Niche</option>
+                    <option value="produce">Organic Greens & Produce Niche</option>
+                    <option value="generic">General Retail / Provisions Niche</option>
                   </select>
                 </div>
 
@@ -3297,6 +3335,10 @@ export default function DashboardPage() {
                         <option value="pack">pack</option>
                         <option value="litres">litres</option>
                         <option value="meters">meters</option>
+                        <option value="bag">bag</option>
+                        <option value="bottle">bottle</option>
+                        <option value="case">case</option>
+                        <option value="bunch">bunch</option>
                       </select>
                     </div>
 
@@ -3856,6 +3898,10 @@ export default function DashboardPage() {
                       <option value="pack">pack</option>
                       <option value="litres">litres</option>
                       <option value="meters">meters</option>
+                      <option value="bag">bag</option>
+                      <option value="bottle">bottle</option>
+                      <option value="case">case</option>
+                      <option value="bunch">bunch</option>
                     </select>
                   </div>
 

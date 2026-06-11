@@ -1,5 +1,5 @@
 import { fishData, FishItem } from '@/data/fishData';
-import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData, CLOTHING_PRESET, clothingSeedData } from '@/data/storeConfig';
+import { StoreConfig, SEAFOOD_PRESET, EGG_PRESET, GENERIC_PRESET, eggSeedData, genericSeedData, CLOTHING_PRESET, clothingSeedData, BAKERY_PRESET, bakerySeedData, COFFEE_PRESET, coffeeSeedData, WINE_PRESET, wineSeedData, PRODUCE_PRESET, produceSeedData } from '@/data/storeConfig';
 import { supabase, isSupabaseConfigured, disableSupabase } from './supabaseClient';
 
 export interface OrderItem {
@@ -242,6 +242,10 @@ export function getSeedData(type: string): FishItem[] {
   if (type === 'egg') return eggSeedData;
   if (type === 'generic') return genericSeedData;
   if (type === 'clothing') return clothingSeedData;
+  if (type === 'bakery') return bakerySeedData;
+  if (type === 'coffee') return coffeeSeedData;
+  if (type === 'wine') return wineSeedData;
+  if (type === 'produce') return produceSeedData;
   return fishData;
 }
 
@@ -1117,7 +1121,7 @@ export function calculateSourcingETA(
   };
 }
 
-export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic' | 'clothing', storeId: string = 'catacloud'): Promise<FishItem[]> {
+export async function reseedProducts(storeType: 'seafood' | 'egg' | 'generic' | 'clothing' | 'bakery' | 'coffee' | 'wine' | 'produce', storeId: string = 'catacloud'): Promise<FishItem[]> {
   const seed = getSeedData(storeType);
   
   if (isSupabaseConfigured && await isTableSupported('products')) {
