@@ -45,6 +45,8 @@ import * as XLSX from 'xlsx';
 
 const isBrowser = () => typeof window !== 'undefined';
 
+const IMAGE_PLACEHOLDER = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23f1f5f9'/><text x='50%' y='50%' font-family='sans-serif' font-size='10' fill='%2394a3b8' text-anchor='middle' dominant-baseline='middle'>No Image</text></svg>";
+
 export default function DashboardPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState<boolean>(false);
@@ -982,8 +984,8 @@ export default function DashboardPage() {
     const unitColIndex = headers.findIndex(h => h === 'unit' || h.includes('measure') || h.includes('pack') || h.includes('qty unit'));
     const imageIndex = headers.findIndex(h => h.includes('image') || h.includes('img') || h.includes('pic') || h.includes('photo'));
 
-    if (nameIndex === -1 || priceIndex === -1) {
-      toast.error('CSV headers must include at least "Name" and "Price" columns.');
+    if (nameIndex === -1 || priceIndex === -1 || stockIndex === -1) {
+      toast.error('CSV headers must include "Name", "Price", and "Stock" columns.');
       return;
     }
 
@@ -1013,7 +1015,7 @@ export default function DashboardPage() {
       }
       colValues.push(currentVal.trim().replace(/^"|"$/g, ''));
 
-      if (colValues.length < Math.max(nameIndex, priceIndex) + 1) {
+      if (colValues.length < Math.max(nameIndex, priceIndex, stockIndex) + 1) {
         errors.push(`Row ${i + 1}: Insufficient column values.`);
         continue;
       }
@@ -1021,10 +1023,10 @@ export default function DashboardPage() {
       const pName = colValues[nameIndex];
       const pPrice = Number(colValues[priceIndex]);
       const pCategory = categoryIndex !== -1 && colValues[categoryIndex] ? colValues[categoryIndex] : (storeConfig.categories[0] || 'Saltwater');
-      const pStock = stockIndex !== -1 && colValues[stockIndex] ? Number(colValues[stockIndex]) : 10;
+      const pStock = Number(colValues[stockIndex]);
 
-      if (!pName || isNaN(pPrice)) {
-        errors.push(`Row ${i + 1}: Name cannot be empty and Price must be a valid number.`);
+      if (!pName || isNaN(pPrice) || isNaN(pStock)) {
+        errors.push(`Row ${i + 1}: Name cannot be empty, and Price and Stock must be valid numbers.`);
         continue;
       }
 
@@ -1034,12 +1036,12 @@ export default function DashboardPage() {
         ? rawId.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')
         : pName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + `-${Math.floor(100 + Math.random() * 900)}`;
 
-      const pSciName = sciNameIndex !== -1 && colValues[sciNameIndex] ? colValues[sciNameIndex].trim() : 'Imported Specimen';
-      const pOrigin = originIndex !== -1 && colValues[originIndex] ? colValues[originIndex].trim() : 'Global Wholesaler';
-      const pSustainability = sustainabilityIndex !== -1 && colValues[sustainabilityIndex] ? colValues[sustainabilityIndex].trim() : 'Sourced Sustainably';
-      const pDesc = descIndex !== -1 && colValues[descIndex] ? colValues[descIndex].trim() : 'Bulk imported catalog item.';
+      const pSciName = sciNameIndex !== -1 && colValues[sciNameIndex] ? colValues[sciNameIndex].trim() : '';
+      const pOrigin = originIndex !== -1 && colValues[originIndex] ? colValues[originIndex].trim() : '';
+      const pSustainability = sustainabilityIndex !== -1 && colValues[sustainabilityIndex] ? colValues[sustainabilityIndex].trim() : '';
+      const pDesc = descIndex !== -1 && colValues[descIndex] ? colValues[descIndex].trim() : '';
       const pUnit = unitColIndex !== -1 && colValues[unitColIndex] ? colValues[unitColIndex].trim() : (storeConfig.unit || 'pcs');
-      const pImage = imageIndex !== -1 && colValues[imageIndex] ? colValues[imageIndex].trim() : '/images/bluefin_tuna.png';
+      const pImage = imageIndex !== -1 && colValues[imageIndex] ? colValues[imageIndex].trim() : '';
 
       const newProd: FishItem = {
         id: generatedId,
@@ -1051,11 +1053,11 @@ export default function DashboardPage() {
         stock: pStock,
         image: pImage,
         description: pDesc,
-        tasteProfile: ['Fresh', 'Premium'],
-        texture: 'Delicate',
+        tasteProfile: [],
+        texture: '',
         sustainability: pSustainability,
-        prepTime: '5 mins',
-        difficulty: 'Easy',
+        prepTime: '',
+        difficulty: '',
         unit: pUnit
       };
 
@@ -1543,7 +1545,7 @@ export default function DashboardPage() {
                       {order.items.map((item, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 0' }}>
-                            <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
+                            <img src={item.image || IMAGE_PLACEHOLDER} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #e2e8f0' }} />
                             <span style={{ fontWeight: 600, color: '#0f172a' }}>{item.name}</span>
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{item.quantity} {storeConfig.unit}</td>
@@ -1840,7 +1842,7 @@ export default function DashboardPage() {
                 const isOut = prod.stock <= 0;
                 return (
                   <div key={prod.id} className={styles.horizontalCard}>
-                    <img src={prod.image} alt={prod.name} className={styles.horizontalCardImg} />
+                    <img src={prod.image || IMAGE_PLACEHOLDER} alt={prod.name} className={styles.horizontalCardImg} />
                     <div className={styles.horizontalCardContent}>
                       <div className={styles.horizontalCardDetails}>
                         <div className={styles.horizontalSku}>SKU: {prod.id.slice(0, 10).toUpperCase()}</div>
@@ -2258,7 +2260,7 @@ export default function DashboardPage() {
                       }}
                     >
                       <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
-                        <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={p.image || IMAGE_PLACEHOLDER} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         {p.stock <= 0 && (
                           <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase' }}>
                             Out of Stock
@@ -4110,7 +4112,7 @@ export default function DashboardPage() {
                               {order.items.map((item, idx) => (
                                 <tr key={idx}>
                                   <td className={styles.itemNameCell}>
-                                    <img src={item.image} alt={item.name} className={styles.itemImage} />
+                                    <img src={item.image || IMAGE_PLACEHOLDER} alt={item.name} className={styles.itemImage} />
                                     <span>{item.name}</span>
                                   </td>
                                   <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
@@ -4473,7 +4475,7 @@ export default function DashboardPage() {
                               }}
                             >
                               <div style={{ position: 'relative', width: '100%', height: '100px', borderRadius: '6px', overflow: 'hidden', marginBottom: '8px' }}>
-                                <img src={p.image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={p.image || IMAGE_PLACEHOLDER} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 {p.stock <= 0 && (
                                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-danger)', fontWeight: 'bold', fontSize: '0.75rem', textTransform: 'uppercase' }}>
                                     Out of Stock
@@ -4654,7 +4656,7 @@ export default function DashboardPage() {
                         <tr key={prod.id}>
                           <td>
                             <div className={styles.productNameCell}>
-                              <img src={prod.image} alt={prod.name} className={styles.productImg} />
+                              <img src={prod.image || IMAGE_PLACEHOLDER} alt={prod.name} className={styles.productImg} />
                               <div>
                                 <strong style={{ color: 'var(--text-primary)' }}>{prod.name}</strong>
                                 <span className={styles.productScientificName}>{prod.scientificName}</span>
@@ -4888,7 +4890,7 @@ export default function DashboardPage() {
                               {order.items.map((item, idx) => (
                                 <tr key={idx}>
                                   <td className={styles.itemNameCell}>
-                                    <img src={item.image} alt={item.name} className={styles.itemImage} />
+                                    <img src={item.image || IMAGE_PLACEHOLDER} alt={item.name} className={styles.itemImage} />
                                     <span>{item.name}</span>
                                   </td>
                                   <td style={{ textAlign: 'right', fontWeight: 600 }}>{item.quantity} {storeConfig.unit}</td>
