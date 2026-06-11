@@ -55,6 +55,9 @@ export default function DashboardPage() {
 
   // Data states
   const [products, setProducts] = useState<FishItem[]>([]);
+  const activeCategories = React.useMemo(() => {
+    return Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+  }, [products]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [customCatalogs, setCustomCatalogs] = useState<CustomCatalog[]>([]);
@@ -656,7 +659,7 @@ export default function DashboardPage() {
       setEditingProduct(null);
       setFormName('');
       setFormSciName('');
-      setFormCategory(storeConfig.categories[0] || 'Saltwater');
+      setFormCategory(activeCategories[0] || '');
       setFormPrice(15.0);
       setFormOrigin('');
       setFormStock(20);
@@ -1022,7 +1025,7 @@ export default function DashboardPage() {
 
       const pName = colValues[nameIndex];
       const pPrice = Number(colValues[priceIndex]);
-      const pCategory = categoryIndex !== -1 && colValues[categoryIndex] ? colValues[categoryIndex] : (storeConfig.categories[0] || 'Saltwater');
+      const pCategory = categoryIndex !== -1 && colValues[categoryIndex] ? colValues[categoryIndex] : (activeCategories[0] || 'General');
       const pStock = Number(colValues[stockIndex]);
 
       if (!pName || isNaN(pPrice) || isNaN(pStock)) {
@@ -1771,7 +1774,7 @@ export default function DashboardPage() {
                   </div>
                   <span className={styles.checkboxCount}>{products.length}</span>
                 </label>
-                {storeConfig.categories.map((cat) => (
+                {activeCategories.map((cat) => (
                   <label key={cat} className={styles.checkboxItem} onClick={() => setCatSelectedCategory(cat)} style={{ cursor: 'pointer' }}>
                     <div className={styles.checkboxLabelGroup}>
                       <input type="checkbox" checked={catSelectedCategory === cat} readOnly style={{ cursor: 'pointer' }} />
@@ -2227,7 +2230,7 @@ export default function DashboardPage() {
                 style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
               >
                 <option value="All">All Categories</option>
-                {storeConfig.categories.map((c) => (
+                {activeCategories.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -2580,7 +2583,7 @@ export default function DashboardPage() {
                       style={{ height: '36px', paddingTop: '0px', paddingBottom: '0px', paddingLeft: '12px', paddingRight: '32px', fontSize: '0.85rem', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
                     >
                       <option value="All">All Categories</option>
-                      {storeConfig.categories.map((cat) => (
+                      {activeCategories.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>
@@ -3404,17 +3407,21 @@ export default function DashboardPage() {
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.label} htmlFor="portal-prod-category">Category</label>
-                    <select
+                    <input
+                      type="text"
                       id="portal-prod-category"
                       value={formCategory}
                       onChange={(e) => setFormCategory(e.target.value)}
                       className="luxury-input"
-                      style={{ appearance: 'none', cursor: 'pointer' }}
-                    >
-                      {storeConfig.categories.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
+                      list="portal-categories-datalist"
+                      placeholder="e.g. Free-Range"
+                      required
+                    />
+                    <datalist id="portal-categories-datalist">
+                      {activeCategories.map((cat) => (
+                        <option key={cat} value={cat} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
                   <div className={styles.formGroup}>
                     <label className={styles.label} htmlFor="portal-prod-unit">Unit of Measurement</label>
@@ -4441,7 +4448,7 @@ export default function DashboardPage() {
                         style={{ width: '150px', height: '36px', padding: '0 8px', fontSize: '0.85rem' }}
                       >
                         <option value="All">All Categories</option>
-                        {storeConfig.categories.map((c) => (
+                        {activeCategories.map((c) => (
                           <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
@@ -5001,17 +5008,21 @@ export default function DashboardPage() {
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-category">Category</label>
-                  <select
+                  <input
+                    type="text"
                     id="prod-category"
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="luxury-input"
-                    style={{ appearance: 'none', cursor: 'pointer' }}
-                  >
-                    {storeConfig.categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    list="categories-datalist"
+                    placeholder="e.g. Free-Range"
+                    required
+                  />
+                  <datalist id="categories-datalist">
+                    {activeCategories.map((cat) => (
+                      <option key={cat} value={cat} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
                 <div className={styles.formGroup}>
                   <label className={styles.label} htmlFor="prod-unit">Unit of Measurement</label>

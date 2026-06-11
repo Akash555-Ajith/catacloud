@@ -387,7 +387,7 @@ export async function getProducts(storeId: string = 'catacloud'): Promise<FishIt
     }
   }
 
-  if (dbProducts && dbProducts.length > 0) {
+  if (dbProducts !== null) {
     if (isBrowser()) {
       localStorage.setItem(`catacloud_products_${storeId}`, JSON.stringify(dbProducts));
     }
@@ -406,7 +406,7 @@ export async function getProducts(storeId: string = 'catacloud'): Promise<FishIt
   }
   try {
     const localProducts = JSON.parse(stored);
-    const hasCustomItems = Array.isArray(localProducts) && localProducts.length > 0;
+    const hasCustomItems = Array.isArray(localProducts);
     const finalProducts = hasCustomItems ? localProducts : seed;
     
     if (isSupabaseConfigured && hasCustomItems) {
